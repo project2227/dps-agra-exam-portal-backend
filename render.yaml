@@ -1,0 +1,34 @@
+# Create a SEPARATE Postgres database before applying this Blueprint.
+# Never reuse the Cyber Arena database or credentials.
+services:
+  - type: web
+    name: dps-agra-exam-api
+    runtime: node
+    plan: free # Staging ONLY. Use paid service for a live school exam.
+    buildCommand: npm install && npm run check && npm test
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_SSL
+        value: 'true'
+      - key: JWT_SECRET
+        generateValue: true
+      - key: STUDENT_SESSION_SECRET
+        generateValue: true
+      - key: FINGERPRINT_PEPPER
+        generateValue: true
+      - key: STORE_IP
+        value: 'false'
+      - key: UPLOAD_PROVIDER
+        value: disabled
+      - key: BOOTSTRAP_ADMIN_EMAIL
+        sync: false
+      - key: BOOTSTRAP_ADMIN_PASSWORD
+        sync: false

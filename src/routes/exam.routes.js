@@ -1,0 +1,109 @@
+'use strict';
+const express=require('express');const crypto=require('crypto');const bcrypt=require('bcryptjs');const {z}=require('zod');
+const db=require('../config/db');const {teacher,ownExam}=require('../middleware/auth');
+const {asyncWrap,must}=require('../utils/http');const {audit}=require('../services/audit');const {assertAssignedClass}=require('../services/permissions');
+const router=express.Router();router.use(teacher);
+const settingsSchema=z.object({requireWebcam:z.boolean().default(false),requireScreenShare:z.boolean().default(false),
+ enableTabSwitchDetection:z.boolean().default(true),enableCopyPasteDetection:z.boolean().default(true),
+ enableFullscreenMode:z.boolean().default(false),enableCodeRunner:z.boolean().default(false),
+ allowLateJoin:z.boolean().default(true),monitorAnswerText:z.boolean().default(false)}).strict();
+const examShape=z.object({title:z.string().trim().min(3).max(180),subject:z.string().max(90).default('Computers'),
+ className:z.string().trim().min(1).max(40),section:z.string().max(12).default('All'),
+ examType:z.enum(['quiz','practical','mixed']),startTime:z.coerce.date(),endTime:z.coerce.date(),
+ durationMinutes:z.number().int().min(1).max(360),settings:settingsSchema.default({})}).refine(x=>x.endTime>x.startTime,{message:'End time must be after start time.'});
+const scrub=x=>{const {passcode_hash,...safe}=x;return safe;};
+router.post('/exams',asyncWrap(async(req,res)=>{
+ const v=examShape.parse(req.body);
+ await assertAssignedClass(req.teacher,v.className,v.section);
+ const q=await db.query(`INSERT INTO exams(title,subject,class_name,section,teacher_id,exam_type,start_time,end_time,duration_minutes,settings)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+ [v.title,v.subject,v.className,v.section,req.teacher.id,v.examType,v.startTime,v.endTime,v.durationMinutes,JSON.stringify(v.settings)]);
+ await audit({teacherId:req.teacher.id,examId:q.rows[0].id,action:'exam:create'});
+ res.status(201).json({exam:scrub(q.rows[0])});
+}));
+router.get('/exams',asyncWrap(async(req,res)=>{
+ const q=await db.query('SELECT * FROM exams WHERE teacher_id=$1 ORDER BY created_at DESC LIMIT 200',[req.teacher.id]);res.json({exams:q.rows.map(scrub)});
+}));
+router.get('/exams/:examId',asyncWrap(async(req,res)=>res.json({exam:scrub(await ownExam(req.params.examId,req.teacher.id))})));
+router.put('/exams/:examId',asyncWrap(async(req,res)=>{
+ const v=examShape.parse(req.body);await assertAssignedClass(req.teacher,v.className,v.section);const current=await ownExam(req.params.examId,req.teacher.id);
+ must(current.status==='draft'||current.status==='scheduled',409,'Active or closed exams cannot be edited.');
+ const q=await db.query(`UPDATE exams SET title=$1,subject=$2,class_name=$3,section=$4,exam_type=$5,
+ start_time=$6,end_time=$7,duration_minutes=$8,settings=$9,updated_at=now()
+ WHERE id=$10 AND teacher_id=$11 AND status IN ('draft','scheduled') RETURNING *`,
+ [v.title,v.subject,v.className,v.section,v.examType,v.startTime,v.endTime,v.durationMinutes,
+ JSON.stringify(v.settings),current.id,req.teacher.id]);
+ must(q.rowCount,409,'Exam status changed; reload.');res.json({exam:scrub(q.rows[0])});
+}));
+router.delete('/exams/:examId',asyncWrap(async(req,res)=>{
+ const exam=await ownExam(req.params.examId,req.teacher.id);
+ must(exam.status==='draft',409,'Only draft exams may be deleted. Close other exams to preserve submissions.');
+ const q=await db.query(`DELETE FROM exams WHERE id=$1 AND teacher_id=$2 AND status='draft'
+ AND NOT EXISTS(SELECT 1 FROM exam_sessions WHERE exam_id=$1) RETURNING id`,[exam.id,req.teacher.id]);
+ must(q.rowCount,409,'Cannot delete an exam with participants.');res.json({deleted:true});
+}));
+router.post('/exams/:examId/generate-passcode',asyncWrap(async(req,res)=>{
+ const exam=await ownExam(req.params.examId,req.teacher.id);
+ must(['draft','scheduled'].includes(exam.status),409,'Cannot rotate passcode after the exam becomes active.');
+ const custom=req.body?.passcode;
+ const passcode=custom===undefined?crypto.randomBytes(5).toString('hex').toUpperCase():
+ z.string().min(8).max(64).regex(/^[A-Za-z0-9!@#_-]+$/).parse(custom);
+ const passcodeHash=await bcrypt.hash(passcode,12);
+ await db.query('UPDATE exams SET passcode_hash=$1,updated_at=now() WHERE id=$2',[passcodeHash,exam.id]);
+ await audit({teacherId:req.teacher.id,examId:exam.id,action:'exam:passcode_rotated'});
+ res.json({passcode,notice:'Shown once. Distribute securely; it is not stored in plaintext.'});
+}));
+router.post('/exams/:examId/publish',asyncWrap(async(req,res)=>{
+ const exam=await ownExam(req.params.examId,req.teacher.id);
+ must(exam.status==='draft'||exam.status==='scheduled',409,'Exam cannot be published in its current state.');
+ must(exam.passcode_hash,400,'Generate an exam passcode first.');
+ const total=await db.query('SELECT count(*)::int AS count FROM questions WHERE exam_id=$1',[exam.id]);
+ must(total.rows[0].count>0,400,'Add at least one question first.');
+ must(new Date(exam.end_time).getTime()>Date.now(),400,'Exam end time is in the past.');
+ const status=new Date(exam.start_time).getTime()>Date.now()?'scheduled':'active';
+ const q=await db.query(`UPDATE exams SET status=$1,updated_at=now() WHERE id=$2 AND status IN('draft','scheduled') RETURNING *`,[status,exam.id]);
+ await audit({teacherId:req.teacher.id,examId:exam.id,action:'exam:published'});
+ res.json({exam:scrub(q.rows[0])});
+}));
+router.post('/exams/:examId/close',asyncWrap(async(req,res)=>{
+ const exam=await ownExam(req.params.examId,req.teacher.id);
+ await db.query("UPDATE exams SET status='closed',updated_at=now() WHERE id=$1",[exam.id]);
+ await audit({teacherId:req.teacher.id,examId:exam.id,action:'exam:closed'});
+ res.json({status:'closed'});
+}));
+const qShape=z.object({type:z.enum(['mcq','short','long','code','file']),title:z.string().min(1).max(240),
+ description:z.string().max(10000).default(''),options:z.array(z.string().max(600)).max(16).default([]),
+ correctAnswer:z.union([z.string(),z.number(),z.null()]).default(null),marks:z.number().min(0).max(10000),
+ language:z.enum(['python','java','cpp','c','javascript']).nullable().optional(),starterCode:z.string().max(20000).default(''),
+ visibleTestCases:z.array(z.object({stdin:z.string().max(2048),expectedOutput:z.string().max(2048)})).max(8).default([]),
+ hiddenTestCases:z.array(z.object({stdin:z.string().max(2048),expectedOutput:z.string().max(2048)})).max(8).default([]),
+ order:z.number().int().min(0).max(10000).default(0)});
+async function draftOwner(examId,t){const exam=await ownExam(examId,t);must(exam.status==='draft',409,'Questions can only change while the exam is draft.');return exam;}
+router.post('/exams/:examId/questions',asyncWrap(async(req,res)=>{
+ const exam=await draftOwner(req.params.examId,req.teacher.id);const v=qShape.parse(req.body);
+ must(v.type!=='code'||v.language,400,'Code questions need a language.');
+ const q=await db.query(`INSERT INTO questions(exam_id,type,title,description,options,correct_answer,marks,language,starter_code,visible_tests,hidden_tests,sort_order)
+ VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+ [exam.id,v.type,v.title,v.description,JSON.stringify(v.options),v.correctAnswer===null?null:JSON.stringify(v.correctAnswer),
+ v.marks,v.language||null,v.starterCode,JSON.stringify(v.visibleTestCases),JSON.stringify(v.hiddenTestCases),v.order]);
+ res.status(201).json({question:q.rows[0]});
+}));
+router.get('/exams/:examId/questions',asyncWrap(async(req,res)=>{
+ const exam=await ownExam(req.params.examId,req.teacher.id);
+ const q=await db.query('SELECT * FROM questions WHERE exam_id=$1 ORDER BY sort_order,id',[exam.id]);res.json({questions:q.rows});
+}));
+router.put('/questions/:questionId',asyncWrap(async(req,res)=>{
+ const v=qShape.parse(req.body);const current=await db.query(`SELECT q.exam_id FROM questions q JOIN exams e ON e.id=q.exam_id
+ WHERE q.id=$1 AND e.teacher_id=$2 AND e.status='draft'`,[req.params.questionId,req.teacher.id]);
+ must(current.rowCount,404,'Editable question not found.');
+ const q=await db.query(`UPDATE questions SET type=$1,title=$2,description=$3,options=$4,correct_answer=$5,marks=$6,
+ language=$7,starter_code=$8,visible_tests=$9,hidden_tests=$10,sort_order=$11,updated_at=now() WHERE id=$12 RETURNING *`,
+ [v.type,v.title,v.description,JSON.stringify(v.options),v.correctAnswer===null?null:JSON.stringify(v.correctAnswer),v.marks,
+ v.language||null,v.starterCode,JSON.stringify(v.visibleTestCases),JSON.stringify(v.hiddenTestCases),v.order,req.params.questionId]);
+ res.json({question:q.rows[0]});
+}));
+router.delete('/questions/:questionId',asyncWrap(async(req,res)=>{
+ const q=await db.query(`DELETE FROM questions WHERE id=$1 AND exam_id IN (SELECT id FROM exams WHERE teacher_id=$2 AND status='draft') RETURNING id`,
+ [req.params.questionId,req.teacher.id]);must(q.rowCount,404,'Editable question not found.');res.json({deleted:true});
+}));
+module.exports=router;
