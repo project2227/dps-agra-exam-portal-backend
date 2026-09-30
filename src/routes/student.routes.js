@@ -14,6 +14,7 @@ const cleanQ=q=>({id:q.id,type:q.type,title:q.title,description:q.description,op
 router.get('/exams/active',asyncWrap(async(req,res)=>{
  const filters=z.object({className:z.string().max(40).optional(),section:z.string().max(12).optional()}).parse(req.query);
  const q=await db.query(`SELECT id,title,subject,class_name,section,exam_type,start_time,end_time,duration_minutes,
+ 'active'::text AS status,
  settings->>'requireWebcam' AS webcam_required,settings->>'requireScreenShare' AS screen_required
  FROM exams WHERE status IN('active','scheduled') AND now() BETWEEN start_time AND end_time
  AND ($1::text IS NULL OR lower(class_name)=lower($1))
