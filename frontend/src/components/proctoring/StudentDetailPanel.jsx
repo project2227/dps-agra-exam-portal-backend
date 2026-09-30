@@ -30,7 +30,7 @@ function Section({ icon: Icon, title, children, className = '' }) {
  * Opens a live WebRTC stream for webcam + screen (when the exam uses them)
  * and closes it again when the panel closes.
  */
-export default function StudentDetailPanel({ student: s, exam, rtc, snapshot = {}, onClose, onWarn, now }) {
+export default function StudentDetailPanel({ student: s, exam, rtc, cameraStills, snapshot = {}, onClose, onWarn, now }) {
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
   const closeBtn = useRef(null)
@@ -58,6 +58,10 @@ export default function StudentDetailPanel({ student: s, exam, rtc, snapshot = {
   const live = rtc?.streams?.[sessionId] || {}
   const rtcState = rtc?.states?.[sessionId]
   const mediaStates = rtc?.mediaStates?.[sessionId] || {}
+  const jpegFrame = cameraStills?.frames?.[sessionId]
+  const jpegStatus = cameraStills?.statuses?.[sessionId] || 'off'
+  const hasRecentStills = jpegFrame && (now-new Date(jpegFrame.ts).getTime()<15000) &&
+    !['off','student-stopped','student-offline','session-ended','reconnecting'].includes(jpegStatus)
   const flagsTimeline = (s.timeline || []).filter((e) => PROCTOR_EVENTS[e.type]?.severity && PROCTOR_EVENTS[e.type].severity !== 'info')
   const warnings = (s.timeline || []).filter((e) => e.type === 'teacher_warning' || e.type === 'teacher_observation')
 
@@ -107,9 +111,42 @@ export default function StudentDetailPanel({ student: s, exam, rtc, snapshot = {
         <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <VideoTile stream={mediaStates.webcam==='connected'?live.webcam:null} snapshot={snapshot.webcam} label={mediaStates.webcam==='connected'&&live.webcam?'Live webcam':'Webcam'} icon={Camera} className="aspect-video" placeholder={mediaPlaceholder('webcam',s.webcam)} />
+              <VideoTile stream={mediaStates.webcam==='connected'?live.webcam:null} snapshot={hasRecentStills?jpegFrame.jpeg:null} label={mediaStates.webcam==='connected'&&live.webcam?'Live webcam':hasRecentStills?'Consented webcam still':'Webcam'} icon={Camera} className="aspect-video" placeholder={mediaPlaceholder('webcam',s.webcam)} />
               {wantsMedia && s.webcam && !live.webcam && <button type="button" className="btn btn-ghost btn-sm mt-2 w-full" onClick={()=>watch?.(sessionId,['webcam'])}>Retry webcam</button>}
               {mediaStates.webcam === 'connected' && <p className="mt-1 text-xs text-dps-neon">Peer connection established</p>}
+              {s.webcam && wantsMedia && !DEMO_MODE && cameraStills && (
+                <div className="mt-3 rounded-xl border border-emerald-400/30 bg-emerald-500/5 p-3">
+                  <p className="text-xs font-semibold text-emerald-200">Alternative webcam still images</p>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Only the selected student. They must separately accept the request.
+                    About one JPEG every 4 seconds; no image recording or gaze detection.
+                  </p>
+                  {jpegStatus!=='off'&&<p role="status" className="mt-2 text-xs text-slate-200">
+                    {({
+                      requesting:'Requesting student permission…',
+                      'awaiting-consent':'Waiting for the student to allow still images…',
+                      sharing:hasRecentStills?'Receiving snapshots':'Waiting for the next snapshot…',
+                      'student-stopped':'Student declined or stopped sharing.',
+                      'student-offline':'Student is offline.',
+                      reconnecting:'Reconnecting…',
+                      'not-consented':'Student did not authorize webcam sharing.',
+                      'session-ended':'This exam session has ended.',
+                      busy:'Maximum authorized viewers reached.',
+                    })[jpegStatus]||'Checking connection…'}
+                  </p>}
+                  {hasRecentStills && mediaStates.webcam!=='connected'&&
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      Last still received {formatTime(jpegFrame.ts)}. This is not continuous video.
+                    </p>}
+                  <button type="button"
+                    className="btn btn-ghost btn-sm mt-3 w-full"
+                    onClick={()=>['off','student-stopped','student-offline','not-consented','session-ended','busy'].includes(jpegStatus)
+                      ?cameraStills.subscribe(sessionId):cameraStills.stop(sessionId)}>
+                    {['off','student-stopped','student-offline','not-consented','session-ended','busy'].includes(jpegStatus)
+                      ? 'Request webcam snapshots' : 'Stop snapshot preview'}
+                  </button>
+                </div>
+              )}
             </div>
             <div>
               <VideoTile stream={mediaStates.screen==='connected'?live.screen:null} snapshot={snapshot.screen} label={mediaStates.screen==='connected'&&live.screen?'Live screen':'Screen'} icon={MonitorUp} contain className="aspect-video" placeholder={mediaPlaceholder('screen',s.screen)} />

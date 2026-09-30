@@ -19,6 +19,7 @@ import useAntiCheat from '../hooks/useAntiCheat'
 import useExamTimer from '../hooks/useExamTimer'
 import useAutoSave, { clearBackup, loadBackup } from '../hooks/useAutoSave'
 import { useStudentRTC } from '../hooks/useWebRTC'
+import { useStudentSnapshots } from '../hooks/useSnapshots'
 import api from '../services/api'
 import { EVENTS, getSocket } from '../services/socket'
 import { createProctorReporter, getDeviceMetadata, isFullScreenShare, requestScreen, requestWebcam, stopStream } from '../services/proctoring'
@@ -242,6 +243,7 @@ export default function ExamRoom() {
   }, [socket, phase === 'active' || phase === 'consent', examId, sessionId])
 
   useStudentRTC(socket, streamsRef, phase === 'active')
+  const snapshots = useStudentSnapshots(socket,streams.webcam,phase==='active')
 
   // A student may grant permissions before their Socket.IO connection is ready.
   // Resend media readiness after the session joins the room and on reconnect;
@@ -294,7 +296,8 @@ export default function ExamRoom() {
     return () => clearTimeout(emitTimer.current)
   }, [answers, current, phase, socket, questions, examId, sessionId])
 
-  // No JPEG snapshots are transmitted. Consented media uses direct WebRTC only.
+  // Separately opt-in JPEG stills are transmitted only when a verified teacher
+  // requests them; useStudentSnapshots stops immediately on revocation/end.
 
   // Detect webcam / screen share being stopped
   useEffect(() => {
@@ -468,7 +471,7 @@ export default function ExamRoom() {
       </div>
 
       {phase !== 'consent' && (
-        <MonitoringIndicator webcamStream={streams.webcam} screenStream={streams.screen} activityMonitoring={s.tabDetection !== false} connected={connected} />
+        <MonitoringIndicator webcamStream={streams.webcam} screenStream={streams.screen} activityMonitoring={s.tabDetection !== false} connected={connected} snapshotRequested={snapshots.requested} snapshotAllowed={snapshots.allowed} snapshotStatus={snapshots.status} onSnapshotChange={snapshots.setAllowed} />
       )}
 
       <ProctoringConsentModal open={phase === 'consent'} exam={exam} onReady={onConsentReady} onDecline={() => navigate('/student/dashboard')} />

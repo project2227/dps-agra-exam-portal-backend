@@ -12,6 +12,7 @@ import { ErrorNote, Spinner } from '../components/common/Feedback'
 import { useToast } from '../components/common/Toast'
 import useExamTimer from '../hooks/useExamTimer'
 import { useTeacherRTC } from '../hooks/useWebRTC'
+import { useTeacherSnapshots } from '../hooks/useSnapshots'
 import api from '../services/api'
 import { EVENTS, getSocket } from '../services/socket'
 import { getTeacherToken } from '../services/session'
@@ -44,6 +45,7 @@ export default function ExamMonitor() {
   const [now, setNow] = useState(Date.now())
   const socket = useMemo(() => getSocket({ role: 'teacher', token: getTeacherToken() }), [])
   const rtc = useTeacherRTC(socket)
+  const cameraStills = useTeacherSnapshots(socket)
   const studentsRef = useRef(students)
   const progressTimer = useRef(null)
   studentsRef.current = students
@@ -226,7 +228,7 @@ export default function ExamMonitor() {
       </div>
 
       {selected && (
-        <StudentDetailPanel student={selected} exam={exam} rtc={rtc} snapshot={snapshots[selected.sessionId]} onClose={() => setSelectedId(null)} onWarn={warn} now={now} />
+        <StudentDetailPanel student={selected} exam={exam} rtc={rtc} cameraStills={cameraStills} snapshot={snapshots[selected.sessionId]} onClose={() => { cameraStills.stop(selected.sessionId); setSelectedId(null) }} onWarn={warn} now={now} />
       )}
     </div>
   )

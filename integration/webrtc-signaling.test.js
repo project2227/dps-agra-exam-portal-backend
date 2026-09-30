@@ -105,6 +105,35 @@ test('independent teacher and student sockets request webcam and screen, exchang
  const humanNote=waitFor(teacher,'exam:proctorFlag',x=>x.event?.eventType==='TEACHER_OBSERVATION');
  teacher.emit('teacher:sendWarning',{sessionId,message:'Please stay on your exam page.'});
  assert.equal((await humanNote).event.severity,'info');
+ // A staff viewer must deliberately select a student; no camera traffic
+ // should reach the staff before the student separately opts in.
+ const waiting=waitFor(teacher,'teacher:snapshotStatus',x=>x.sessionId===sessionId&&x.status==='awaiting-consent');
+ const stillRequest=waitFor(student,'teacher:snapshotRequested',x=>x.sessionId===sessionId&&x.requested===true);
+ teacher.emit('teacher:snapshotSubscribe',{sessionId});
+ await Promise.all([waiting,stillRequest]);
+ let seen=0;
+ const onImage=()=>{seen++};
+ teacher.on('teacher:snapshotFrame',onImage);
+ const fakeJpeg='data:image/jpeg;base64,'+'A'.repeat(600);
+ student.emit('student:snapshotFrame',{jpeg:fakeJpeg});
+ await pause(120);
+ assert.equal(seen,0,'A webcam frame must NEVER relay before separate opt-in');
+ const accepted=waitFor(teacher,'teacher:snapshotStatus',x=>x.sessionId===sessionId&&x.status==='sharing');
+ student.emit('student:snapshotConsent',{enabled:true});
+ await accepted;
+ const incoming=waitFor(teacher,'teacher:snapshotFrame',x=>x.sessionId===sessionId);
+ student.emit('student:snapshotFrame',{jpeg:fakeJpeg});
+ assert.equal((await incoming).jpeg,fakeJpeg,'consented still image delivered only to subscribed teacher');
+ student.emit('student:snapshotFrame',{jpeg:fakeJpeg});
+ await pause(100);
+ assert.equal(seen,1,'a student cannot flood the backend with 2 frames at once');
+ const stopped=waitFor(teacher,'teacher:snapshotStatus',x=>x.sessionId===sessionId&&x.status==='student-stopped');
+ student.emit('student:snapshotConsent',{enabled:false});
+ await stopped;
+ const unsub=waitFor(student,'teacher:snapshotRequested',x=>x.sessionId===sessionId&&x.requested===false);
+ teacher.emit('teacher:snapshotUnsubscribe',{sessionId});
+ await unsub;
+ teacher.off('teacher:snapshotFrame',onImage);
  const q=await pool.query('SELECT cheating_score FROM exam_sessions WHERE id=$1',[sessionId]);
  assert.equal(q.rows[0].cheating_score,4,'A teacher note never adds automatic cheating points');
 });

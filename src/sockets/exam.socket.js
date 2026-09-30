@@ -5,6 +5,37 @@ const {attach,teacherRoom,studentRoom,publish,privateStudent}=require('../servic
 const LIMIT=12000;
 function attachSockets(io){
  attach(io);
+ // Snapshot subscriptions live in memory for a single Socket.IO process.
+ // A subscription is opt-in, short-lived, per selected student and per teacher.
+ // No image data is written to SQL, audit logs, object storage or disk.
+ const snapshotSubscribers=new Map(); // sessionId => Map(teacherSocketId,expiresAt)
+ const SNAPSHOT_SUBSCRIPTION_MS=50000;
+ const SNAPSHOT_MAX_DATA_URI=130000;
+ function subscribers(sessionId,examId) {
+  const map=snapshotSubscribers.get(sessionId);
+  if(!map)return [];
+  const now=Date.now();
+  for(const [id,until] of map) {
+   const peer=io.sockets.sockets.get(id);
+   if(until<now || !peer || !peer.rooms.has(teacherRoom(examId)))map.delete(id);
+  }
+  if(map.size===0){snapshotSubscribers.delete(sessionId);return [];}
+  return [...map.keys()];
+ }
+ function detachTeacher(id) {
+  for(const [sessionId,map] of snapshotSubscribers) {
+   if(!map.delete(id))continue;
+   if(map.size===0){
+    snapshotSubscribers.delete(sessionId);
+    privateStudent(sessionId,'teacher:snapshotRequested',{sessionId,requested:false});
+   }
+  }
+ }
+ function notifySnapshotTeachers(sessionId,examId,status) {
+  for(const id of subscribers(sessionId,examId))
+   io.to(id).emit('teacher:snapshotStatus',{sessionId,status});
+ }
+
  io.use(async(socket,next)=>{
   const token=socket.handshake.auth?.token;
   if(typeof token!=='string')return next(new Error('Authentication required.'));
@@ -28,6 +59,7 @@ function attachSockets(io){
   const ident=socket.data.identity;
   const throttle=new Map();
   const relayWindow=[]; // Permit ICE bursts, but bound total signaling traffic per socket.
+  socket.data.snapshotOptIn=false;
   const limited=(event,minMs=250)=>{const now=Date.now();if(now-(throttle.get(event)||0)<minMs)return true;throttle.set(event,now);return false;};
   const guard=async(fn)=>{try{await fn();}catch(err){socket.emit('exam:error',{message:err.status?err.message:'Operation rejected.'});}};
   const checkStudent=async()=>{
@@ -63,6 +95,9 @@ function attachSockets(io){
    WHERE id=$2`,[socket.id,s.id]);
    publish(s.exam_id,'exam:studentStatusUpdate',{sessionId:s.id,status:s.status==='flagged'?'flagged':'active',connected:true});
    socket.emit('exam:joined',{sessionId:s.id,monitoring:{webcam:s.consent_webcam,screen:s.consent_screen}});
+   // A student can only begin sending pictures after explicitly opting in.
+   if(subscribers(s.id,s.exam_id).length)
+    socket.emit('teacher:snapshotRequested',{sessionId:s.id,requested:true});
   }));
   socket.on('student:heartbeat',()=>guard(async()=>{
    if(limited('heartbeat',10000))return;const s=await checkStudent();
@@ -126,6 +161,90 @@ function attachSockets(io){
    reply('requested');
    privateStudent(session.id,'teacher:mediaRequest',{sessionId,mediaType});
   }));
+
+  // ---- Optional, consented JPEG webcam snapshot relay (NOT gaze detection) ----
+  socket.on('teacher:snapshotSubscribe',data=>guard(async()=>{
+   if(limited('snapshot-subscribe',700))return;
+   const s=await checkOwnedStudent(String(data?.sessionId||''));
+   if(!socket.rooms.has(teacherRoom(s.exam_id)))
+    throw Object.assign(new Error('Join the exam monitor first.'),{status:403});
+   if(!['joined','active','flagged','disconnected'].includes(s.status)){
+    return socket.emit('teacher:snapshotStatus',{sessionId:s.id,status:'session-ended'});
+   }
+   if(!s.consent_webcam){
+    return socket.emit('teacher:snapshotStatus',{sessionId:s.id,status:'not-consented'});
+   }
+   detachTeacher(socket.id); // One selected student per teacher socket, always.
+   if(!s.active_socket_id){
+    return socket.emit('teacher:snapshotStatus',{sessionId:s.id,status:'student-offline'});
+   }
+   // Remove expired viewers first; never create a new map before cleanup.
+   const current=subscribers(s.id,s.exam_id);
+   let map=snapshotSubscribers.get(s.id);
+   if(current.length>=3 && !map?.has(socket.id)){
+    return socket.emit('teacher:snapshotStatus',{sessionId:s.id,status:'busy'});
+   }
+   if(!map){map=new Map();snapshotSubscribers.set(s.id,map);}
+   map.set(socket.id,Date.now()+SNAPSHOT_SUBSCRIPTION_MS);
+   socket.emit('teacher:snapshotStatus',{sessionId:s.id,status:'awaiting-consent'});
+   privateStudent(s.id,'teacher:snapshotRequested',{sessionId:s.id,requested:true});
+  }));
+  socket.on('teacher:snapshotKeepalive',data=>guard(async()=>{
+   if(limited('snapshot-keepalive',12000))return;
+   const sessionId=String(data?.sessionId||'');
+   const map=snapshotSubscribers.get(sessionId);
+   if(!map?.has(socket.id))return;
+   const s=await checkOwnedStudent(sessionId);
+   if(!socket.rooms.has(teacherRoom(s.exam_id))||
+      !['joined','active','flagged','disconnected'].includes(s.status)||!s.consent_webcam) {
+    detachTeacher(socket.id);
+    return socket.emit('teacher:snapshotStatus',{sessionId,status:'session-ended'});
+   }
+   map.set(socket.id,Date.now()+SNAPSHOT_SUBSCRIPTION_MS);
+   if(s.active_socket_id)
+    privateStudent(sessionId,'teacher:snapshotRequested',{sessionId,requested:true});
+  }));
+  socket.on('teacher:snapshotUnsubscribe',data=>{
+   if(ident.kind!=='teacher')return;
+   const sessionId=String(data?.sessionId||'');
+   const map=snapshotSubscribers.get(sessionId);
+   if(!map?.has(socket.id))return;
+   map.delete(socket.id);
+   if(map.size===0){
+    snapshotSubscribers.delete(sessionId);
+    privateStudent(sessionId,'teacher:snapshotRequested',{sessionId,requested:false});
+   }
+   socket.emit('teacher:snapshotStatus',{sessionId,status:'stopped'});
+  });
+  socket.on('student:snapshotConsent',data=>guard(async()=>{
+   if(limited('snapshot-consent',500))return;
+   const s=await checkStudent();
+   if(s.active_socket_id!==socket.id)return;
+   const available=subscribers(s.id,s.exam_id);
+   const enabled=data?.enabled===true && s.consent_webcam===true && available.length>0;
+   socket.data.snapshotOptIn=enabled;
+   for(const id of available)io.to(id).emit('teacher:snapshotStatus',{
+    sessionId:s.id,status:enabled?'sharing':'student-stopped'
+   });
+  }));
+  socket.on('student:snapshotFrame',data=>guard(async()=>{
+   // Validate before any DB read to bound bandwidth and CPU even for a
+   // malicious authenticated client. Ignore instead of persisting bad frames.
+   if(limited('snapshot-frame',3500)||!socket.data.snapshotOptIn)return;
+   const jpeg=data?.jpeg;
+   if(typeof jpeg!=='string'||jpeg.length<300||jpeg.length>SNAPSHOT_MAX_DATA_URI||
+      !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(jpeg))return;
+   const s=await checkStudent();
+   if(s.active_socket_id!==socket.id || !s.consent_webcam)return;
+   const active=subscribers(s.id,s.exam_id);
+   if(!active.length){
+    socket.data.snapshotOptIn=false;
+    return socket.emit('teacher:snapshotRequested',{sessionId:s.id,requested:false});
+   }
+   const packet={sessionId:s.id,jpeg,ts:new Date().toISOString()};
+   for(const id of active)io.to(id).emit('teacher:snapshotFrame',packet);
+  }));
+  // ---- End private webcam snapshot relay ----
   socket.on('teacher:requestStudentDetail',data=>guard(async()=>{
    if(limited('detail',1000))return;
    const s=await checkOwnedStudent(String(data?.sessionId||''));
@@ -179,6 +298,15 @@ function attachSockets(io){
   for(const e of ['webrtc:offer','webrtc:answer','webrtc:iceCandidate','webrtc:endStream'])
    socket.on(e,data=>guard(()=>webrtcRelay(e,data)));
   socket.on('disconnect',()=>{
+   if(ident.kind==='teacher'){
+    detachTeacher(socket.id);
+    return;
+   }
+   socket.data.snapshotOptIn=false;
+   const old=snapshotSubscribers.get(ident.id);
+   if(old)for(const id of old.keys())io.to(id).emit('teacher:snapshotStatus',{
+    sessionId:ident.id,status:'student-offline'
+   });
    if(ident.kind!=='student')return;
    db.query(`UPDATE exam_sessions SET active_socket_id=NULL,
    status=CASE WHEN status='active' THEN 'disconnected' ELSE status END

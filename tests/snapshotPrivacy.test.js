@@ -1,0 +1,22 @@
+'use strict'
+const {test}=require('node:test')
+const assert=require('node:assert/strict')
+const {readFileSync}=require('node:fs')
+const socket=readFileSync('src/sockets/exam.socket.js','utf8')
+test('snapshot relay cannot run without a verified teacher request plus a second student opt-in',()=>{
+ assert.match(socket,/teacher:snapshotSubscribe/)
+ assert.match(socket,/checkOwnedStudent/)
+ assert.match(socket,/snapshotOptIn=false/)
+ assert.match(socket,/data\?\.enabled===true && s\.consent_webcam===true/)
+ assert.match(socket,/if\(limited\('snapshot-frame',3500\)\|\|!socket\.data\.snapshotOptIn\)return;/)
+ assert.match(socket,/s\.active_socket_id!==socket\.id/)
+ assert.match(socket,/SNAPSHOT_SUBSCRIPTION_MS=50000/)
+ assert.match(socket,/snapshotSubscribers\.delete\(sessionId\)/)
+})
+test('snapshot relay is private, bounded, and does not persist or analyze images',()=>{
+ const section=socket.slice(socket.indexOf("socket.on('student:snapshotFrame'"),socket.indexOf('// ---- End private webcam snapshot relay ----'))
+ assert.match(section,/SNAPSHOT_MAX_DATA_URI/)
+ assert.match(section,/teacher:snapshotFrame/)
+ assert.match(section,/io\.to\(id\)\.emit/)
+ assert.doesNotMatch(section,/pool\.query|db\.query|writeFile|putObject|publish\(s\.exam_id/)
+})
