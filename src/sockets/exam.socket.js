@@ -84,7 +84,7 @@ function attachSockets(io){
    }));
   }
   socket.on('student:proctorEvent',data=>guard(async()=>{
-   if(limited('proctor',1000))return;const s=await checkStudent();
+   if(limited('proctor:'+data?.eventType,1000))return;const s=await checkStudent();
    if(!EVENT_SEVERITY[data?.eventType])return;
    await event({examId:s.exam_id,sessionId:s.id,eventType:data.eventType,message:'Browser-reported event (unverified).',metadata:data.metadata});
   }));

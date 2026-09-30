@@ -28,7 +28,7 @@ export default function MonitoringIndicator({ webcamStream, screenStream, activi
       >
         <span className="live-dot" aria-hidden="true" />
         <Eye size={14} className="text-dps-neon" aria-hidden="true" />
-        Monitoring is on
+        Exam activity monitoring
         <span className="ml-auto text-slate-400">{open ? <ChevronDown size={14} /> : <ChevronUp size={14} />}</span>
       </button>
       {open && (
@@ -38,10 +38,13 @@ export default function MonitoringIndicator({ webcamStream, screenStream, activi
               <li key={text} className="chip border-dps-green/30 px-2 py-0.5 text-[11px] text-dps-neon"><Icon size={11} aria-hidden="true" /> {text}</li>
             ))}
           </ul>
-          {webcamStream && <VideoTile stream={webcamStream} label="You" icon={Camera} mirror className="aspect-video" />}
+          {webcamStream && <VideoTile stream={webcamStream} label="Your local camera preview" icon={Camera} mirror className="aspect-video" />}
+          <p className="text-[11px] text-slate-400">
+            Your camera and screen are shared only with consent. A local preview is not confirmation that the teacher's peer connection is established.
+          </p>
           <p className={cx('flex items-center gap-1.5 text-[11px]', connected ? 'text-slate-400' : 'text-orange-300')}>
             {connected ? <Wifi size={12} aria-hidden="true" /> : <WifiOff size={12} aria-hidden="true" />}
-            {connected ? 'Connected. Your teacher can see your progress.' : 'Reconnecting. Your answers are saved on this computer.'}
+            {connected ? 'Exam connection online. Webcam/screen previews connect separately when requested by an authorized teacher.' : 'Reconnecting. Your answers are saved on this computer.'}
           </p>
         </div>
       )}

@@ -87,9 +87,13 @@ test('independent teacher and student sockets request webcam and screen, exchang
  const noStream=waitFor(teacher,'teacher:mediaStatus',s=>s.mediaType==='screen'&&s.status==='not-sharing');
  student.emit('student:mediaUnavailable',{sessionId,mediaType:'screen'});
  await noStream;
- const flagged=waitFor(teacher,'exam:proctorFlag',x=>x.event?.eventType==='TAB_SWITCH');
+ // Tab hiding and losing focus can occur within milliseconds. Neither may
+ // suppress the other type; both are fallible signals needing human review.
+ const flags=waitMany(teacher,'exam:proctorFlag',
+   x=>['TAB_SWITCH','WINDOW_BLUR'].includes(x.event?.eventType),2);
  student.emit('student:proctorEvent',{eventType:'TAB_SWITCH',metadata:{source:'browser'}});
- await flagged;
+ student.emit('student:proctorEvent',{eventType:'WINDOW_BLUR',metadata:{source:'browser'}});
+ assert.deepEqual((await flags).map(x=>x.event.eventType).sort(),['TAB_SWITCH','WINDOW_BLUR']);
  const heartbeat=waitFor(teacher,'exam:studentStatusUpdate',p=>p.sessionId===sessionId&&p.status==='flagged');
  student.emit('student:heartbeat');
  assert.equal((await heartbeat).connected,true);
@@ -102,5 +106,5 @@ test('independent teacher and student sockets request webcam and screen, exchang
  teacher.emit('teacher:sendWarning',{sessionId,message:'Please stay on your exam page.'});
  assert.equal((await humanNote).event.severity,'info');
  const q=await pool.query('SELECT cheating_score FROM exam_sessions WHERE id=$1',[sessionId]);
- assert.equal(q.rows[0].cheating_score,3,'A teacher note never adds automatic cheating points');
+ assert.equal(q.rows[0].cheating_score,4,'A teacher note never adds automatic cheating points');
 });

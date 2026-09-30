@@ -10,6 +10,7 @@ test('webRTC relay allows bounded ICE candidate bursts for both media types',()=
  assert.match(s,/event==='webrtc:iceCandidate'\?4096:65536/);
  assert.doesNotMatch(s,/limited\(event,100\)/);
  assert.match(s,/limited\('media-preview:'\+mediaType,700\)/);
+ assert.match(s,/limited\('proctor:'\+data\?\.eventType,1000\)/);
 })
 test('student heartbeats distinguish transport connection from exam status',()=>{
  const s=read('src/sockets/exam.socket.js');
