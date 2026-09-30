@@ -86,3 +86,48 @@
     transition-duration: 0.001ms !important; scroll-behavior: auto !important;
   }
 }
+
+@keyframes entry-drive { to {transform:perspective(700px) rotateX(63deg) translateY(-6%)} }
+@keyframes entry-pop {from{opacity:0;transform:translateY(28px) scale(.94);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
+@keyframes entry-fold {0%{opacity:0;transform:rotate(4deg) scale(.15)}75%{opacity:1;transform:rotate(50deg) scale(1.12)}100%{opacity:1;transform:rotate(50deg) scale(1)}}
+@keyframes entry-bars {0%{transform:scaleX(.05);opacity:.2}65%,100%{transform:scaleX(1);opacity:1}}
+.experience-entry {position:fixed;inset:0;z-index:110;overflow:auto;display:grid;place-items:center;text-align:center;padding:72px 14px;background:radial-gradient(ellipse at 50% 38%,#0b453c55,transparent 55%),#030b15;isolation:isolate}
+.experience-grid {position:absolute;inset:-40%;pointer-events:none;z-index:-1;background-image:linear-gradient(#22c55e1b 1px,transparent 1px),linear-gradient(90deg,#22c55e1b 1px,transparent 1px);background-size:52px 52px;transform:perspective(700px) rotateX(63deg);animation:entry-drive 8s linear infinite alternate}
+.experience-center {max-width:840px;animation:entry-pop .9s ease both}
+.experience-symbol {position:relative;width:144px;height:144px;display:grid;place-items:center;margin:0 auto 31px;font-size:48px;font-weight:900;font-family:'Space Grotesk',sans-serif;color:#6ee7b7}
+.experience-symbol span {position:relative;z-index:2;animation:entry-pop .85s .15s both}
+.experience-symbol i {position:absolute;inset:8px;border:2px solid #6ee7b766;border-radius:25px;transform:rotate(50deg);animation:entry-fold 2s both}
+.experience-symbol i:last-child {inset:28px;border-color:#fde68a99;animation-delay:.24s;animation-direction:reverse}
+.experience-eyebrow {font:700 12px 'JetBrains Mono',monospace;letter-spacing:.38em;color:#86efac}
+.experience-title {font-family:'Space Grotesk',sans-serif;font-size:clamp(39px,7vw,96px);line-height:1;letter-spacing:-.065em;max-width:760px;margin:15px auto 20px;animation:entry-pop .8s .25s both}
+.experience-tagline {font-size:clamp(17px,2.5vw,25px);color:#fde68a;animation:entry-pop .8s .48s both}
+.experience-skip {position:fixed;top:20px;right:22px;z-index:130;display:flex;align-items:center;gap:9px;background:#0b1b30ef;color:#f1f5f9;border:1px solid #ffffff42;border-radius:99px;padding:10px 15px}
+.tour-overlay {position:fixed;inset:0;z-index:115;overflow:hidden}
+.tour-shade {position:absolute;inset:0;background:#000d1be8;backdrop-filter:blur(4px)}
+.tour-spotlight {position:fixed;z-index:117;border:2px solid #86efac;border-radius:15px;box-shadow:0 0 0 9999px #000d1be0,0 0 30px 7px #4ade8066;pointer-events:none;transition:top .22s,left .22s,width .22s,height .22s}
+.tour-pointer {position:fixed;z-index:120;color:#fde68a;pointer-events:none;filter:drop-shadow(0 0 6px #f59e0b)}
+.tour-dialog {position:fixed;z-index:121;width:min(340px,calc(100vw - 25px));max-height:calc(100vh - 100px);overflow:auto;padding:22px;border:1px solid #86efac66;border-radius:22px;background:linear-gradient(130deg,#102c38,#081324);box-shadow:0 25px 60px #000b;animation:entry-pop .4s both}
+.tour-dot {height:5px;width:17px;border-radius:99px;background:#45606a;transition:width .3s,background .3s}
+.tour-dot.selected {width:29px;background:#86efac}
+.motion-surface {position:relative;isolation:isolate}
+.motion-surface:before {content:'';position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:radial-gradient(360px circle at var(--px,50%) var(--py,50%),#52edb71b,transparent 70%);opacity:0;transition:opacity .3s;z-index:0}
+.motion-surface:hover:before {opacity:1}
+.glass {background-image:radial-gradient(250px circle at var(--px,-200px) var(--py,-200px),#4ade8013,transparent 80%)}
+.btn:not(:disabled) {transform-origin:center;transition:transform .25s,background .2s,box-shadow .2s}
+.btn:not(:disabled):hover {transform:translateY(-2px) scale(1.025)}
+.loader-code {display:inline-block;position:relative;width:42px;height:35px;color:#86efac;font:bold 15px monospace}
+.loader-code i {position:absolute;left:0;height:3px;background:#86efac;border-radius:5px;animation:entry-bars 1.2s ease-in-out infinite;transform-origin:left}
+.loader-code i:nth-child(1){top:3px;width:100%}.loader-code i:nth-child(2){top:13px;width:70%;animation-delay:.16s}.loader-code i:nth-child(3){top:23px;width:85%;animation-delay:.3s}
+@media (max-width:640px) {.experience-grid{background-size:29px 29px}.tour-pointer{display:none}}
+
+/* Each replay can choose a visibly different welcome scene. */
+.experience-constellation .experience-grid {background-image:radial-gradient(circle,#a7f3d0 1.5px,transparent 3px),radial-gradient(circle,#fbbf24 1px,transparent 3px);background-size:67px 67px,119px 119px;animation:entry-drive 12s ease-in-out infinite alternate}
+.experience-constellation .experience-symbol {text-shadow:0 0 42px #c084fc}
+.experience-constellation .experience-symbol i {border-color:#c084fc77;border-radius:50%;transform:rotateY(62deg)}
+.experience-orbit {background:radial-gradient(ellipse at 50% 45%,#102b3a,#020617 72%)}
+.experience-orbit .experience-grid {background-image:repeating-radial-gradient(circle at 50% 50%,transparent 0 55px,#86efac18 57px 59px,transparent 62px 108px);animation:entry-drive 7s ease-in-out infinite alternate}
+.experience-orbit .experience-symbol i {border-radius:50%;border-color:#fcd34d90;animation:entry-fold 2.5s ease both}
+.experience-terminal .experience-grid {background-size:36px 36px;animation-duration:4s}
+.experience-terminal .experience-symbol span {font-family:'JetBrains Mono',monospace;font-size:39px;text-shadow:0 0 28px #4ade80}
+.report-spark {font-size:64px;color:#facc15;animation:entry-pop 1s ease both;filter:drop-shadow(0 0 15px #facc1570)}
+@media(prefers-reduced-motion:reduce){.experience-grid,.experience-symbol i,.experience-symbol span,.report-spark{animation:none!important}}

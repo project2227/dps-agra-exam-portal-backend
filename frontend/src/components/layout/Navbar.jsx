@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
-import { FlaskConical, Menu, X } from 'lucide-react'
+import { Compass, FlaskConical, Menu, X } from 'lucide-react'
 import DPSLogoAnimated from '../common/DPSLogoAnimated'
 import ThemeToggle from '../common/ThemeToggle'
 import { DEMO_MODE, SCHOOL } from '../../config'
@@ -12,6 +12,7 @@ const LINKS = [
   { to: '/student/practice', label: 'Practice IDE' },
   { to: '/learn', label: 'Courses & PDFs' },
   { to: '/learn/games', label: 'Mini games' },
+  { to: '/learn/custom-test', label: 'Make a test' },
   { to: '/learn/mock-exam', label: 'Mock exam' },
   { to: '/learn/profile', label: 'Profile' },
   { to: '/teacher/login', label: 'Teachers' },
@@ -22,7 +23,7 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-40 border-b border-white/[0.06] bg-navy-950/70 backdrop-blur-xl" aria-label="Main">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
-        <Link to="/" className="flex items-center gap-3 rounded-xl" aria-label={`${SCHOOL.portal} home`}>
+        <Link to="/" data-tour="home" className="flex items-center gap-3 rounded-xl" aria-label={`${SCHOOL.portal} home`}>
           <DPSLogoAnimated size={40} small interactive={false} label="" />
           <span className="leading-tight">
             <span className="block font-display text-[15px] font-semibold text-white">{SCHOOL.short}</span>
@@ -30,8 +31,8 @@ export default function Navbar() {
           </span>
         </Link>
         <div className="hidden items-center gap-0.5 lg:flex">
-          {LINKS.map((l) => (
-            <NavLink key={l.to} to={l.to} end={l.end}
+          {LINKS.filter(l=>!['/learn/mock-exam','/learn/profile'].includes(l.to)).map((l) => (
+            <NavLink key={l.to} to={l.to} end={l.end} data-tour={{"/":"home-nav","/student/join":"join","/student/practice":"ide","/learn":"courses","/learn/games":"games","/learn/custom-test":"test","/teacher/login":"teachers"}[l.to]}
               className={({ isActive }) => cx('rounded-lg px-3 py-2 text-sm transition', isActive ? 'bg-white/[0.07] text-white' : 'text-slate-300 hover:text-white')}>
               {l.label}
             </NavLink>
@@ -42,7 +43,7 @@ export default function Navbar() {
             </span>
           )}
         </div>
-        <div className="ml-auto flex items-center gap-2 lg:ml-2"><ThemeToggle />
+        <div className="ml-auto flex items-center gap-2 lg:ml-2"><button type="button" className="btn btn-ghost btn-sm" aria-label="Replay interactive website tour" title="Explore site features" onClick={()=>window.dispatchEvent(new CustomEvent("dps:tour-replay"))}><Compass size={16}/><span className="hidden xl:inline">Tour</span></button><ThemeToggle />
         <button type="button" className="btn btn-ghost btn-sm lg:hidden" onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Toggle menu">
           {open ? <X size={18} /> : <Menu size={18} />}
         </button></div>

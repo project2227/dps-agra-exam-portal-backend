@@ -1,9 +1,9 @@
-import { AlertTriangle, Inbox, Loader2 } from 'lucide-react'
+import { AlertTriangle, Inbox } from 'lucide-react'
 
 export function Spinner({ label = 'Loading', className = '' }) {
   return (
     <div className={`flex items-center justify-center gap-2 py-10 text-sm text-slate-400 ${className}`} role="status">
-      <Loader2 size={18} className="animate-spin text-dps-neon" aria-hidden="true" />
+      <span className="loader-code" aria-hidden="true"><i/><i/><i/></span>
       {label}
     </div>
   )

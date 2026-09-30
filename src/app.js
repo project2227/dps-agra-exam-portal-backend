@@ -13,6 +13,7 @@ app.get('/api/health',async(req,res)=>{
 });
 app.use('/api/auth',require('./routes/auth.routes'));
 app.use('/api/staff-access',require('./routes/staffAccess.routes'));
+app.use('/api/rtc',require('./routes/rtc.routes'));
 app.use('/api/learning',require('./routes/learning.routes'));
 
 app.use('/api/teacher',require('./routes/teacher.routes'));

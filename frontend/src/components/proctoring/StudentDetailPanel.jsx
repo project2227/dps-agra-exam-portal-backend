@@ -36,7 +36,7 @@ export default function StudentDetailPanel({ student: s, exam, rtc, snapshot = {
   const closeBtn = useRef(null)
   const sessionId = s?.sessionId
   const wantsMedia = canPreviewStudent(s)
-  const hasTurn=ICE_SERVERS.some(server=>[server.urls].flat().flat().some(url=>/^turns?:/i.test(url)))
+  const hasTurn=rtc?.relayAvailable===true || ICE_SERVERS.some(server=>[server.urls].flat().flat().some(url=>/^turns?:/i.test(url)))
   const { watch, stop } = rtc || {}
 
   useEffect(() => { closeBtn.current?.focus() }, [sessionId])

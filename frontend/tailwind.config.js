@@ -8,8 +8,8 @@ export default {
         dps: { green: '#16a34a', neon: '#4ade80', orange: '#f97316', gold: '#facc15' },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'Segoe UI', 'Roboto', 'sans-serif'],
-        display: ['"Space Grotesk"', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['"DM Sans"', 'Inter', 'system-ui', 'sans-serif'],
+        display: ['"Manrope"', '"Space Grotesk"', 'system-ui', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'Consolas', 'ui-monospace', 'monospace'],
       },
       boxShadow: {

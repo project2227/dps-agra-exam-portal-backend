@@ -75,23 +75,23 @@ export default function LandingPage() {
       <Navbar />
       <main className="flex-1">
         {/* Hero */}
-        <section className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 pb-16 pt-12 sm:px-6 lg:grid-cols-[1.1fr,0.9fr] lg:pt-20">
+        <section className="motion-surface relative mx-auto grid max-w-7xl items-center gap-12 px-4 pb-16 pt-12 sm:px-6 lg:grid-cols-[1.1fr,0.9fr] lg:pt-20">
           <div className="animate-fade-up">
             <p className="chip mb-5 border-dps-green/30 text-dps-neon"><Sparkles size={12} aria-hidden="true" /> {SCHOOL.name} | {SCHOOL.department}</p>
             <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
-              DPS Agra <span className="text-gradient">Exam Portal</span>
+              Learn. Create. <span className="text-gradient">Make it count.</span>
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-slate-300">
-              Computer Practical Exams, Quizzes, IDE Practice, Handouts &amp; Exam Scheduling
+              <span className="font-semibold text-dps-gold">To stop cheats for a brighter future.</span><br/>A new home for fair exams, creative coding and your next big idea.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div data-tour="hero-actions" className="mt-8 flex flex-wrap gap-3">
               <Link to="/student/join" className="btn btn-primary btn-lg"><GraduationCap size={18} aria-hidden="true" /> Student Login / Join Exam</Link>
               <Link to="/teacher/login" className="btn btn-ghost btn-lg"><LogIn size={18} aria-hidden="true" /> Teacher Login</Link>
             </div>
             <p className="mt-5 text-sm text-slate-500">
               Try <Link to="/learn" className="text-dps-neon hover:underline">7 free coding courses & PDFs</Link>, <Link to="/learn/games" className="text-dps-neon hover:underline">mini games</Link> or the <Link to="/learn/mock-exam" className="text-dps-neon hover:underline">Class IX mock exam</Link>. No school login needed. Want to practise first? Open the <Link to="/student/practice" className="text-dps-neon underline-offset-4 hover:underline">practice IDE</Link>. No sign-in needed.
             </p>
-            <p className="mt-4 text-xs text-slate-500">Independent student prototype. Not an official DPS Agra platform. <a href="https://dps.ac.in/" target="_blank" rel="noopener noreferrer" className="text-dps-neon hover:underline">Go to the official school website ↗</a></p>
+            <p className="mt-4 text-xs text-slate-500">Independent student-built learning platform; not an officially affiliated school website. <a href="https://dps.ac.in/" target="_blank" rel="noopener noreferrer" className="text-dps-neon hover:underline">Go to the official school website ↗</a></p>
           </div>
           <div className="flex flex-col items-center gap-8">
             <DPSLogoAnimated size={300} />
@@ -166,7 +166,7 @@ export default function LandingPage() {
             <div>
               <h2 id="about-title" className="font-display text-2xl font-semibold">About this portal</h2>
               <p className="mt-2 max-w-3xl text-slate-400">
-                This independent student prototype was designed and developed by <span className="credit-name text-gradient">Aryan Agarwal</span> for
+                This independent learning platform was designed and developed by <span className="credit-name text-gradient">Aryan Agarwal</span> for
                 exploring computer science in Class IX. It is not an officially approved service of {SCHOOL.name}.
               </p>
               <p className="mt-3 flex items-center gap-2 text-sm text-slate-500"><FileText size={14} aria-hidden="true" /> {SCHOOL.motto}</p>

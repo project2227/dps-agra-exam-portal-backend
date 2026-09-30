@@ -10,7 +10,7 @@ export default function Footer({ compact = false }) {
           <img src={LOGO_SRC} alt="" className="h-9 w-9 object-contain" />
           <div>
             <p className="font-display text-sm font-semibold text-white">{SCHOOL.portal}</p>
-            <p className="text-xs text-slate-500">Independent student-built demonstration • Not an official school portal</p>
+            <p className="text-xs text-slate-500">Independent student-built learning platform • Not an official school portal</p>
           </div>
         </div>
         <p className="credit">

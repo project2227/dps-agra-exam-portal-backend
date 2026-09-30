@@ -1,4 +1,6 @@
 import { lazy, Suspense } from 'react'
+import ExperienceLayer from './components/common/ExperienceLayer'
+import PointerReactor from './components/common/PointerReactor'
 import { BrowserRouter, HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ToastProvider } from './components/common/Toast'
 import { StudentGuard, TeacherGuard } from './components/common/Guards'
@@ -15,6 +17,8 @@ const SelfStudyCourse = lazy(() => import('./pages/SelfStudyCourse'))
 const StudentProfile = lazy(() => import('./pages/StudentProfile'))
 const PracticeGames = lazy(() => import('./pages/PracticeGames'))
 const MockExam = lazy(() => import('./pages/MockExam'))
+const CustomPracticeTest = lazy(() => import('./pages/CustomPracticeTest'))
+const ArcadeLabs = lazy(() => import('./pages/ArcadeLabs'))
 const TeacherCourses = lazy(() => import('./pages/TeacherCourses'))
 const TeacherCommunity = lazy(() => import('./pages/TeacherCommunity'))
 const ManageTeachers = lazy(() => import('./pages/ManageTeachers'))
@@ -42,6 +46,8 @@ export default function App() {
   return (
     <Router basename={basename}>
       <div className="tech-bg" aria-hidden="true" />
+      <PointerReactor />
+      <ExperienceLayer />
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-lg focus:bg-dps-green focus:px-4 focus:py-2 focus:text-white">Skip to content</a>
       <ToastProvider>
         <div id="main">
@@ -53,6 +59,8 @@ export default function App() {
               <Route path="/learn/profile" element={<StudentProfile />} />
               <Route path="/learn/games" element={<PracticeGames />} />
               <Route path="/learn/mock-exam" element={<MockExam />} />
+              <Route path="/learn/custom-test" element={<CustomPracticeTest />} />
+              <Route path="/learn/arcade" element={<ArcadeLabs />} />
               <Route path="/learn/course/:lang" element={<SelfStudyCourse />} />
               <Route path="/learn/teacher-course/:id" element={<SelfStudyCourse teacherCourse />} />
               <Route path="/about" element={<AboutPortal />} />

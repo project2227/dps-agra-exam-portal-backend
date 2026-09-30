@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ICE_SERVERS } from '../config'
+import { API_BASE_URL, ICE_SERVERS } from '../config'
+import { requestIceServers } from '../services/turnIce'
 
 // WebRTC is strictly opt-in: the student initiates offers from streams that
 // the student has already explicitly enabled in the browser. No frames or
@@ -33,7 +34,7 @@ export function useStudentRTC(socket, streamsRef, enabled=true) {
       }
       const key=keyOf(sessionId,mediaType)
       peers.current.get(key)?.pc.close()
-      const pc=new RTCPeerConnection({iceServers:ICE_SERVERS})
+      const pc=new RTCPeerConnection({iceServers:await requestIceServers(socket,API_BASE_URL,ICE_SERVERS)})
       const entry={pc,candidates:[]}
       peers.current.set(key,entry)
       stream.getTracks().filter(t=>t.readyState==='live').forEach(t=>pc.addTrack(t,stream))
@@ -89,6 +90,7 @@ export function useTeacherRTC(socket) {
   const [streams,setStreams]=useState({})
   const [states,setStates]=useState({})
   const [mediaStates,setMediaStates]=useState({})
+  const [relayAvailable,setRelayAvailable]=useState(false)
   const peers=useRef(new Map())
   const pending=useRef(new Map())
   const desired=useRef(new Map())
@@ -178,7 +180,9 @@ export function useTeacherRTC(socket) {
       clearTimeout(retries.current.get(key))
       retries.current.delete(key)
       peers.current.get(key)?.pc.close()
-      const pc=new RTCPeerConnection({iceServers:ICE_SERVERS})
+      const servers=await requestIceServers(socket,API_BASE_URL,ICE_SERVERS)
+      setRelayAvailable(servers.some(x=>[x.urls].flat().some(url=>/^turns?:/i.test(url))))
+      const pc=new RTCPeerConnection({iceServers:servers})
       const entry={pc,candidates:pending.current.get(key)||[]}
       peers.current.set(key,entry)
       pending.current.delete(key)
@@ -259,5 +263,5 @@ export function useTeacherRTC(socket) {
       pending.current.clear()
     }
   },[socket,sendRequest,status])
-  return {streams,states,mediaStates,watch,stop}
+  return {streams,states,mediaStates,relayAvailable,watch,stop}
 }
