@@ -58,7 +58,7 @@ export default function TeacherLogin() {
                 <span className="font-display font-semibold">{SCHOOL.portal}</span>
               </div>
               <h1 className="font-display text-2xl font-semibold">Teacher sign in</h1>
-              <p className="mt-1 text-sm text-slate-400">Sign in using a verified staff account issued by the administrator of this independent student-built prototype.</p>
+              <p className="mt-1 text-sm text-slate-400">Sign in using a verified staff account issued by the administrator of this independent student-built learning platform.</p>
 
               <div className="mt-6 space-y-4">
                 <Field label="Email or username" required error={fieldErrors.email}>

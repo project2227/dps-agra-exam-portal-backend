@@ -34,7 +34,7 @@ export default function TeacherAccessRequest() {
   <div className="glass-strong rounded-2xl p-6 sm:p-9">
    <span className="chip"><ShieldCheck size={14}/> Administrator-reviewed</span>
    <h1 className="mt-4 text-3xl font-bold">Request teacher access</h1>
-   <p className="mt-2 text-slate-400">For teachers invited to test this independent student-built prototype. Submitting this form never creates a teacher account. The portal owner must verify you and approve your request.</p>
+   <p className="mt-2 text-slate-400">For teachers invited to test this independent student-built learning platform. Submitting this form never creates a teacher account. The portal owner must verify you and approve your request.</p>
    {done?<div className="mt-7 space-y-4 rounded-xl border border-dps-green/40 bg-dps-green/10 p-6" role="status">
     <h2 className="text-xl font-semibold">Request received</h2>
     <p>Thank you. If eligible, an authorized administrator can review your request. You cannot sign in until they approve it and give you a temporary password privately.</p>
@@ -48,7 +48,7 @@ export default function TeacherAccessRequest() {
      {classChoices.map(c=><label key={c} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.requestedClasses.includes(c)} onChange={e=>set('requestedClasses',e.target.checked?[...form.requestedClasses,c]:form.requestedClasses.filter(x=>x!==c))}/>{c}</label>)}
     </div></fieldset>
     <label className="block text-sm">Additional context (optional)<textarea className="input mt-1 min-h-24" maxLength={400} value={form.message} onChange={e=>set('message',e.target.value)} placeholder="Which subject or classes are you authorized to teach?"/></label>
-    <label className="flex items-start gap-3 text-sm text-slate-300"><input type="checkbox" className="mt-1" required checked={form.authorized} onChange={e=>set('authorized',e.target.checked)}/><span>I am requesting access as a genuine teacher or invited test participant. I understand the portal is an independent educational prototype and this form does not establish school affiliation.</span></label>
+    <label className="flex items-start gap-3 text-sm text-slate-300"><input type="checkbox" className="mt-1" required checked={form.authorized} onChange={e=>set('authorized',e.target.checked)}/><span>I am requesting access as a genuine teacher or invited test participant. I understand the portal is an independent educational platform and this form does not establish school affiliation.</span></label>
     {error&&<p role="alert" className="rounded-lg bg-red-500/10 p-3 text-red-300">{error}</p>}
     <button disabled={busy||!form.authorized} className="btn btn-primary w-full"><Send size={16}/>{busy?'Sending request...':'Submit for administrator review'}</button>
    </form>}
