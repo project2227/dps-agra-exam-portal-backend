@@ -212,7 +212,7 @@ export default function CreateExam() {
           <p className="font-semibold">Send the correct exam link to every device</p>
           <p className="mt-1 text-xs text-slate-400">The link selects this specific exam. Share its password separately; do not include it in the URL.</p>
           <button type="button" className="btn btn-ghost btn-sm mt-2" onClick={() => copy(`${window.location.origin}/#/student/join?exam=${encodeURIComponent(published.id)}`)}><Copy size={14}/> Copy exam link</button>
-        </div>
+        </div>}
       </Modal>
     </div>
   )
