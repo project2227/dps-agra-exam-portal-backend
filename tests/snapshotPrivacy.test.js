@@ -8,7 +8,7 @@ test('snapshot relay cannot run without a verified teacher request plus a second
  assert.match(socket,/checkOwnedStudent/)
  assert.match(socket,/snapshotOptIn=false/)
  assert.match(socket,/data\?\.enabled===true && s\.consent_webcam===true/)
- assert.match(socket,/if\(limited\('snapshot-frame',3500\)\|\|!socket\.data\.snapshotOptIn\)return;/)
+ assert.match(socket,/if\(!socket\.data\.snapshotOptIn \|\| limited\('snapshot-frame',3500\)\)return;/)
  assert.match(socket,/s\.active_socket_id!==socket\.id/)
  assert.match(socket,/SNAPSHOT_SUBSCRIPTION_MS=50000/)
  assert.match(socket,/snapshotSubscribers\.delete\(sessionId\)/)

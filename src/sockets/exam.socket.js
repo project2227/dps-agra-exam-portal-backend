@@ -230,7 +230,7 @@ function attachSockets(io){
   socket.on('student:snapshotFrame',data=>guard(async()=>{
    // Validate before any DB read to bound bandwidth and CPU even for a
    // malicious authenticated client. Ignore instead of persisting bad frames.
-   if(limited('snapshot-frame',3500)||!socket.data.snapshotOptIn)return;
+   if(!socket.data.snapshotOptIn || limited('snapshot-frame',3500))return;
    const jpeg=data?.jpeg;
    if(typeof jpeg!=='string'||jpeg.length<300||jpeg.length>SNAPSHOT_MAX_DATA_URI||
       !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(jpeg))return;
