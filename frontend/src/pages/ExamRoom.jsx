@@ -243,6 +243,25 @@ export default function ExamRoom() {
 
   useStudentRTC(socket, streamsRef, phase === 'active')
 
+  // A student may grant permissions before their Socket.IO connection is ready.
+  // Resend media readiness after the session joins the room and on reconnect;
+  // the browser prompts still happen ONLY when the student clicks Allow.
+  useEffect(()=>{
+    if(!socket||phase!=='active')return
+    const publishReady=()=>{
+      if(!socket.connected)return
+      const live=streamsRef.current
+      if(live.webcam?.getVideoTracks().some(t=>t.readyState==='live'))
+        socket.emit('student:webcamStatus',{active:true})
+      if(live.screen?.getVideoTracks().some(t=>t.readyState==='live'))
+        socket.emit('student:screenStatus',{active:true})
+    }
+    socket.on('exam:joined',publishReady)
+    socket.on('connect',publishReady)
+    if(socket.connected)publishReady()
+    return()=>{socket.off('exam:joined',publishReady);socket.off('connect',publishReady)}
+  },[socket,phase,streams])
+
   // Heartbeat + progress
   const answeredCount = useMemo(() => questions.filter((q) => isAnswered(q, answers[q.id])).length, [questions, answers])
   useEffect(() => {
@@ -284,12 +303,16 @@ export default function ExamRoom() {
     ;[['webcam', 'webcam_stopped'], ['screen', 'screen_share_stopped']].forEach(([kind, type]) => {
       const track = streams[kind]?.getVideoTracks()[0]
       if (!track) return
-      const onEnded = () => { onProctorEvent(type); setMediaLost(kind) }
+      const onEnded = () => {
+        if(socket?.connected)socket.emit(kind==='webcam'?'student:webcamStatus':'student:screenStatus',{active:false})
+        onProctorEvent(type)
+        setMediaLost(kind)
+      }
       track.addEventListener('ended', onEnded)
       offs.push(() => track.removeEventListener('ended', onEnded))
     })
     return () => offs.forEach((f) => f())
-  }, [phase, streams, onProctorEvent])
+  }, [phase, streams, onProctorEvent, socket])
 
   // Warn before closing the tab mid-exam
   useEffect(() => {

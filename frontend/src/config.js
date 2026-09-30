@@ -81,7 +81,8 @@ export const PROCTOR_EVENTS = {
   webcam_stopped: { label: 'Webcam stopped', severity: 'high', warn: 'Your webcam turned off. Check the camera and reconnect.' },
   exam_started: { label: 'Exam started', severity: 'info' },
   exam_submitted: { label: 'Exam submitted', severity: 'info' },
-  teacher_warning: { label: 'Warning from teacher', severity: 'medium' },
+  teacher_warning: { label: 'Warning from teacher', severity: 'info' },
+  teacher_observation: { label: 'Teacher observation (requires manual review)', severity: 'info' },
 }
 
 export const FLAG_BUCKETS = {

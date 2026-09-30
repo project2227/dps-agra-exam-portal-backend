@@ -115,6 +115,8 @@ const normalizeSession = (s, examId, examTitle = '') => ({
   flagsCount: s.flags_count || 0,
   flags: { tab: 0, blur: 0, fullscreen: 0, copyPaste: 0, devtools: 0, other: s.flags_count || 0 },
   webcam: s.consent_webcam, screen: s.consent_screen, connected: s.connected,
+  totalQuestions: Number(s.total_questions||0), answered: Number(s.answered||0),
+  device: {browser:s.browser||null, os:s.os||null, screen:s.screen_size||null, timezone:s.timezone||null},
   score: s.awarded_marks === undefined ? null : Number(s.awarded_marks),
 })
 

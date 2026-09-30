@@ -6,6 +6,8 @@ import VideoTile from './VideoTile'
 import { flagTotal } from './StudentMonitorCard'
 import { DEMO_MODE, FLAG_BUCKETS, LANGUAGES, PROCTOR_EVENTS } from '../../config'
 import { cx, formatDateTime, formatTime, relativeTime } from '../../utils/format'
+import { isRunningExamStatus, canPreviewStudent } from '../../utils/monitoringState'
+import { ICE_SERVERS } from '../../config'
 
 const PRESETS = [
   'Please keep your eyes on your own screen.',
@@ -33,7 +35,8 @@ export default function StudentDetailPanel({ student: s, exam, rtc, snapshot = {
   const [sending, setSending] = useState(false)
   const closeBtn = useRef(null)
   const sessionId = s?.sessionId
-  const wantsMedia = !!(s?.webcam || s?.screen) && s?.status === 'active'
+  const wantsMedia = canPreviewStudent(s)
+  const hasTurn=ICE_SERVERS.some(server=>[server.urls].flat().flat().some(url=>/^turns?:/i.test(url)))
   const { watch, stop } = rtc || {}
 
   useEffect(() => { closeBtn.current?.focus() }, [sessionId])
@@ -43,7 +46,7 @@ export default function StudentDetailPanel({ student: s, exam, rtc, snapshot = {
     watch(sessionId, [s.webcam && 'webcam', s.screen && 'screen'].filter(Boolean))
     return () => stop?.(sessionId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, wantsMedia, watch, stop])
+  }, [sessionId, wantsMedia, s?.webcam, s?.screen, s?.webcamActive, s?.screenActive, watch, stop])
 
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose?.()
@@ -54,8 +57,9 @@ export default function StudentDetailPanel({ student: s, exam, rtc, snapshot = {
   if (!s) return null
   const live = rtc?.streams?.[sessionId] || {}
   const rtcState = rtc?.states?.[sessionId]
+  const mediaStates = rtc?.mediaStates?.[sessionId] || {}
   const flagsTimeline = (s.timeline || []).filter((e) => PROCTOR_EVENTS[e.type]?.severity && PROCTOR_EVENTS[e.type].severity !== 'info')
-  const warnings = (s.timeline || []).filter((e) => e.type === 'teacher_warning')
+  const warnings = (s.timeline || []).filter((e) => e.type === 'teacher_warning' || e.type === 'teacher_observation')
 
   const send = async (text) => {
     const msg = (text ?? message).trim()
@@ -67,11 +71,22 @@ export default function StudentDetailPanel({ student: s, exam, rtc, snapshot = {
     } finally { setSending(false) }
   }
 
-  const mediaPlaceholder = (enabled) => {
-    if (!enabled) return 'Not required for this exam'
-    if (s.status !== 'active') return 'Student is not active'
-    if (DEMO_MODE) return 'Live video appears here when connected to the backend'
-    return rtcState === 'failed' ? 'Could not connect. Check TURN server settings.' : 'Connecting to live stream'
+  const mediaPlaceholder = (kind,enabled) => {
+    if(!enabled)return 'Student did not consent to sharing this feed'
+    if(!isRunningExamStatus(s.status))return 'Exam session ended or inactive'
+    if(s.connected===false)return 'Student is disconnected. Feed will resume after they reconnect.'
+    if(DEMO_MODE)return 'Demo: live streaming is not enabled'
+    const state=mediaStates[kind]
+    if(state==='not-consented')return 'No consent for this media type'
+    if(state==='not-sharing')return 'Student has not started or has stopped sharing. Ask them to use the browser consent controls.'
+    if(state==='student-offline'||state==='socket-offline')return 'Waiting for both devices to reconnect'
+    if(state==='no-response')return 'No video offer received. Verify the student has started sharing, then retry.'
+    if(state==='ice-failed'||state==='disconnected')return hasTurn?
+      'Connection blocked or lost. Try again on both devices.' :
+      'Direct connection failed. Cross-network viewing may require a configured TURN relay.'
+    if(state==='session-ended')return 'Exam session has ended'
+    if(state==='negotiating')return 'Negotiating encrypted peer-to-peer video…'
+    return 'Requesting the live stream from the student…'
   }
 
   return createPortal(
@@ -92,10 +107,15 @@ export default function StudentDetailPanel({ student: s, exam, rtc, snapshot = {
         <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <VideoTile stream={live.webcam} snapshot={snapshot.webcam} label={live.webcam ? 'Live webcam' : 'Webcam'} icon={Camera} className="aspect-video" placeholder={mediaPlaceholder(s.webcam)} />
-              {rtcState === 'connecting' && <p className="mt-1 flex items-center gap-1 text-xs text-sky-300"><Loader2 size={12} className="animate-spin" aria-hidden="true" /> Connecting</p>}
+              <VideoTile stream={mediaStates.webcam==='connected'?live.webcam:null} snapshot={snapshot.webcam} label={mediaStates.webcam==='connected'&&live.webcam?'Live webcam':'Webcam'} icon={Camera} className="aspect-video" placeholder={mediaPlaceholder('webcam',s.webcam)} />
+              {wantsMedia && s.webcam && !live.webcam && <button type="button" className="btn btn-ghost btn-sm mt-2 w-full" onClick={()=>watch?.(sessionId,['webcam'])}>Retry webcam</button>}
+              {mediaStates.webcam === 'connected' && <p className="mt-1 text-xs text-dps-neon">Peer connection established</p>}
             </div>
-            <VideoTile stream={live.screen} snapshot={snapshot.screen} label={live.screen ? 'Live screen' : 'Screen'} icon={MonitorUp} contain className="aspect-video" placeholder={mediaPlaceholder(s.screen)} />
+            <div>
+              <VideoTile stream={mediaStates.screen==='connected'?live.screen:null} snapshot={snapshot.screen} label={mediaStates.screen==='connected'&&live.screen?'Live screen':'Screen'} icon={MonitorUp} contain className="aspect-video" placeholder={mediaPlaceholder('screen',s.screen)} />
+              {wantsMedia && s.screen && !live.screen && <button type="button" className="btn btn-ghost btn-sm mt-2 w-full" onClick={()=>watch?.(sessionId,['screen'])}>Retry screen</button>}
+              {mediaStates.screen === 'connected' && <p className="mt-1 text-xs text-dps-neon">Peer connection established</p>}
+            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
@@ -119,7 +139,7 @@ export default function StudentDetailPanel({ student: s, exam, rtc, snapshot = {
             </Section>
 
             <Section icon={Send} title="Send a warning" className="lg:col-span-2">
-              <p className="mb-2 text-xs text-slate-400">The student sees this message on screen and it is added to their record.</p>
+              <p className="mb-2 text-xs text-slate-400">This warning is delivered if the student is connected and recorded as an observation. Looking away, tab changes and browser signals are not proof of misconduct. Review before making any decision.</p>
               <div className="mb-2 flex flex-wrap gap-1.5">
                 {PRESETS.map((p) => (
                   <button key={p} type="button" className="rounded-lg border border-white/10 px-2 py-1 text-left text-[11px] text-slate-300 hover:border-dps-gold/40 hover:text-white" onClick={() => setMessage(p)}>{p}</button>
@@ -127,7 +147,7 @@ export default function StudentDetailPanel({ student: s, exam, rtc, snapshot = {
               </div>
               <label htmlFor="warn-msg" className="sr-only">Warning message</label>
               <textarea id="warn-msg" className="input min-h-[70px] text-sm" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Type a message to the student" maxLength={240} />
-              <button type="button" className="btn btn-accent btn-sm mt-2 w-full" onClick={() => send()} disabled={!message.trim() || sending || s.status !== 'active'}>
+              <button type="button" className="btn btn-accent btn-sm mt-2 w-full" onClick={() => send()} disabled={!message.trim() || sending || !isRunningExamStatus(s.status) || s.connected===false}>
                 {sending ? <Loader2 size={14} className="animate-spin" aria-hidden="true" /> : <ShieldAlert size={14} aria-hidden="true" />} Send warning
               </button>
               {warnings.length > 0 && (

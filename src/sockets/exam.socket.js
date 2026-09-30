@@ -74,10 +74,13 @@ function attachSockets(io){
     if(limited(name,800))return;
     const s=await checkStudent();
     const qid=String(data?.questionId||'');
-    const q=await db.query('SELECT id FROM questions WHERE id=$1 AND exam_id=$2',[qid,s.exam_id]);
-    if(!q.rowCount)return;
+    const q=await db.query(`SELECT id, row_number() OVER(ORDER BY sort_order,id) AS position
+      FROM questions WHERE exam_id=$1`,[s.exam_id]);
+    const match=q.rows.find(row=>row.id===qid);if(!match)return;
     const mapped={'student:answerUpdate':'exam:answerLiveUpdate','student:codeUpdate':'exam:codeLiveUpdate','student:questionChange':'exam:studentStatusUpdate'};
-    publish(s.exam_id,mapped[name],{sessionId:s.id,questionId:qid,at:new Date().toISOString()});
+    publish(s.exam_id,mapped[name],{sessionId:s.id,questionId:qid,
+      ...(name==='student:questionChange'?{currentQuestion:Number(match.position)}:{}),
+      at:new Date().toISOString()});
    }));
   }
   socket.on('student:proctorEvent',data=>guard(async()=>{
@@ -91,7 +94,7 @@ function attachSockets(io){
     const consent=name==='student:webcamStatus'?s.consent_webcam:s.consent_screen;
     if(active&&!consent)return;
     const label=name==='student:webcamStatus'?'webcam':'screen';
-    publish(s.exam_id,'exam:studentStatusUpdate',{sessionId:s.id,[label]:active,connected:true});
+    publish(s.exam_id,'exam:studentStatusUpdate',{sessionId:s.id,[label+'Active']:active,connected:true});
     if(!active&&consent)await event({examId:s.exam_id,sessionId:s.id,
      eventType:label==='webcam'?'WEBCAM_STOPPED':'SCREEN_SHARE_STOPPED',message:'Student reported media sharing stopped.'});
    }));
@@ -132,7 +135,14 @@ function attachSockets(io){
    if(limited('warning',3000))return;
    const s=await checkOwnedStudent(String(data?.sessionId||''));
    const message=String(data?.message||'').slice(0,300).trim();if(!message)return;
-   privateStudent(s.id,'teacher:warningSent',{message,at:new Date().toISOString()});
+   const at=new Date().toISOString();
+   // A teacher can document a possible concern, but this observation does NOT
+   // alter the student's automated flag/cheating score or constitute proof.
+   await audit({teacherId:ident.id,examId:s.exam_id,action:'teacher:warning',details:{sessionId:s.id,message}});
+   publish(s.exam_id,'exam:proctorFlag',{sessionId:s.id,event:{
+      eventType:'TEACHER_OBSERVATION',message,details:{message},createdAt:at,severity:'info'
+   },reviewRequired:true});
+   privateStudent(s.id,'teacher:warningSent',{message,at});
    socket.emit('teacher:warningSent',{sessionId:s.id,dispatched:true,deliveryConfirmed:false});
   }));
   socket.on('teacher:lockStudentExam',data=>guard(async()=>{

@@ -17,6 +17,7 @@ import { EVENTS, getSocket } from '../services/socket'
 import { getTeacherToken } from '../services/session'
 import { bucketOf, DEMO_MODE, PROCTOR_EVENTS } from '../config'
 import { cx, formatTime } from '../utils/format'
+import { mergeMonitorStatus, isRunningExamStatus } from '../utils/monitoringState'
 
 const EMPTY_FLAGS = { tab: 0, blur: 0, fullscreen: 0, copyPaste: 0, devtools: 0, other: 0 }
 const SERVER_EVENT_TYPES = {
@@ -25,6 +26,7 @@ const SERVER_EVENT_TYPES = {
   MULTIPLE_SESSION_ATTEMPT: 'multiple_tabs', BROWSER_CHANGED: 'devtools_suspected',
   SCREEN_SHARE_STOPPED: 'screen_share_stopped', WEBCAM_STOPPED: 'webcam_stopped',
   NETWORK_DISCONNECT: 'window_blur', DEVTOOLS_SUSPECTED: 'devtools_suspected',
+  TEACHER_OBSERVATION: 'teacher_observation',
 }
 
 export default function ExamMonitor() {
@@ -43,6 +45,7 @@ export default function ExamMonitor() {
   const socket = useMemo(() => getSocket({ role: 'teacher', token: getTeacherToken() }), [])
   const rtc = useTeacherRTC(socket)
   const studentsRef = useRef(students)
+  const progressTimer = useRef(null)
   studentsRef.current = students
 
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 5000); return () => clearInterval(t) }, [])
@@ -68,12 +71,32 @@ export default function ExamMonitor() {
     if (!socket) return undefined
     const join = () => { setConnected(true); socket.emit(EVENTS.TEACHER_JOIN_MONITOR, { examId }) }
     const onDisconnect = () => setConnected(false)
-    const upsert = (sessionId, patch) => setStudents((all) => ({ ...all, [sessionId]: { flags: { ...EMPTY_FLAGS }, timeline: [], ...all[sessionId], ...patch } }))
+    const upsert = (sessionId, patch) => setStudents(all => ({ ...all, [sessionId]: mergeMonitorStatus({ flags: { ...EMPTY_FLAGS }, timeline: [], ...all[sessionId] },patch) }))
 
-    const onJoined = (s) => s?.sessionId && upsert(s.sessionId, { name: s.studentName || 'Student', rollNumber: s.rollNumber, status: 'active', ...s })
+    const onJoined = (s) => s?.sessionId && upsert(s.sessionId, { name: s.studentName || 'Student', rollNumber: s.rollNumber, status: 'active', connected:true, ...s, class:s.className||s.class, section:s.section, webcam:s.consentWebcam===true, screen:s.consentScreen===true, device:s.device||{} })
     const onUpdate = ({ sessionId, ...patch }) => sessionId && upsert(sessionId, patch)
-    const onLeft = ({ sessionId, status }) => sessionId && upsert(sessionId, { status: status || 'disconnected' })
+    const onLeft = ({ sessionId, status }) => sessionId && upsert(sessionId, { status: status || 'disconnected', connected:false, webcamActive:false, screenActive:false })
     const onSnapshot = ({ sessionId, webcam, screen, ts }) => sessionId && setSnapshots((m) => ({ ...m, [sessionId]: { webcam: webcam || m[sessionId]?.webcam, screen: screen || m[sessionId]?.screen, ts } }))
+    const syncSavedProgress = () => {
+      clearTimeout(progressTimer.current)
+      progressTimer.current=setTimeout(()=>{
+        api.getMonitor(examId).then(res=>{
+          setStudents(all=>{
+            const next={...all};
+            for(const row of res.students) {
+              if(all[row.sessionId]){
+                next[row.sessionId]={...all[row.sessionId],
+                  answered:row.answered,totalQuestions:row.totalQuestions,
+                  device:row.device||all[row.sessionId].device,
+                  connected:row.connected
+                };
+              }
+            }
+            return next;
+          })
+        }).catch(()=>{}) // A missed refresh never ends a student's session.
+      },1750);
+    }
     const onEvent = ({ sessionId, event }) => {
       if (!sessionId || !event) return
       const normalized = { ...event, type: SERVER_EVENT_TYPES[event.eventType] || event.type || 'unknown', ts: event.createdAt || event.ts || new Date().toISOString() }
@@ -100,6 +123,7 @@ export default function ExamMonitor() {
     socket.on(EVENTS.MONITOR_STUDENT_LEFT, onLeft)
     socket.on(EVENTS.MONITOR_SNAPSHOT, onSnapshot)
     socket.on(EVENTS.MONITOR_PROCTOR_EVENT, onEvent)
+    socket.on('exam:answerLiveUpdate',syncSavedProgress)
     return () => {
       socket.emit(EVENTS.TEACHER_LEAVE_MONITOR, { examId })
       socket.off('connect', join)
@@ -109,6 +133,8 @@ export default function ExamMonitor() {
       socket.off(EVENTS.MONITOR_STUDENT_LEFT, onLeft)
       socket.off(EVENTS.MONITOR_SNAPSHOT, onSnapshot)
       socket.off(EVENTS.MONITOR_PROCTOR_EVENT, onEvent)
+      socket.off('exam:answerLiveUpdate',syncSavedProgress)
+      clearTimeout(progressTimer.current)
     }
   }, [socket, examId])
 
@@ -121,7 +147,7 @@ export default function ExamMonitor() {
   const list = useMemo(() => Object.values(students), [students])
   const counts = useMemo(() => ({
     joined: list.length,
-    active: list.filter((s) => s.status === 'active').length,
+    active: list.filter((s) => isRunningExamStatus(s.status) && s.connected!==false).length,
     submitted: list.filter((s) => s.status === 'submitted').length,
     flagged: list.filter((s) => flagTotal(s.flags) > 0).length,
     flags: list.reduce((a, s) => a + flagTotal(s.flags), 0),

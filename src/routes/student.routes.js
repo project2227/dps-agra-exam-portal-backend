@@ -69,7 +69,13 @@ router.post('/exams/:examId/join',joinNetworkLimit,joinIdentifierLimit,asyncWrap
    await event({examId:e.id,sessionId:result.duplicate.id,eventType:'BROWSER_CHANGED'});
   throw new HttpError(409,'An active session already exists for this roll number. Reconnect using its token or ask the teacher to reset it.');
  }
- publish(e.id,'exam:studentJoined',{sessionId:result.session.id,studentName:v.name,rollNumber:v.rollNumber,joinedAt:result.session.joined_at});
+ publish(e.id,'exam:studentJoined',{
+  sessionId:result.session.id,studentName:v.name,rollNumber:v.rollNumber,
+  className:v.className,section:v.section,consentWebcam:v.consent.webcam,
+  consentScreen:v.consent.screen,joinedAt:result.session.joined_at,
+  device:{browser:v.browserMetadata.browser||null,os:v.browserMetadata.os||null,
+    screen:v.browserMetadata.screenSize||null,timezone:v.browserMetadata.timezone||null}
+ });
  res.status(201).json({token:result.token,session:result.session,exam:{id:e.id,title:e.title,endTime:e.end_time,
   durationMinutes:e.duration_minutes,settings:e.settings},monitoring:{webcam:v.consent.webcam,screen:v.consent.screenShare}});
 }));
