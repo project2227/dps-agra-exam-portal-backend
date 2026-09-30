@@ -13,14 +13,14 @@ const FEATURES = [
   { icon: LayoutGrid, title: 'Class-wise Computer Exams', text: 'Quizzes and practicals for Classes VI to XII, targeted to a whole class or a single section, with one computer teacher per class.' },
   { icon: TerminalSquare, title: 'Built-in Programming IDEs', text: 'A browser code editor for seven languages. Python and SQL execute free on-device; the web preview and blocks work without an exam token. Other compilers require an isolated runner.' },
   { icon: CalendarDays, title: 'Handouts & Exam Dates', text: 'Teachers share notes, slides and practical file formats class-wise. Students always see what is coming up next.' },
-  { icon: MonitorPlay, title: 'Live Proctored Exams', text: 'One screen shows every student: progress, live typing, webcam and screen previews, and integrity flags as they happen.' },
+  { icon: MonitorPlay, title: 'Live Proctored Exams', text: 'One screen shows every student: answer progress, consented media previews and reviewable browser-activity signals.' },
   { icon: BadgeCheck, title: 'Auto Program Checking', text: 'Optional isolated program checking for teacher exams. Requires an independently configured runner; no unsafe execution on the main backend.' },
 ]
 
 const STEPS = [
   { icon: KeyRound, title: 'Teacher hosts', text: 'Creates the exam, picks the class and section, and shares a one-time password in the lab.' },
   { icon: UserRound, title: 'Student joins', text: 'No accounts needed. Enter name, roll number, class, section and the exam password.' },
-  { icon: Code2, title: 'Exam runs', text: 'Answers and code save automatically. Programs are checked instantly against test cases.' },
+  { icon: Code2, title: 'Exam runs', text: 'Answers and code save automatically. Local Python previews are free; isolated grading is optional and teachers can review saved submissions.' },
   { icon: CheckCircle2, title: 'Teacher reviews', text: 'Scores, test results, flags and remarks in one place, exportable as CSV or PDF.' },
 ]
 
@@ -36,8 +36,8 @@ function TerminalCard() {
     ['muted', '$ python3 practical.py < tests/'],
     ['ok', 'Sample 1   Hello World   -> 3   passed'],
     ['ok', 'Sample 2   DPS Agra      -> 2   passed'],
-    ['ok', 'Hidden     3 of 3 checks        passed'],
-    ['gold', 'Score      8 / 8 marks   auto-checked'],
+    ['ok', 'Source     answer saved successfully'],
+    ['gold', 'Review     feedback after grading'],
   ]
   const color = { muted: 'text-slate-500', ok: 'text-dps-neon', gold: 'text-dps-gold' }
   return (
