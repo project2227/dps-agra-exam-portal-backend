@@ -93,6 +93,19 @@ function attachSockets(io){
    const examId=String(data?.examId||'');await checkTeacher(examId);
    socket.join(teacherRoom(examId));socket.emit('teacher:monitorJoined',{examId});
   }));
+  // Teacher can ask for a view only when the specific student has already
+  // consented. The request NEVER calls browser media APIs or starts capture.
+  // A consenting student still needs an active, explicitly opened stream.
+  socket.on('teacher:requestMediaPreview',data=>guard(async()=>{
+   if(limited('media-preview',1000))return;
+   const mediaType=String(data?.mediaType||'');
+   if(!['webcam','screen'].includes(mediaType))return;
+   const session=await checkOwnedStudent(String(data?.sessionId||''));
+   if(!['joined','active','disconnected','flagged'].includes(session.status))return;
+   if(mediaType==='webcam'&&!session.consent_webcam)return;
+   if(mediaType==='screen'&&!session.consent_screen)return;
+   privateStudent(session.id,'teacher:mediaRequest',{sessionId:session.id,mediaType});
+  }));
   socket.on('teacher:requestStudentDetail',data=>guard(async()=>{
    if(limited('detail',1000))return;
    const s=await checkOwnedStudent(String(data?.sessionId||''));
