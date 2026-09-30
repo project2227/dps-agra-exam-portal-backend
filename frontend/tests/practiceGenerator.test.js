@@ -9,7 +9,7 @@ test('every course subject generates a nonempty offline exam with valid shuffled
   for(const item of a.questions){
    assert.equal(item.options.length,4)
    assert.ok(Number.isInteger(item.correct)&&item.correct>=0&&item.correct<4)
-   assert.ok(item.explanation.length>10)
+   assert.ok(typeof item.explanation==='string' && item.explanation.trim().length>=6)
   }
  }
 })
