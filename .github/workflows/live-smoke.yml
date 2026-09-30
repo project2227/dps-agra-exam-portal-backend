@@ -42,7 +42,27 @@ jobs:
             }
             console.log('PASS: API health HTTP 200 and database connected');
             console.log('PASS: CORS allows only the configured staging origin');
+            const html = await home.text();
+            if (!html.includes('learning-hub-v2')) throw Error('Frontend is not the latest learning-hub-v2 release');
+            const courses = await fetch(api + '/api/learning/courses', { headers: { Origin: frontend }, signal: AbortSignal.timeout(20000) });
+            if (courses.status !== 200 || !Array.isArray((await courses.json()).courses)) throw Error('Course catalog endpoint unavailable');
+            for (const path of ['/api/learning/me', '/api/learning/teacher/courses', '/api/learning/teacher/admin/teachers']) {
+              const denied = await fetch(api + path, { signal: AbortSignal.timeout(20000) });
+              if (denied.status !== 401) throw Error('Protected endpoint did not enforce auth: ' + path + ' (' + denied.status + ')');
+            }
+            const register = await fetch(api + '/api/auth/teacher/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}', signal: AbortSignal.timeout(20000) });
+            if (register.status !== 401) throw Error('Teacher enrollment must be administrator-only');
+            for (const path of ['/resources/python-quickstart.pdf', '/resources/sql-quickstart.pdf', '/runtimes/python-worker.js', '/runtimes/sql-worker.js']) {
+              const asset = await fetch(frontend + path, { signal: AbortSignal.timeout(20000) });
+              if (asset.status !== 200) throw Error('Study resource unavailable: ' + path + ' (' + asset.status + ')');
+            }
+            if (json.version !== '2.0.0-learning-staging') throw Error('API is serving an outdated backend build');
             console.log('PASS: frontend HTTP 200 serves HTML');
+            console.log('PASS: frontend HTML identifies learning-hub-v2');
+            console.log('PASS: public course catalog returns courses array');
+            console.log('PASS: protected learning, staff, administrator and registration endpoints reject guests');
+            console.log('PASS: Python/SQL PDFs and browser workers load');
+            console.log('PASS: backend identifies the deployed learning-hub-v2 release');
           }
           for (let n = 1; n <= 12; n++) {
             try {
