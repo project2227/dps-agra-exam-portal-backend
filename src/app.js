@@ -12,6 +12,7 @@ app.get('/api/health',async(req,res)=>{
  catch {res.status(503).json({ok:false,service:'dps-agra-exam-portal',database:'unavailable'});}
 });
 app.use('/api/auth',require('./routes/auth.routes'));
+app.use('/api/staff-access',require('./routes/staffAccess.routes'));
 app.use('/api/learning',require('./routes/learning.routes'));
 
 app.use('/api/teacher',require('./routes/teacher.routes'));

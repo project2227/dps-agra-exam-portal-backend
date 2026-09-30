@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Activity, CalendarClock, ClipboardCheck, FilePlus2, FileText, MonitorPlay, ShieldAlert, Users } from 'lucide-react'
+import { Activity, CalendarClock, ClipboardCheck, FilePlus2, FileText, MonitorPlay, ShieldAlert, Users, UserPlus } from 'lucide-react'
 import PageHeader from '../components/common/PageHeader'
 import StatCard from '../components/common/StatCard'
 import ClassCard from '../components/teacher/ClassCard'
@@ -32,6 +32,7 @@ export default function TeacherDashboard() {
         actions={<>
           <Link to="/teacher/exams/create" className="btn btn-primary"><FilePlus2 size={16} aria-hidden="true" /> Create exam</Link>
           <Link to="/teacher/handouts" className="btn btn-ghost"><FileText size={16} aria-hidden="true" /> Upload handout</Link>
+          {teacher?.role==='admin' && <Link to="/teacher/manage-teachers" className="btn btn-ghost"><UserPlus size={16} aria-hidden="true" /> Enroll teachers</Link>}
         </>}
       />
       {error && <ErrorNote message={error} onRetry={load} />}

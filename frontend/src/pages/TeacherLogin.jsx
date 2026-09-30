@@ -4,7 +4,6 @@ import { AlertTriangle, Eye, EyeOff, Loader2, LockKeyhole, LogIn, Mail } from 'l
 import Navbar from '../components/layout/Navbar'
 import Footer from '../components/layout/Footer'
 import DPSLogoAnimated from '../components/common/DPSLogoAnimated'
-import Modal from '../components/common/Modal'
 import { Field } from '../components/common/Field'
 import api from '../services/api'
 import { getTeacherToken, setTeacherAuth } from '../services/session'
@@ -20,9 +19,6 @@ export default function TeacherLogin() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
-  const [resetOpen, setResetOpen] = useState(false)
-  const [resetEmail, setResetEmail] = useState('')
-  const [resetState, setResetState] = useState('idle')
 
   if (getTeacherToken()) return <Navigate to="/teacher/dashboard" replace />
 
@@ -43,12 +39,6 @@ export default function TeacherLogin() {
     } finally { setBusy(false) }
   }
 
-  const sendReset = async (e) => {
-    e.preventDefault()
-    if (!resetEmail.trim()) return
-    setResetState('sending')
-    try { await api.requestPasswordReset(resetEmail.trim()); setResetState('sent') } catch { setResetState('error') }
-  }
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -68,7 +58,7 @@ export default function TeacherLogin() {
                 <span className="font-display font-semibold">{SCHOOL.portal}</span>
               </div>
               <h1 className="font-display text-2xl font-semibold">Teacher sign in</h1>
-              <p className="mt-1 text-sm text-slate-400">Use the account issued by the Computer Science department.</p>
+              <p className="mt-1 text-sm text-slate-400">Sign in using a verified staff account issued by the administrator of this independent student-built prototype.</p>
 
               <div className="mt-6 space-y-4">
                 <Field label="Email or username" required error={fieldErrors.email}>
@@ -94,7 +84,7 @@ export default function TeacherLogin() {
                   <label className="flex items-center gap-2 text-slate-300">
                     <input type="checkbox" className="h-4 w-4 accent-dps-green" checked={remember} onChange={(e) => setRemember(e.target.checked)} /> Keep me signed in
                   </label>
-                  <button type="button" className="text-dps-neon hover:underline" onClick={() => { setResetOpen(true); setResetEmail(form.email); setResetState('idle') }}>Forgot password?</button>
+                  <span className="text-right text-xs text-slate-400">Password help: contact the portal administrator.</span>
                 </div>
               </div>
 
@@ -115,30 +105,17 @@ export default function TeacherLogin() {
                   <button type="button" className="mt-2 text-dps-neon hover:underline" onClick={() => setForm({ ...DEMO_TEACHER })}>Fill demo credentials</button>
                 </div>
               )}
-              <p className="mt-5 text-center text-xs text-slate-500">Student? <Link to="/student/join" className="text-dps-neon hover:underline">Join an exam instead</Link></p>
+              <div className="mt-5 space-y-3 border-t border-white/10 pt-5 text-center text-sm">
+                <p>Teacher or invited staff tester? <Link to="/teacher/request-access" className="font-semibold text-dps-neon hover:underline">Request teacher access</Link></p>
+                <p className="text-xs text-slate-400">Requests are manually reviewed; they do not provide instant staff access.</p>
+                <p className="text-xs text-slate-400">Student? <Link to="/learn" className="text-dps-neon hover:underline">Open the Learning Hub</Link></p>
+              </div>
             </div>
           </form>
         </div>
       </main>
       <Footer />
 
-      <Modal open={resetOpen} onClose={() => setResetOpen(false)} title="Reset your password" size="sm">
-        {resetState === 'sent' ? (
-          <p className="text-sm text-slate-300">If an account exists for <strong className="text-white">{resetEmail}</strong>, a reset link has been sent. You can also ask the portal administrator to reset it for you.</p>
-        ) : (
-          <form onSubmit={sendReset} className="space-y-4">
-            <p className="text-sm text-slate-400">Enter your school email. We will send a link to set a new password.</p>
-            <Field label="School email">
-              {(p) => <input {...p} type="email" className="input" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} autoComplete="email" />}
-            </Field>
-            {resetState === 'error' && <p className="error-text" role="alert">Could not send the link right now. Try again later or contact the administrator.</p>}
-            <div className="flex justify-end gap-2">
-              <button type="button" className="btn btn-ghost" onClick={() => setResetOpen(false)}>Cancel</button>
-              <button type="submit" className="btn btn-primary" disabled={resetState === 'sending'}>{resetState === 'sending' && <Loader2 size={16} className="animate-spin" aria-hidden="true" />} Send reset link</button>
-            </div>
-          </form>
-        )}
-      </Modal>
     </div>
   )
 }

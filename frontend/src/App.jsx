@@ -18,6 +18,7 @@ const MockExam = lazy(() => import('./pages/MockExam'))
 const TeacherCourses = lazy(() => import('./pages/TeacherCourses'))
 const TeacherCommunity = lazy(() => import('./pages/TeacherCommunity'))
 const ManageTeachers = lazy(() => import('./pages/ManageTeachers'))
+const TeacherAccessRequest = lazy(() => import('./pages/TeacherAccessRequest'))
 const GradeAnalysis = lazy(() => import('./pages/GradeAnalysis'))
 const TeacherAccount = lazy(() => import('./pages/TeacherAccount'))
 const AboutPortal = lazy(() => import('./pages/AboutPortal'))
@@ -66,6 +67,7 @@ export default function App() {
 
               {/* Teacher */}
               <Route path="/teacher/login" element={<TeacherLogin />} />
+              <Route path="/teacher/request-access" element={<TeacherAccessRequest />} />
               <Route path="/teacher" element={<TeacherGuard><TeacherLayout /></TeacherGuard>}>
                 <Route index element={<Navigate to="/teacher/dashboard" replace />} />
                 <Route path="dashboard" element={<TeacherDashboard />} />

@@ -50,6 +50,9 @@ jobs:
               const denied = await fetch(api + path, { signal: AbortSignal.timeout(20000) });
               if (denied.status !== 401) throw Error('Protected endpoint did not enforce auth: ' + path + ' (' + denied.status + ')');
             }
+            const queue = await fetch(api + '/api/staff-access/admin/requests', { signal: AbortSignal.timeout(20000) });
+            if (queue.status !== 401) throw Error('Staff access review must reject anonymous visitors (' + queue.status + ')');
+            console.log('PASS: staff access approval queue requires administrator authentication');
             const register = await fetch(api + '/api/auth/teacher/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}', signal: AbortSignal.timeout(20000) });
             if (register.status !== 401) throw Error('Teacher enrollment must be administrator-only');
             for (const path of ['/resources/python-quickstart.pdf', '/resources/sql-quickstart.pdf', '/runtimes/python-worker.js', '/runtimes/sql-worker.js']) {
