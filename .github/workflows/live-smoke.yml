@@ -1,0 +1,57 @@
+name: Live staging smoke test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/live-smoke.yml"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check live Render frontend, backend database and CORS
+        env:
+          API_URL: https://dps-agra-exam-api.onrender.com
+          FRONTEND_URL: https://dps-agra-exam-frontend.onrender.com
+        run: |
+          node <<'NODE'
+          const api = process.env.API_URL;
+          const frontend = process.env.FRONTEND_URL;
+          const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+          async function attempt() {
+            const res = await fetch(api + '/api/health', {
+              headers: { Origin: frontend },
+              signal: AbortSignal.timeout(20000)
+            });
+            const json = await res.json();
+            if (res.status !== 200 || json.ok !== true || json.database !== 'connected') {
+              throw Error('API health/database failed (' + res.status + ')');
+            }
+            if (res.headers.get('access-control-allow-origin') !== frontend) {
+              throw Error('Frontend CORS origin not allowed');
+            }
+            const home = await fetch(frontend + '/', { signal: AbortSignal.timeout(20000) });
+            if (home.status !== 200 || !(home.headers.get('content-type') || '').includes('text/html')) {
+              throw Error('Frontend page unavailable (' + home.status + ')');
+            }
+            console.log('PASS: API health HTTP 200 and database connected');
+            console.log('PASS: CORS allows only the configured staging origin');
+            console.log('PASS: frontend HTTP 200 serves HTML');
+          }
+          for (let n = 1; n <= 12; n++) {
+            try {
+              await attempt();
+              process.exit(0);
+            } catch (e) {
+              console.log('Attempt ' + n + '/12: ' + e.message);
+              if (n === 12) process.exit(1);
+              await delay(15000);
+            }
+          }
+          NODE
