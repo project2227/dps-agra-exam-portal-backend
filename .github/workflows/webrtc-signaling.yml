@@ -1,0 +1,53 @@
+name: WebRTC signaling integration
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/sockets/**'
+      - 'src/routes/student.routes.js'
+      - 'src/routes/proctor.routes.js'
+      - 'integration/**'
+      - 'package.json'
+      - '.github/workflows/webrtc-signaling.yml'
+  pull_request:
+    paths:
+      - 'src/sockets/**'
+      - 'integration/**'
+      - 'package.json'
+jobs:
+  signal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dps_socket_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d dps_socket_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      NODE_ENV: test
+      FRONTEND_URL: http://localhost
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/dps_socket_test
+      DATABASE_SSL: 'false'
+      JWT_SECRET: test-only-jwt-secret-for-ephemeral-integration-database
+      STUDENT_SESSION_SECRET: test-only-student-secret-for-ephemeral-integration
+      FINGERPRINT_PEPPER: test-only-fingerprint-pepper
+      UPLOAD_PROVIDER: disabled
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run migrate
+      - run: npm run test:signaling
