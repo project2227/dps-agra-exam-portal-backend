@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { formatTime, formatDateTime } from '../src/utils/format.js'
 import { parseLocal12, fromLocal12 } from '../src/utils/time12.js'
 test('exam and monitoring clock shows explicit 12-hour AM/PM',()=>{
@@ -17,9 +18,8 @@ test('12-hour date picker converts noon and midnight correctly',()=>{
  assert.equal(fromLocal12({date:'',hour:1,minute:'00',period:'PM'}),'');
 });
 test('exam deep links select one exam without embedding the password in the URL',()=>{
- const e=await import('node:fs');
- const create=e.readFileSync('src/pages/CreateExam.jsx','utf8');
- const join=e.readFileSync('src/pages/StudentJoinPage.jsx','utf8');
+ const create=readFileSync('src/pages/CreateExam.jsx','utf8');
+ const join=readFileSync('src/pages/StudentJoinPage.jsx','utf8');
  assert.match(create,/\/student\/join\?exam=/);
  assert.doesNotMatch(create,/\/student\/join\?passcode=/);
  assert.match(join,/examFromLink/);
