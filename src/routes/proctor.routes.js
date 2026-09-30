@@ -27,7 +27,7 @@ router.get('/teacher/sessions/:sessionId/proctor-events',teacher,asyncWrap(async
 router.get('/teacher/exams/:examId/monitor',teacher,asyncWrap(async(req,res)=>{
  const exam=await ownExam(req.params.examId,req.teacher.id);
  const q=await db.query(`SELECT id,student_name,roll_number,class_name,section,status,joined_at,submitted_at,
- flags_count,cheating_score,consent_webcam,consent_screen,active_socket_id IS NOT NULL AS connected
+ flags_count,cheating_score,consent_webcam,consent_screen,browser,os,screen_size,timezone,active_socket_id IS NOT NULL AS connected
  FROM exam_sessions WHERE exam_id=$1 ORDER BY roll_number`,[exam.id]);
  res.json({exam:{id:exam.id,title:exam.title,status:exam.status},students:q.rows});
 }));

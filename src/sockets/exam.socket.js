@@ -27,11 +27,12 @@ function attachSockets(io){
  io.on('connection',socket=>{
   const ident=socket.data.identity;
   const throttle=new Map();
+  const relayWindow=[]; // Permit ICE bursts, but bound total signaling traffic per socket.
   const limited=(event,minMs=250)=>{const now=Date.now();if(now-(throttle.get(event)||0)<minMs)return true;throttle.set(event,now);return false;};
   const guard=async(fn)=>{try{await fn();}catch(err){socket.emit('exam:error',{message:err.status?err.message:'Operation rejected.'});}};
   const checkStudent=async()=>{
    if(ident.kind!=='student')throw Object.assign(new Error('Student session required.'),{status:403});
-   const q=await db.query(`SELECT s.*,e.status AS exam_status,e.start_time,e.end_time
+   const q=await db.query(`SELECT s.*,e.status AS exam_status,e.start_time,e.end_time,e.duration_minutes
      FROM exam_sessions s JOIN exams e ON e.id=s.exam_id WHERE s.id=$1`,[ident.id]);
    const s=q.rows[0];if(!s||['revoked','submitted'].includes(s.status))throw Object.assign(new Error('Session closed.'),{status:403});
    if(!['active','scheduled'].includes(s.exam_status)||Date.now()<new Date(s.start_time).getTime()||
@@ -60,13 +61,13 @@ function attachSockets(io){
    const s=await checkStudent();socket.join(`exam:${s.exam_id}:students`);socket.join(studentRoom(s.id));
    await db.query(`UPDATE exam_sessions SET active_socket_id=$1,status=CASE WHEN status='disconnected' THEN 'active' ELSE status END
    WHERE id=$2`,[socket.id,s.id]);
-   publish(s.exam_id,'exam:studentStatusUpdate',{sessionId:s.id,status:'connected'});
+   publish(s.exam_id,'exam:studentStatusUpdate',{sessionId:s.id,status:s.status==='flagged'?'flagged':'active',connected:true});
    socket.emit('exam:joined',{sessionId:s.id,monitoring:{webcam:s.consent_webcam,screen:s.consent_screen}});
   }));
   socket.on('student:heartbeat',()=>guard(async()=>{
    if(limited('heartbeat',10000))return;const s=await checkStudent();
    await db.query('UPDATE exam_sessions SET updated_at=now() WHERE id=$1',[s.id]);
-   publish(s.exam_id,'exam:studentStatusUpdate',{sessionId:s.id,status:'online',at:new Date().toISOString()});
+   publish(s.exam_id,'exam:studentStatusUpdate',{sessionId:s.id,status:s.status==='flagged'?'flagged':'active',connected:true,at:new Date().toISOString()});
   }));
   for(const name of ['student:answerUpdate','student:codeUpdate','student:questionChange']){
    socket.on(name,data=>guard(async()=>{
@@ -90,24 +91,37 @@ function attachSockets(io){
     const consent=name==='student:webcamStatus'?s.consent_webcam:s.consent_screen;
     if(active&&!consent)return;
     const label=name==='student:webcamStatus'?'webcam':'screen';
-    publish(s.exam_id,'exam:studentStatusUpdate',{sessionId:s.id,[label]:active});
+    publish(s.exam_id,'exam:studentStatusUpdate',{sessionId:s.id,[label]:active,connected:true});
     if(!active&&consent)await event({examId:s.exam_id,sessionId:s.id,
      eventType:label==='webcam'?'WEBCAM_STOPPED':'SCREEN_SHARE_STOPPED',message:'Student reported media sharing stopped.'});
    }));
   }
+  // Only the student can report that a requested stream is not currently shared.
+  // This operational status is not a misconduct flag and contains no media.
+  socket.on('student:mediaUnavailable',data=>guard(async()=>{
+   if(limited('media-unavailable:'+data?.mediaType,1000))return;
+   const s=await checkStudent();const kind=String(data?.mediaType||'');
+   if(!['webcam','screen'].includes(kind))return;
+   publish(s.exam_id,'teacher:mediaStatus',{sessionId:s.id,mediaType:kind,status:'not-sharing'});
+  }));
   socket.on('teacher:joinMonitorRoom',data=>guard(async()=>{
    const examId=String(data?.examId||'');await checkTeacher(examId);
    socket.join(teacherRoom(examId));socket.emit('teacher:monitorJoined',{examId});
   }));
   socket.on('teacher:requestMediaPreview',data=>guard(async()=>{
-   if(limited('media-preview',1000))return;
    const mediaType=String(data?.mediaType||'');
    if(!['webcam','screen'].includes(mediaType))return;
+   // Separate quotas: a paired webcam + screen request must not drop one feed.
+   if(limited('media-preview:'+mediaType,700))return;
    const session=await checkOwnedStudent(String(data?.sessionId||''));
-   if(!['joined','active','disconnected','flagged'].includes(session.status))return;
-   if(mediaType==='webcam'&&!session.consent_webcam)return;
-   if(mediaType==='screen'&&!session.consent_screen)return;
-   privateStudent(session.id,'teacher:mediaRequest',{sessionId:session.id,mediaType});
+   const sessionId=session.id;
+   const reply=status=>socket.emit('teacher:mediaStatus',{sessionId,mediaType,status});
+   if(!['joined','active','disconnected','flagged'].includes(session.status))return reply('session-ended');
+   if(mediaType==='webcam'&&!session.consent_webcam)return reply('not-consented');
+   if(mediaType==='screen'&&!session.consent_screen)return reply('not-consented');
+   if(!session.active_socket_id)return reply('student-offline');
+   reply('requested');
+   privateStudent(session.id,'teacher:mediaRequest',{sessionId,mediaType});
   }));
   socket.on('teacher:requestStudentDetail',data=>guard(async()=>{
    if(limited('detail',1000))return;
@@ -131,8 +145,10 @@ function attachSockets(io){
   }));
   // Only signaling messages are relayed; there is NO server-side media capture/recording.
   async function webrtcRelay(event,data){
-   if(limited(event,100))return;
-   if(JSON.stringify(data||{}).length>LIMIT)return;
+   const now=Date.now();while(relayWindow.length&&relayWindow[0]<now-10000)relayWindow.shift();
+   if(relayWindow.length>=240)return;relayWindow.push(now);
+   const cap=event==='webrtc:iceCandidate'?4096:65536;
+   if(JSON.stringify(data||{}).length>cap)return;
    const sessionId=String(data?.sessionId||'');
    const mediaType=String(data?.mediaType||'');
    if(!['webcam','screen'].includes(mediaType))return;
@@ -157,7 +173,7 @@ function attachSockets(io){
    db.query(`UPDATE exam_sessions SET active_socket_id=NULL,
    status=CASE WHEN status='active' THEN 'disconnected' ELSE status END
    WHERE id=$1 AND active_socket_id=$2 RETURNING exam_id,status`,[ident.id,socket.id]).then(q=>{
-    if(q.rowCount){publish(q.rows[0].exam_id,'exam:studentDisconnected',{sessionId:ident.id});
+    if(q.rowCount){publish(q.rows[0].exam_id,'exam:studentDisconnected',{sessionId:ident.id,status:'disconnected',connected:false});
      // A disconnection is an operational event, NOT a verified cheating incident.
     }
    }).catch(err=>console.error('[socket disconnect]',err.message));
