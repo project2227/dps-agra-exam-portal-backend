@@ -1,12 +1,12 @@
 export const cx = (...parts) => parts.filter(Boolean).join(' ')
 
 const dateFmt = new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-const timeFmt = new Intl.DateTimeFormat('en-IN', { hour: 'numeric', minute: '2-digit' })
+const timeFmt = new Intl.DateTimeFormat('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true })
 const dayFmt = new Intl.DateTimeFormat('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
 
 const toDate = (v) => (v instanceof Date ? v : new Date(v))
 export const formatDate = (v) => (v ? dateFmt.format(toDate(v)) : '')
-export const formatTime = (v) => (v ? timeFmt.format(toDate(v)) : '')
+export const formatTime = (v) => (v ? timeFmt.format(toDate(v)).replace(/\b(am|pm)\b/gi, x => x.toUpperCase()) : '')
 export const formatDay = (v) => (v ? dayFmt.format(toDate(v)) : '')
 export const formatDateTime = (v) => (v ? `${formatDate(v)}, ${formatTime(v)}` : '')
 

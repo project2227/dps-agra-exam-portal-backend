@@ -9,7 +9,8 @@ import { useToast } from '../components/common/Toast'
 import TeacherExamBuilder, { newQuestion, validateQuestions } from '../components/teacher/TeacherExamBuilder'
 import api from '../services/api'
 import { CLASSES, EXAM_TYPES, SECTIONS } from '../config'
-import { fromLocalInput, generatePasscode, toLocalInput } from '../utils/format'
+import { formatDateTime, fromLocalInput, generatePasscode, toLocalInput } from '../utils/format'
+import DateTime12HourInput from '../components/common/DateTime12HourInput'
 
 function defaultTimes() {
   const s = new Date(Date.now() + 60 * 60_000)
@@ -22,11 +23,11 @@ export default function CreateExam() {
   const toast = useToast()
   const times = useMemo(defaultTimes, [])
   const [form, setForm] = useState({
-    title: '', class: 'XII', section: 'All', subject: 'Computers', type: 'Practical',
+    title: '', class: 'IX', section: 'All', subject: 'Computers', type: 'Practical',
     startsAt: times.start, endsAt: times.end, durationMin: 45, passcode: generatePasscode(), instructions: '',
   })
   const [settings, setSettings] = useState({ requireWebcam: false, requireScreen: false, tabDetection: true, copyPasteRestriction: true, codeExecution: false })
-  const [questions, setQuestions] = useState(() => [newQuestion('mcq', 'XII'), newQuestion('code', 'XII')])
+  const [questions, setQuestions] = useState(() => [newQuestion('mcq', 'IX'), newQuestion('code', 'IX')])
   const [errors, setErrors] = useState({})
   const [qErrors, setQErrors] = useState({})
   const [busy, setBusy] = useState('')
@@ -135,10 +136,10 @@ export default function CreateExam() {
                 )}
               </Field>
               <Field label="Starts" required error={errors.startsAt}>
-                {(p) => <input {...p} type="datetime-local" className="input" value={form.startsAt} onChange={set('startsAt')} />}
+                {(p) => <DateTime12HourInput {...p} value={form.startsAt} onChange={value=>set('startsAt')({target:{value}})} />}
               </Field>
               <Field label="Ends" required error={errors.endsAt}>
-                {(p) => <input {...p} type="datetime-local" className="input" value={form.endsAt} onChange={set('endsAt')} />}
+                {(p) => <DateTime12HourInput {...p} value={form.endsAt} onChange={value=>set('endsAt')({target:{value}})} />}
               </Field>
               <Field label="Duration (minutes)" required error={errors.durationMin} hint="Each student gets this much time from when they start, within the window above.">
                 {(p) => <input {...p} type="number" min="5" max="300" className="input" value={form.durationMin} onChange={set('durationMin')} />}
@@ -206,7 +207,12 @@ export default function CreateExam() {
           <span className="rounded-xl border border-dps-gold/40 bg-dps-gold/10 px-4 py-2 font-mono text-2xl font-semibold tracking-wider text-dps-gold">{published?.passcode}</span>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => copy(published?.passcode)} aria-label="Copy password"><Copy size={14} /></button>
         </div>
-        <p className="mt-4 text-sm text-slate-400">Students can join from {published && new Date(published.startsAt).toLocaleString('en-IN')} using this password.</p>
+        <p className="mt-4 text-sm text-slate-400">Students can join from {published && formatDateTime(published.startsAt)} using this password.</p>
+        {published && <div className="mt-4 rounded-lg border border-white/10 p-3 text-sm">
+          <p className="font-semibold">Send the correct exam link to every device</p>
+          <p className="mt-1 text-xs text-slate-400">The link selects this specific exam. Share its password separately; do not include it in the URL.</p>
+          <button type="button" className="btn btn-ghost btn-sm mt-2" onClick={() => copy(`${window.location.origin}/#/student/join?exam=${encodeURIComponent(published.id)}`)}><Copy size={14}/> Copy exam link</button>
+        </div>
       </Modal>
     </div>
   )

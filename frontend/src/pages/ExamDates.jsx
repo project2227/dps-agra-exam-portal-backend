@@ -10,6 +10,7 @@ import { useToast } from '../components/common/Toast'
 import api from '../services/api'
 import { CLASSES, SECTIONS } from '../config'
 import { fromLocalInput } from '../utils/format'
+import DateTime12HourInput from '../components/common/DateTime12HourInput'
 
 const TYPES = ['Practical', 'Quiz', 'Theory', 'Mixed', 'Other']
 const blank = () => ({ title: '', class: 'XII', section: 'All', date: '', type: 'Practical', notes: '' })
@@ -64,7 +65,7 @@ export default function ExamDates() {
               <Field label="Class">{(p) => <select {...p} className="input" value={form.class} onChange={set('class')}>{CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}</select>}</Field>
               <Field label="Section">{(p) => <select {...p} className="input" value={form.section} onChange={set('section')}><option value="All">All</option>{SECTIONS.map((s) => <option key={s} value={s}>{s}</option>)}</select>}</Field>
             </div>
-            <Field label="Date and time" required error={errors.date}>{(p) => <input {...p} type="datetime-local" className="input" value={form.date} onChange={set('date')} />}</Field>
+            <Field label="Date and time" required error={errors.date}>{(p) => <DateTime12HourInput {...p} value={form.date} onChange={value=>set('date')({target:{value}})} />}</Field>
             <Field label="Type">{(p) => <select {...p} className="input" value={form.type} onChange={set('type')}>{TYPES.map((t) => <option key={t}>{t}</option>)}</select>}</Field>
             <Field label="Notes" hint="Syllabus, lab number or things to bring">{(p) => <textarea {...p} className="input min-h-[64px]" value={form.notes} onChange={set('notes')} />}</Field>
             <button type="submit" className="btn btn-primary w-full" disabled={saving}>{saving ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <CalendarPlus size={16} aria-hidden="true" />} Add to schedule</button>

@@ -3,6 +3,7 @@ const express=require('express');const bcrypt=require('bcryptjs');const crypto=r
 const rateLimit=require('express-rate-limit');const db=require('../config/db');
 const {studentToken,hash,student,studentAllowed,examOpen}=require('../middleware/auth');
 const {asyncWrap,must,HttpError}=require('../utils/http');const {env}=require('../config/env');
+const {normalizeExamPasscode}=require('../utils/examPasscode');
 const {publish}=require('../services/events');const {event}=require('../services/proctor');
 const router=express.Router();
 // Many pupils can share a school NAT. Combine a generous network cap with per-exam-roll throttling.
@@ -33,7 +34,11 @@ router.post('/exams/:examId/join',joinNetworkLimit,joinIdentifierLimit,asyncWrap
  must(v.className.toLowerCase()===e.class_name.toLowerCase() &&
   (e.section.toLowerCase()==='all'||v.section.toLowerCase()===e.section.toLowerCase()),403,'Exam is not available to this class and section.');
  if(e.settings?.allowLateJoin===false)must(Date.now()<=new Date(e.start_time).getTime()+10*60000,403,'Late joining is closed.');
- must(e.passcode_hash&&await bcrypt.compare(v.passcode,e.passcode_hash),403,'Invalid exam passcode.');
+ // Never rely on CSS text-transform: copied codes may differ in case or hyphens.
+ const canonicalCode=normalizeExamPasscode(v.passcode);
+ must(e.passcode_hash&&/^[A-Z0-9!@#_]{8,64}$/.test(canonicalCode)&&
+  await bcrypt.compare(canonicalCode,e.passcode_hash),403,
+  'Invalid password for the selected exam. Confirm the exam title and use its latest passcode.');
  must(!e.settings?.requireWebcam||v.consent.webcam,403,'Webcam consent is required to join this exam.');
  must(!e.settings?.requireScreenShare||v.consent.screenShare,403,'Screen-sharing consent is required to join this exam.');
  const fingerprintHash=v.browserMetadata.fingerprint?crypto.createHmac('sha256',env.FINGERPRINT_PEPPER)

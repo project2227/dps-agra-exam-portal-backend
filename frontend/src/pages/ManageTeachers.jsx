@@ -3,6 +3,7 @@ import { ShieldCheck, UserPlus, UserX, Users, ClipboardCopy, CheckCircle, Refres
 import { getTeacherAuth } from '../services/session'
 import { http } from '../services/api'
 import { learningApi } from '../services/learningApi'
+import { formatDateTime } from '../utils/format'
 
 const classes=['VI','VII','VIII','IX','X','XI','XII']
 const blank=()=>({name:'',email:'',subject:'Computers',assignedClasses:[],password:''})
@@ -85,7 +86,7 @@ export default function ManageTeachers(){
   <section className="glass space-y-4 p-6">
    <div className="flex items-center justify-between gap-3"><div><h2 className="flex items-center gap-2 text-xl font-semibold"><UserPlus size={20}/> Awaiting verification <span className="chip">{requests.length}</span></h2><p className="mt-1 text-sm text-slate-400">Email addresses on this list are self-declared, not verified. Confirm identity independently.</p></div><button type="button" className="btn btn-ghost btn-sm" onClick={reload}><RefreshCcw size={16}/> Refresh</button></div>
    {!requests.length?<p className="rounded-lg border border-white/10 p-4 text-sm text-slate-400">No pending requests. Share the public Teacher Login → Request access link with legitimate staff.</p>:requests.map(q=><div key={q.id} className="rounded-xl border border-white/10 p-4">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-semibold">{q.name}</p><p className="text-sm text-slate-400">{q.email} · {q.subject}</p><p className="mt-1 text-xs text-slate-400">Requested classes: {(q.requested_classes||[]).join(', ')||'None'} · {new Date(q.created_at).toLocaleString()}</p>{q.message&&<p className="mt-2 text-sm text-slate-300">{q.message}</p>}</div><div className="flex gap-2"><button disabled={!!busy} type="button" className="btn btn-primary btn-sm" onClick={()=>review(q,true)}><CheckCircle size={14}/> Verify & approve</button><button disabled={!!busy} type="button" className="btn btn-ghost btn-sm" onClick={()=>review(q,false)}>Decline</button></div></div>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-semibold">{q.name}</p><p className="text-sm text-slate-400">{q.email} · {q.subject}</p><p className="mt-1 text-xs text-slate-400">Requested classes: {(q.requested_classes||[]).join(', ')||'None'} · {formatDateTime(q.created_at)}</p>{q.message&&<p className="mt-2 text-sm text-slate-300">{q.message}</p>}</div><div className="flex gap-2"><button disabled={!!busy} type="button" className="btn btn-primary btn-sm" onClick={()=>review(q,true)}><CheckCircle size={14}/> Verify & approve</button><button disabled={!!busy} type="button" className="btn btn-ghost btn-sm" onClick={()=>review(q,false)}>Decline</button></div></div>
    </div>)}
   </section>
   <div className="grid gap-6 lg:grid-cols-2">

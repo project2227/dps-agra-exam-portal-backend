@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { AlertTriangle, Ban, Camera, Eye, KeyRound, Loader2, LogIn, MonitorX, RefreshCw, ShieldCheck, Users } from 'lucide-react'
 import Navbar from '../components/layout/Navbar'
 import Footer from '../components/layout/Footer'
@@ -9,8 +9,8 @@ import { Field } from '../components/common/Field'
 import { EmptyState, ErrorNote, Spinner } from '../components/common/Feedback'
 import api from '../services/api'
 import { getDeviceMetadata } from '../services/proctoring'
-import { setStudentSession } from '../services/session'
-import { CLASSES, DEMO_MODE, SECTIONS } from '../config'
+import { setStudentSession, getStudentSession, clearStudentSession } from '../services/session'
+import { API_BASE_URL, CLASSES, DEMO_MODE, SECTIONS } from '../config'
 import { DEMO_PASSCODE } from '../services/mockData'
 import { formatDateTime } from '../utils/format'
 
@@ -24,6 +24,9 @@ const RULES = [
 
 export default function StudentJoinPage() {
   const navigate = useNavigate()
+  const [search] = useSearchParams()
+  const examFromLink=search.get('exam')
+  const appliedLink=useRef(false)
   const [exams, setExams] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -34,6 +37,7 @@ export default function StudentJoinPage() {
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [serverError, setServerError] = useState('')
+  const [sessionNotice, setSessionNotice] = useState('')
 
   const load = () => {
     setLoading(true); setLoadError('')
@@ -43,13 +47,32 @@ export default function StudentJoinPage() {
       .finally(() => setLoading(false))
   }
   useEffect(load, [])
+  // Local tokens can outlive a deleted/reset exam on this device. Never treat
+  // a saved token as proof that the exam password still works elsewhere.
+  useEffect(()=>{
+    if(DEMO_MODE)return;
+    const current=getStudentSession();
+    if(!current?.token)return;
+    const controller=new AbortController();
+    fetch(`${API_BASE_URL}/api/student/session`,{
+      headers:{Authorization:`Bearer ${current.token}`},signal:controller.signal
+    }).then(response=>{
+      if(response.status===401||response.status===403){
+        clearStudentSession();
+        setSessionNotice('A previously saved exam session expired or was reset. Select a current exam and use its new password.')
+      }
+    }).catch(()=>{});
+    return ()=>controller.abort();
+  },[])
 
   const live = useMemo(() => exams.filter((e) => e.status === 'live' && (!form.class || e.class === form.class)), [exams, form.class])
   const upcoming = useMemo(() => exams.filter((e) => e.status === 'upcoming' && (!form.class || e.class === form.class)), [exams, form.class])
   const selected = exams.find((e) => e.id === examId)
 
   const set = (k) => (e) => {
-    const v = e.target.value
+    const v = k==='passcode'
+      ? e.target.value.normalize('NFKC').replace(/[‐‑‒–—−]/g,'-').replace(/\s+/g,'').toUpperCase()
+      : e.target.value
     setForm((f) => ({ ...f, [k]: v }))
     setErrors((x) => ({ ...x, [k]: '' }))
   }
@@ -57,8 +80,14 @@ export default function StudentJoinPage() {
   const selectExam = (exam) => {
     setExamId(exam.id)
     setErrors((x) => ({ ...x, examId: '' }))
-    setForm((f) => ({ ...f, class: exam.class, section: exam.section !== 'All' ? exam.section : f.section }))
+    setForm((f) => ({ ...f, passcode: exam.id===examId ? f.passcode : '', class: exam.class, section: exam.section !== 'All' ? exam.section : f.section }))
   }
+  useEffect(()=>{
+    if(appliedLink.current || !examFromLink)return;
+    const matched=exams.find(exam=>exam.id===examFromLink);
+    if(matched){appliedLink.current=true;selectExam(matched)}
+  },[exams,examFromLink]);
+
 
   const validate = () => {
     const e = {}
@@ -88,7 +117,7 @@ export default function StudentJoinPage() {
         rollNumber: form.rollNumber.trim(),
         class: form.class,
         section: form.section,
-        passcode: form.passcode.trim(),
+        passcode: form.passcode.trim().toUpperCase(),
         consent: true,
         mediaConsent,
         device: getDeviceMetadata(),
@@ -109,6 +138,7 @@ export default function StudentJoinPage() {
         <div className="mb-8 max-w-2xl animate-fade-up">
           <h1 className="font-display text-3xl font-semibold sm:text-4xl">Join an exam</h1>
           <p className="mt-2 text-slate-400">No account needed. Fill in your details, choose today&apos;s exam and enter the password your teacher announces in the lab.</p>
+          {sessionNotice&&<p role="status" className="mt-3 rounded-lg border border-dps-gold/40 bg-dps-gold/10 p-3 text-sm text-slate-200">{sessionNotice}</p>}
         </div>
 
         <form onSubmit={submit} noValidate className="grid gap-6 lg:grid-cols-[1.15fr,0.85fr]">
@@ -192,6 +222,10 @@ export default function StudentJoinPage() {
                   </div>
                 )}
               </Field>
+              {selected ? <p className="mt-3 text-sm text-slate-300" role="note">
+                Enter the new password for <strong className="text-white">{selected.title}</strong> (Class {selected.class}{selected.section!=='All'?`-${selected.section}`:''}).
+                Codes ignore letter case, spaces and hyphens. Every exam has a separate password.
+              </p> : <p className="mt-3 text-sm text-slate-400">Select the exact exam title first. An old session on one device does not make its password valid on another.</p>}
 
               <label className="mt-5 flex cursor-pointer gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-4 text-sm text-slate-200">
                 <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-dps-green" checked={consent} onChange={(e) => { setConsent(e.target.checked); setErrors((x) => ({ ...x, consent: '' })) }} aria-describedby="consent-err" />

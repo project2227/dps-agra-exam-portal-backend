@@ -1,7 +1,8 @@
 'use strict';
 const express=require('express');const crypto=require('crypto');const bcrypt=require('bcryptjs');const {z}=require('zod');
 const db=require('../config/db');const {teacher,ownExam}=require('../middleware/auth');
-const {asyncWrap,must}=require('../utils/http');const {audit}=require('../services/audit');const {assertAssignedClass}=require('../services/permissions');
+const {asyncWrap,must}=require('../utils/http');const {normalizeExamPasscode,isValidExamPasscode}=require('../utils/examPasscode');
+const {audit}=require('../services/audit');const {assertAssignedClass}=require('../services/permissions');
 const router=express.Router();router.use(teacher);
 const settingsSchema=z.object({requireWebcam:z.boolean().default(false),requireScreenShare:z.boolean().default(false),
  enableTabSwitchDetection:z.boolean().default(true),enableCopyPasteDetection:z.boolean().default(true),
@@ -47,8 +48,9 @@ router.post('/exams/:examId/generate-passcode',asyncWrap(async(req,res)=>{
  must(['draft','scheduled'].includes(exam.status),409,'Cannot rotate passcode after the exam becomes active.');
  const custom=req.body?.passcode;
  const passcode=custom===undefined?crypto.randomBytes(5).toString('hex').toUpperCase():
- z.string().min(8).max(64).regex(/^[A-Za-z0-9!@#_-]+$/).parse(custom);
- const passcodeHash=await bcrypt.hash(passcode,12);
+ z.string().min(8).max(64).regex(/^[A-Za-z0-9!@#_\\s-]+$/i).parse(custom).trim().toUpperCase();
+ must(isValidExamPasscode(passcode),400,'A passcode must contain 8 to 64 letters, numbers or permitted symbols, excluding separators.');
+ const passcodeHash=await bcrypt.hash(normalizeExamPasscode(passcode),12);
  await db.query('UPDATE exams SET passcode_hash=$1,updated_at=now() WHERE id=$2',[passcodeHash,exam.id]);
  await audit({teacherId:req.teacher.id,examId:exam.id,action:'exam:passcode_rotated'});
  res.json({passcode,notice:'Shown once. Distribute securely; it is not stored in plaintext.'});
