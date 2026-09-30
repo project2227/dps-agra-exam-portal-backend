@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root { color-scheme: dark; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body {
+    @apply bg-navy-950 text-slate-200 font-sans antialiased;
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  h1, h2, h3, h4 { @apply font-display text-white; letter-spacing: -0.015em; line-height: 1.15; }
+  ::selection { background: rgba(74, 222, 128, 0.35); color: #fff; }
+  :focus-visible { outline: 2px solid #facc15; outline-offset: 2px; border-radius: 8px; }
+  * { scrollbar-width: thin; scrollbar-color: #1b3352 transparent; }
+  *::-webkit-scrollbar { width: 10px; height: 10px; }
+  *::-webkit-scrollbar-thumb { background: #1b3352; border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
+  input[type='datetime-local']::-webkit-calendar-picker-indicator,
+  input[type='date']::-webkit-calendar-picker-indicator,
+  input[type='time']::-webkit-calendar-picker-indicator { filter: invert(0.8); cursor: pointer; }
+}
+
+@layer components {
+  /* Fixed techy backdrop: navy gradient, two brand glows, drifting grid */
+  .tech-bg {
+    position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+    background:
+      radial-gradient(55rem 38rem at 8% -12%, rgba(22, 163, 74, 0.16), transparent 60%),
+      radial-gradient(48rem 34rem at 108% 6%, rgba(249, 115, 22, 0.11), transparent 60%),
+      linear-gradient(180deg, #06111f 0%, #020617 70%);
+  }
+  .tech-bg::before {
+    content: ''; position: absolute; inset: -48px;
+    background-image:
+      linear-gradient(rgba(148, 163, 184, 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.07) 1px, transparent 1px);
+    background-size: 48px 48px;
+    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 25%, #000 35%, transparent 80%);
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 25%, #000 35%, transparent 80%);
+    animation: grid-drift 30s linear infinite;
+  }
+
+  .glass {
+    @apply rounded-2xl border border-white/10 bg-white/[0.035] backdrop-blur-xl;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 24px 48px -28px rgba(0, 0, 0, 0.85);
+  }
+  .glass-strong { @apply rounded-2xl border border-white/10 bg-navy-850/95 backdrop-blur-xl; }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
+      transition duration-200 select-none disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary { @apply bg-dps-green text-white shadow-glow hover:bg-green-500 hover:-translate-y-px active:translate-y-0; }
+  .btn-accent { @apply bg-dps-orange text-white shadow-glow-orange hover:bg-orange-500 hover:-translate-y-px active:translate-y-0; }
+  .btn-ghost { @apply border border-white/10 bg-white/[0.04] text-slate-100 hover:border-white/25 hover:bg-white/[0.08]; }
+  .btn-danger { @apply border border-red-400/30 bg-red-500/15 text-red-200 hover:bg-red-500/25; }
+  .btn-sm { @apply px-3 py-1.5 text-xs rounded-lg; }
+  .btn-lg { @apply px-6 py-3.5 text-base rounded-2xl; }
+
+  .input {
+    @apply w-full rounded-xl border border-white/10 bg-navy-950/60 px-3.5 py-2.5 text-sm text-white
+      placeholder:text-slate-500 transition focus:border-dps-neon/60 focus:outline-none focus:ring-2 focus:ring-dps-neon/20
+      disabled:opacity-60;
+  }
+  select.input option { background: #06111f; }
+  .label { @apply mb-1.5 block text-sm font-medium text-slate-300; }
+  .hint { @apply mt-1 text-xs text-slate-500; }
+  .error-text { @apply mt-1 text-xs font-medium text-red-300; }
+
+  .chip { @apply inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-xs font-medium text-slate-300; }
+  .kbd { @apply rounded-md border border-white/15 bg-white/5 px-1.5 py-0.5 font-mono text-[11px] text-slate-300; }
+  .section-title { @apply text-lg font-semibold text-white; }
+
+  /* Animated gradient border (green, gold, orange) */
+  .gradient-border { position: relative; isolation: isolate; }
+  .gradient-border::before {
+    content: ''; position: absolute; inset: 0; padding: 1px; border-radius: inherit; pointer-events: none; z-index: 1;
+    background: conic-gradient(from var(--angle), rgba(74, 222, 128, 0.75), rgba(250, 204, 21, 0.35), rgba(249, 115, 22, 0.7), rgba(22, 163, 74, 0.15), rgba(74, 222, 128, 0.75));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    animation: angle-spin 7s linear infinite;
+  }
+  .gradient-border-hover::before { opacity: 0; transition: opacity 0.3s; }
+  .gradient-border-hover:hover::before, .gradient-border-hover:focus-within::before { opacity: 1; }
+
+  .text-gradient {
+    background: linear-gradient(100deg, #4ade80 0%, #facc15 55%, #f97316 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+
+  /* Footer credit */
+  .credit { @apply inline-flex items-center gap-2 text-sm text-slate-400; }
+  .credit-name { @apply relative font-display font-semibold; }
+  .credit-name::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: -3px; height: 1px;
+    background: linear-gradient(90deg, #4ade80, #f97316); transform: scaleX(0.3); transform-origin: left; transition: transform 0.35s ease;
+  }
+  .credit:hover .credit-name::after { transform: scaleX(1); }
+
+  .table-base { @apply w-full text-left text-sm; }
+  .table-base th { @apply whitespace-nowrap border-b border-white/10 px-3 py-2.5 text-xs font-semibold text-slate-400; }
+  .table-base td { @apply border-b border-white/5 px-3 py-2.5 align-middle; }
+  .table-base tbody tr { @apply transition hover:bg-white/[0.03]; }
+
+  .no-select { user-select: none; -webkit-user-select: none; }
+}
+
+@media print {
+  .tech-bg, nav, aside, header, footer, .no-print { display: none !important; }
+  body { background: #fff !important; color: #000 !important; }
+  .glass { background: #fff !important; border-color: #ccc !important; box-shadow: none !important; }
+  /* Pages that print a report mark it with .print-area; everything else is hidden. */
+  body:has(.print-area) * { visibility: hidden; }
+  .print-area, .print-area * { visibility: visible; color: #000 !important; background: transparent !important; border-color: #bbb !important; }
+  .print-area { position: absolute; left: 0; top: 0; width: 100%; }
+  .print-only { display: block !important; }
+}
+.print-only { display: none; }
