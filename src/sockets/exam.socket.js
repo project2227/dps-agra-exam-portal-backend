@@ -217,7 +217,8 @@ function attachSockets(io){
    socket.emit('teacher:snapshotStatus',{sessionId,status:'stopped'});
   });
   socket.on('student:snapshotConsent',data=>guard(async()=>{
-   if(limited('snapshot-consent',500))return;
+   // Opt-out is immediate; only repeated opt-IN attempts are throttled.
+   if(data?.enabled===true && limited('snapshot-consent-enable',500))return;
    const s=await checkStudent();
    if(s.active_socket_id!==socket.id)return;
    const available=subscribers(s.id,s.exam_id);
