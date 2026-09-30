@@ -76,13 +76,10 @@ router.get('/student/exams/:examId/questions',student,asyncWrap(async(req,res)=>
  const q=await db.query('SELECT * FROM questions WHERE exam_id=$1 ORDER BY sort_order,id',[req.student.exam_id]);
  res.json({questions:q.rows.map(cleanQ),serverTime:new Date().toISOString(),endTime:req.student.end_time});
 }));
-// Let a student restore only their own autosaved answers after a browser refresh.
-// Session JWT middleware binds the request to an exact exam and session.
 router.get('/student/exams/:examId/answers',student,asyncWrap(async(req,res)=>{
  must(req.student.exam_id===req.params.examId,403,'Invalid exam session.');
  studentAllowed(req.student);
- const q=await db.query('SELECT question_id,answer_text,code,language,auto_saved_at FROM answers WHERE session_id=$1 AND exam_id=$2',
-   [req.student.id,req.student.exam_id]);
+ const q=await db.query('SELECT question_id,answer_text,code,language,auto_saved_at FROM answers WHERE session_id=$1 AND exam_id=$2',[req.student.id,req.student.exam_id]);
  res.json({answers:q.rows});
 }));
 const answerShape=z.object({questionId:z.string().uuid(),answerText:z.string().max(50000).nullable().optional(),

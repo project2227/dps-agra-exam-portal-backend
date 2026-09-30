@@ -10,6 +10,17 @@ import TeacherLogin from './pages/TeacherLogin'
 import NotFound from './pages/NotFound'
 import { ROUTER_MODE } from './config'
 
+const LearningHome = lazy(() => import('./pages/LearningHome'))
+const SelfStudyCourse = lazy(() => import('./pages/SelfStudyCourse'))
+const StudentProfile = lazy(() => import('./pages/StudentProfile'))
+const PracticeGames = lazy(() => import('./pages/PracticeGames'))
+const MockExam = lazy(() => import('./pages/MockExam'))
+const TeacherCourses = lazy(() => import('./pages/TeacherCourses'))
+const TeacherCommunity = lazy(() => import('./pages/TeacherCommunity'))
+const ManageTeachers = lazy(() => import('./pages/ManageTeachers'))
+const GradeAnalysis = lazy(() => import('./pages/GradeAnalysis'))
+const TeacherAccount = lazy(() => import('./pages/TeacherAccount'))
+const AboutPortal = lazy(() => import('./pages/AboutPortal'))
 const StudentDashboard = lazy(() => import('./pages/StudentDashboard'))
 const PracticeIDE = lazy(() => import('./pages/PracticeIDE'))
 const ExamRoom = lazy(() => import('./pages/ExamRoom'))
@@ -37,6 +48,14 @@ export default function App() {
             <Routes>
               <Route path="/" element={<LandingPage />} />
 
+              <Route path="/learn" element={<LearningHome />} />
+              <Route path="/learn/profile" element={<StudentProfile />} />
+              <Route path="/learn/games" element={<PracticeGames />} />
+              <Route path="/learn/mock-exam" element={<MockExam />} />
+              <Route path="/learn/course/:lang" element={<SelfStudyCourse />} />
+              <Route path="/learn/teacher-course/:id" element={<SelfStudyCourse teacherCourse />} />
+              <Route path="/about" element={<AboutPortal />} />
+
               {/* Student */}
               <Route path="/student" element={<Navigate to="/student/join" replace />} />
               <Route path="/student/join" element={<StudentJoinPage />} />
@@ -56,6 +75,11 @@ export default function App() {
                 <Route path="submissions" element={<Submissions />} />
                 <Route path="handouts" element={<Handouts />} />
                 <Route path="exam-dates" element={<ExamDates />} />
+                <Route path="courses" element={<TeacherCourses />} />
+                <Route path="community" element={<TeacherCommunity />} />
+                <Route path="grades" element={<GradeAnalysis />} />
+                <Route path="manage-teachers" element={<ManageTeachers />} />
+                <Route path="account" element={<TeacherAccount />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />

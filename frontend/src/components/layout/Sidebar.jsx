@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
-import { CalendarDays, ClipboardCheck, FilePlus2, FileText, LayoutDashboard, PanelLeftClose, PanelLeftOpen, School, X } from 'lucide-react'
+import { CalendarDays, ClipboardCheck, FilePlus2, FileText, LayoutDashboard, PanelLeftClose, PanelLeftOpen, School, X, BookOpen, MessageCircle, BarChart3, UserPlus, KeyRound } from 'lucide-react'
 import { cx } from '../../utils/format'
+import { getTeacherAuth } from '../../services/session'
 
 export const TEACHER_NAV = [
   { to: '/teacher/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -9,6 +10,11 @@ export const TEACHER_NAV = [
   { to: '/teacher/submissions', label: 'Submissions', icon: ClipboardCheck },
   { to: '/teacher/handouts', label: 'Handouts', icon: FileText },
   { to: '/teacher/exam-dates', label: 'Exam dates', icon: CalendarDays },
+  { to: '/teacher/courses', label: 'Course studio', icon: BookOpen },
+  { to: '/teacher/community', label: 'Staff discussion', icon: MessageCircle },
+  { to: '/teacher/grades', label: 'Grade analysis', icon: BarChart3 },
+  { to: '/teacher/manage-teachers', label: 'Manage teachers', icon: UserPlus, adminOnly: true },
+  { to: '/teacher/account', label: 'My account', icon: KeyRound },
 ]
 
 export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile, liveExams = [] }) {
@@ -19,7 +25,7 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
           <button type="button" className="btn btn-ghost btn-sm" onClick={onCloseMobile} aria-label="Close menu"><X size={16} /></button>
         </div>
       )}
-      {TEACHER_NAV.map(({ to, label, icon: Icon }) => (
+      {TEACHER_NAV.filter(x => !x.adminOnly || getTeacherAuth()?.teacher?.role==='admin').map(({ to, label, icon: Icon }) => (
         <NavLink key={to} to={to} onClick={isMobile ? onCloseMobile : undefined} title={collapsed && !isMobile ? label : undefined}
           className={({ isActive }) => cx(
             'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition',

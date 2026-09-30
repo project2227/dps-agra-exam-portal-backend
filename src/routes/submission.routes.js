@@ -43,4 +43,23 @@ router.get('/exams/:examId/export.csv',asyncWrap(async(req,res)=>{
  res.set('Content-Type','text/csv; charset=utf-8');res.set('Content-Disposition',`attachment; filename="exam-${exam.id}.csv"`);
  res.send('\ufeff'+csv);
 }));
+// Aggregates are advisory until a teacher approves final marks.
+router.get('/exams/:examId/grade-summary',asyncWrap(async(req,res)=>{
+ const exam=await ownExam(req.params.examId,req.teacher.id);
+ const total=(await db.query('SELECT coalesce(sum(marks),0)::numeric AS max_marks FROM questions WHERE exam_id=$1',[exam.id])).rows[0].max_marks;
+ const q=await db.query(`SELECT s.id,s.student_name,s.roll_number,s.class_name,s.section,s.status,s.submitted_at,
+ coalesce(sum(a.marks_awarded),0)::numeric AS marks,
+ count(a.id) FILTER(WHERE a.marks_awarded IS NULL AND a.submitted_at IS NOT NULL)::int AS pending_grading,
+ s.flags_count
+ FROM exam_sessions s LEFT JOIN answers a ON a.session_id=s.id WHERE s.exam_id=$1
+ GROUP BY s.id ORDER BY s.roll_number LIMIT 2000`,[exam.id]);
+ const rows=q.rows.map(r=>({sessionId:r.id,name:r.student_name,rollNumber:r.roll_number,className:r.class_name,section:r.section,
+ status:r.status,marks:Number(r.marks),maxMarks:Number(total),percentage:Number(total)>0?Math.round(Number(r.marks)/Number(total)*100):null,
+ gradingPending:r.pending_grading>0,reviewRequired:r.flags_count>0,submittedAt:r.submitted_at}));
+ const scored=rows.filter(r=>r.status==='submitted'&&!r.gradingPending&&r.percentage!==null);
+ const avg=scored.length?Math.round(scored.reduce((n,r)=>n+r.percentage,0)/scored.length):null;
+ res.json({exam:{id:exam.id,title:exam.title,subject:exam.subject,className:exam.class_name,section:exam.section},
+ summary:{students:rows.length,graded:scored.length,pending:rows.filter(r=>r.gradingPending||r.status!=='submitted').length,averagePercentage:avg},students:rows,
+ notice:'This is an unofficial draft report. All marks and integrity flags require authorized teacher review.'});
+}));
 module.exports=router;

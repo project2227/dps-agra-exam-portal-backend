@@ -50,6 +50,12 @@ function attachSockets(io){
    WHERE s.id=$1 AND e.teacher_id=$2`,[sessionId,ident.id]);
    if(!q.rowCount)throw Object.assign(new Error('Student is not in your exam.'),{status:403});return q.rows[0];
   };
+  socket.on('teacher:communityJoin',()=>guard(async()=>{
+   if(ident.kind!=='teacher')return;
+   const q=await db.query('SELECT active FROM teachers WHERE id=$1 AND active=true',[ident.id]);
+   if(!q.rowCount)return;
+   socket.join('teachers:community');socket.emit('teachers:communityJoined',{ok:true});
+  }));
   socket.on('student:joinExamRoom',()=>guard(async()=>{
    const s=await checkStudent();socket.join(`exam:${s.exam_id}:students`);socket.join(studentRoom(s.id));
    await db.query(`UPDATE exam_sessions SET active_socket_id=$1,status=CASE WHEN status='disconnected' THEN 'active' ELSE status END
@@ -93,9 +99,6 @@ function attachSockets(io){
    const examId=String(data?.examId||'');await checkTeacher(examId);
    socket.join(teacherRoom(examId));socket.emit('teacher:monitorJoined',{examId});
   }));
-  // Teacher can ask for a view only when the specific student has already
-  // consented. The request NEVER calls browser media APIs or starts capture.
-  // A consenting student still needs an active, explicitly opened stream.
   socket.on('teacher:requestMediaPreview',data=>guard(async()=>{
    if(limited('media-preview',1000))return;
    const mediaType=String(data?.mediaType||'');

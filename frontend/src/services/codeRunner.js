@@ -1,4 +1,5 @@
 import api from './api'
+import { runInBrowser } from './browserRunner'
 
 const normalizeRun = (d = {}) => ({
   stdout: d.stdout ?? d.output ?? '',
@@ -10,7 +11,9 @@ const normalizeRun = (d = {}) => ({
 
 /** Run code on the backend sandbox (Python, Java, C, C++, SQL). */
 export async function runCode({ language, code, stdin, examId, questionId }) {
-  const res = await api.runCode({ language, code, stdin, examId, questionId })
+  const res = !examId && (language === 'python' || language === 'sql')
+    ? await runInBrowser({ language, code, stdin })
+    : await api.runCode({ language, code, stdin, examId, questionId })
   return normalizeRun(res)
 }
 

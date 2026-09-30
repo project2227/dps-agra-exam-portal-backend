@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+try { document.documentElement.dataset.theme = localStorage.getItem('dps.ui.theme') || 'dark' } catch { document.documentElement.dataset.theme = 'dark' }
 import './styles/globals.css'
 import './styles/animations.css'
 

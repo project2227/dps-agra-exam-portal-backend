@@ -4,6 +4,7 @@ import { FlaskConical, LogOut, Menu } from 'lucide-react'
 import Sidebar from './Sidebar'
 import Footer from './Footer'
 import DPSLogoAnimated from '../common/DPSLogoAnimated'
+import ThemeToggle from '../common/ThemeToggle'
 import api from '../../services/api'
 import { clearTeacherAuth, getTeacherAuth } from '../../services/session'
 import { disconnectSocket } from '../../services/socket'
@@ -46,6 +47,7 @@ export default function TeacherLayout() {
             </span>
           </Link>
           <div className="ml-auto flex items-center gap-3">
+            <ThemeToggle />
             {DEMO_MODE && <span className="chip hidden border-dps-gold/30 text-dps-gold sm:inline-flex"><FlaskConical size={12} aria-hidden="true" /> Demo data</span>}
             <div className="hidden text-right leading-tight md:block">
               <p className="text-sm font-medium text-white">{auth?.teacher?.name || 'Teacher'}</p>

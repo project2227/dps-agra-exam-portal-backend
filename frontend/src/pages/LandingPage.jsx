@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import {
-  BadgeCheck, CalendarDays, Camera, CheckCircle2, Code2, Eye, FileText, GraduationCap, KeyRound, Laptop, LayoutGrid,
+  BadgeCheck, CalendarDays, Camera, CheckCircle2, Code2, Eye, FileText, GraduationCap, KeyRound, Laptop, LayoutGrid, BookOpen, Gamepad2,
   LogIn, MonitorPlay, ShieldCheck, Sparkles, TerminalSquare, UserRound,
 } from 'lucide-react'
 import Navbar from '../components/layout/Navbar'
@@ -11,10 +11,10 @@ import { SCHOOL } from '../config'
 
 const FEATURES = [
   { icon: LayoutGrid, title: 'Class-wise Computer Exams', text: 'Quizzes and practicals for Classes VI to XII, targeted to a whole class or a single section, with one computer teacher per class.' },
-  { icon: TerminalSquare, title: 'Built-in Programming IDEs', text: 'A real code editor in the browser for Python, Java, C, C++, SQL and HTML/CSS/JS, plus block coding for junior classes.' },
+  { icon: TerminalSquare, title: 'Built-in Programming IDEs', text: 'A browser code editor for seven languages. Python and SQL execute free on-device; the web preview and blocks work without an exam token. Other compilers require an isolated runner.' },
   { icon: CalendarDays, title: 'Handouts & Exam Dates', text: 'Teachers share notes, slides and practical file formats class-wise. Students always see what is coming up next.' },
   { icon: MonitorPlay, title: 'Live Proctored Exams', text: 'One screen shows every student: progress, live typing, webcam and screen previews, and integrity flags as they happen.' },
-  { icon: BadgeCheck, title: 'Auto Program Checking', text: 'Programs run against visible samples and hidden test cases. Teachers review results and add remarks before finalising.' },
+  { icon: BadgeCheck, title: 'Auto Program Checking', text: 'Optional isolated program checking for teacher exams. Requires an independently configured runner; no unsafe execution on the main backend.' },
 ]
 
 const STEPS = [
@@ -89,8 +89,9 @@ export default function LandingPage() {
               <Link to="/teacher/login" className="btn btn-ghost btn-lg"><LogIn size={18} aria-hidden="true" /> Teacher Login</Link>
             </div>
             <p className="mt-5 text-sm text-slate-500">
-              Want to practise first? Open the <Link to="/student/practice" className="text-dps-neon underline-offset-4 hover:underline">practice IDE</Link>. No sign-in needed.
+              Try <Link to="/learn" className="text-dps-neon hover:underline">7 free coding courses & PDFs</Link>, <Link to="/learn/games" className="text-dps-neon hover:underline">mini games</Link> or the <Link to="/learn/mock-exam" className="text-dps-neon hover:underline">Class IX mock exam</Link>. No school login needed. Want to practise first? Open the <Link to="/student/practice" className="text-dps-neon underline-offset-4 hover:underline">practice IDE</Link>. No sign-in needed.
             </p>
+            <p className="mt-4 text-xs text-slate-500">Independent student prototype. Not an official DPS Agra platform. <a href="https://dps.ac.in/" target="_blank" rel="noopener noreferrer" className="text-dps-neon hover:underline">Go to the official school website ↗</a></p>
           </div>
           <div className="flex flex-col items-center gap-8">
             <DPSLogoAnimated size={300} />
@@ -165,8 +166,8 @@ export default function LandingPage() {
             <div>
               <h2 id="about-title" className="font-display text-2xl font-semibold">About this portal</h2>
               <p className="mt-2 max-w-3xl text-slate-400">
-                The {SCHOOL.portal} was designed and developed by <span className="credit-name text-gradient">Aryan Agarwal</span> for
-                the {SCHOOL.department} at {SCHOOL.name}, to make computer practicals, quizzes and lab practice simpler for teachers and students.
+                This independent student prototype was designed and developed by <span className="credit-name text-gradient">Aryan Agarwal</span> for
+                exploring computer science in Class IX. It is not an officially approved service of {SCHOOL.name}.
               </p>
               <p className="mt-3 flex items-center gap-2 text-sm text-slate-500"><FileText size={14} aria-hidden="true" /> {SCHOOL.motto}</p>
             </div>

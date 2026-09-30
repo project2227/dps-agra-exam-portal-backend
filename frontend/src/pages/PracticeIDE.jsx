@@ -41,7 +41,7 @@ export default function PracticeIDE() {
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="font-display text-3xl font-semibold">Practice IDE</h1>
-            <p className="mt-1 text-slate-400">Write and run code before the exam. Your work is saved on this computer only.</p>
+            <p className="mt-1 text-slate-400">Free browser-based Python, SQL, HTML & block practice. Your drafts stay on this device. No exam login needed.</p>
           </div>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAnswer(null)}><RotateCcw size={14} aria-hidden="true" /> Reset to starter code</button>
         </div>
@@ -74,7 +74,7 @@ export default function PracticeIDE() {
             <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-300 marker:text-slate-500">
               {TASKS[current].map((t) => <li key={t}>{t}</li>)}
             </ol>
-            <p className="mt-4 text-xs text-slate-500">{LANGUAGES[current].long}. {current === 'web' ? 'The preview updates when you press Refresh preview.' : current === 'blocks' ? 'Drag blocks and press Run on the stage.' : 'Type input in the Input tab, then press Run code.'}</p>
+            <p className="mt-4 text-xs text-slate-500">{LANGUAGES[current].long}. {current === 'web' ? 'The preview updates when you press Refresh preview.' : current === 'blocks' ? 'Drag blocks and press Run on the stage.' : ['python','sql'].includes(current) ? 'Run code free in a disposable browser sandbox. First run downloads the runtime.' : 'Java/C/C++ need a configured isolated compiler; write code and use the learning challenges in the meantime.'}</p>
           </aside>
         </div>
       </main>

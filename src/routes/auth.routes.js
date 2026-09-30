@@ -26,4 +26,14 @@ router.post('/teacher/register',teacher,admin,asyncWrap(async(req,res)=>{
  await audit({teacherId:req.teacher.id,action:'teacher:create',details:{teacherId:q.rows[0].id}});
  res.status(201).json({teacher:q.rows[0]});
 }));
+router.post('/teacher/change-password',teacher,limiter,asyncWrap(async(req,res)=>{
+ const d=z.object({currentPassword:z.string().min(1).max(200),newPassword:z.string().min(12).max(128)}).parse(req.body);
+ const q=await db.query('SELECT password_hash FROM teachers WHERE id=$1 AND active=true',[req.teacher.id]);
+ must(q.rowCount && await bcrypt.compare(d.currentPassword,q.rows[0].password_hash),403,'Current password is incorrect.');
+ must(d.newPassword!==d.currentPassword,400,'Choose a different password.');
+ const hash=await bcrypt.hash(d.newPassword,12);
+ await db.query('UPDATE teachers SET password_hash=$1,updated_at=now() WHERE id=$2',[hash,req.teacher.id]);
+ await audit({teacherId:req.teacher.id,action:'teacher:password-changed'});
+ res.json({changed:true,message:'Password updated. Sign out other sessions on shared devices.'});
+}));
 module.exports=router;

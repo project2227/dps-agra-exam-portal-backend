@@ -1,4 +1,5 @@
 import { Code2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { LOGO_SRC, SCHOOL } from '../../config'
 
 export default function Footer({ compact = false }) {
@@ -9,7 +10,7 @@ export default function Footer({ compact = false }) {
           <img src={LOGO_SRC} alt="" className="h-9 w-9 object-contain" />
           <div>
             <p className="font-display text-sm font-semibold text-white">{SCHOOL.portal}</p>
-            <p className="text-xs text-slate-500">{SCHOOL.name}, {SCHOOL.department}</p>
+            <p className="text-xs text-slate-500">Independent student-built demonstration • Not an official school portal</p>
           </div>
         </div>
         <p className="credit">
@@ -18,7 +19,7 @@ export default function Footer({ compact = false }) {
           </span>
           Made by <span className="credit-name text-gradient">Aryan Agarwal</span>
         </p>
-        <p className="text-xs text-slate-500">&copy; {new Date().getFullYear()} {SCHOOL.name}</p>
+        <p className="text-xs text-slate-500"><a className="text-dps-neon hover:underline" target="_blank" rel="noopener noreferrer" href="https://dps.ac.in/">Official DPS Agra ↗</a> · <Link to="/about" className="hover:underline">About & privacy</Link> · Independent project © {new Date().getFullYear()}</p>
       </div>
     </footer>
   )

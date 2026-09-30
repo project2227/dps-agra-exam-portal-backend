@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { FlaskConical, Menu, X } from 'lucide-react'
 import DPSLogoAnimated from '../common/DPSLogoAnimated'
+import ThemeToggle from '../common/ThemeToggle'
 import { DEMO_MODE, SCHOOL } from '../../config'
 import { cx } from '../../utils/format'
 
@@ -9,6 +10,10 @@ const LINKS = [
   { to: '/', label: 'Home', end: true },
   { to: '/student/join', label: 'Join exam' },
   { to: '/student/practice', label: 'Practice IDE' },
+  { to: '/learn', label: 'Courses & PDFs' },
+  { to: '/learn/games', label: 'Mini games' },
+  { to: '/learn/mock-exam', label: 'Mock exam' },
+  { to: '/learn/profile', label: 'Profile' },
   { to: '/teacher/login', label: 'Teachers' },
 ]
 
@@ -24,7 +29,7 @@ export default function Navbar() {
             <span className="block text-xs text-slate-400">Exam Portal</span>
           </span>
         </Link>
-        <div className="hidden items-center gap-1 md:flex">
+        <div className="hidden items-center gap-0.5 lg:flex">
           {LINKS.map((l) => (
             <NavLink key={l.to} to={l.to} end={l.end}
               className={({ isActive }) => cx('rounded-lg px-3 py-2 text-sm transition', isActive ? 'bg-white/[0.07] text-white' : 'text-slate-300 hover:text-white')}>
@@ -37,12 +42,13 @@ export default function Navbar() {
             </span>
           )}
         </div>
-        <button type="button" className="btn btn-ghost btn-sm md:hidden" onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Toggle menu">
+        <div className="ml-auto flex items-center gap-2 lg:ml-2"><ThemeToggle />
+        <button type="button" className="btn btn-ghost btn-sm lg:hidden" onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Toggle menu">
           {open ? <X size={18} /> : <Menu size={18} />}
-        </button>
+        </button></div>
       </div>
       {open && (
-        <div className="border-t border-white/[0.06] px-4 pb-4 md:hidden">
+        <div className="border-t border-white/[0.06] px-4 pb-4 lg:hidden">
           {LINKS.map((l) => (
             <NavLink key={l.to} to={l.to} end={l.end} onClick={() => setOpen(false)}
               className={({ isActive }) => cx('block rounded-lg px-3 py-2.5 text-sm', isActive ? 'bg-white/[0.07] text-white' : 'text-slate-300')}>

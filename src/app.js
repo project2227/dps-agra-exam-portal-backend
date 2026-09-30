@@ -8,10 +8,12 @@ app.use(cors({origin(origin,cb){if(!origin||origins.includes(origin))return cb(n
 app.use(express.json({limit:'96kb'}));
 app.use('/api',rateLimit({windowMs:60000,limit:4000,standardHeaders:'draft-7',legacyHeaders:false}));
 app.get('/api/health',async(req,res)=>{
- try {await db.query('SELECT 1');res.json({ok:true,service:'dps-agra-exam-portal',database:'connected',version:'1.0.0'});}
+ try {await db.query('SELECT 1');res.json({ok:true,service:'dps-agra-exam-portal',database:'connected',version:'2.0.0-learning-staging'});}
  catch {res.status(503).json({ok:false,service:'dps-agra-exam-portal',database:'unavailable'});}
 });
 app.use('/api/auth',require('./routes/auth.routes'));
+app.use('/api/learning',require('./routes/learning.routes'));
+
 app.use('/api/teacher',require('./routes/teacher.routes'));
 app.use('/api/teacher',require('./routes/exam.routes'));
 app.use('/api',require('./routes/student.routes'));
