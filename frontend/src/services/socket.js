@@ -37,11 +37,15 @@ export const EVENTS = {
 
 let socket = null
 let socketRole = null
+let socketToken = null
 
 export function getSocket({ role, token }) {
-  if (socket && socketRole === role) return socket
+  // Rejoining another exam or signing in again changes the token. Reusing a
+  // socket authenticated with the old session leaves both media feeds blank.
+  if (socket && socketRole === role && socketToken === token) return socket
   disconnectSocket()
   socketRole = role
+  socketToken = token
   socket = DEMO_MODE
     ? createDemoSocket(role)
     : io(SOCKET_URL, {
@@ -59,6 +63,7 @@ export function disconnectSocket() {
   socket?.disconnect()
   socket = null
   socketRole = null
+  socketToken = null
 }
 
 /* ---------------- demo socket: in-memory event emitter ---------------- */
