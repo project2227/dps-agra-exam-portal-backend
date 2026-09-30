@@ -134,6 +134,7 @@ export default function CodeEditorPanel({
       const payload = isWeb || isBlocks ? JSON.stringify(code) : code
       const r = await submitCode({ language, code: payload, examId: runContext.examId, questionId: runContext.questionId, question: runContext.question })
       update({ lastResult: { ...(answer?.lastResult || {}), [language]: r }, submittedAt: new Date().toISOString() })
+      if (r.notice) setLines((l) => [...l, { type: 'info', text: r.notice }])
     } catch (e) {
       setLines((l) => [...l, { type: 'stderr', text: e.message }])
       setTab('output')

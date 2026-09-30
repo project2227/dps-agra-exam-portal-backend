@@ -11,8 +11,13 @@ const normalizeRun = (d = {}) => ({
 
 /** Run code on the backend sandbox (Python, Java, C, C++, SQL). */
 export async function runCode({ language, code, stdin, examId, questionId }) {
-  const res = !examId && (language === 'python' || language === 'sql')
-    ? await runInBrowser({ language, code, stdin })
+  // Python is executed in a disposable browser Worker even during exams;
+  // this is a local output preview, NOT secure exam grading. Submitted code
+  // is stored and assessed separately by the backend or authorized teacher.
+  const browserPreview = language === 'python' || (!examId && language === 'sql')
+  const res = browserPreview
+    ? { ...await runInBrowser({ language, code, stdin }),
+        note: examId ? 'Local Python preview only. Submit code to save it for official grading or teacher review.' : 'Ran locally in your browser.' }
     : await api.runCode({ language, code, stdin, examId, questionId })
   return normalizeRun(res)
 }
@@ -22,10 +27,14 @@ export async function submitCode({ language, code, examId, questionId, question 
   const res = await api.submitCode({ language, code, examId, questionId, question: question ? { visibleTests: question.visibleTests, hiddenTestCount: question.hiddenTestCount } : undefined })
   const results = res.results || res.testResults || []
   return {
+    mode: res.mode,
+    manualReview: res.manualReview === true || res.mode === 'manual',
+    notice: res.notice,
     results,
-    passed: res.passed ?? results.filter((r) => r.passed).length,
-    total: res.total ?? results.length,
+    passed: res.passed ?? (res.manualReview ? null : results.filter((r) => r.passed).length),
+    total: res.total ?? (res.manualReview ? null : results.length),
     score: res.score,
+    marksAwarded: res.marksAwarded ?? null,
   }
 }
 

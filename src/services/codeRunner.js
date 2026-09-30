@@ -47,4 +47,5 @@ async function runTests({code,language,tests,hidden=false}){
  }
  return {passed:results.filter(x=>x.passed).length,total:results.length,results};
 }
-module.exports={LANGUAGES,runOne,runTests};
+const isConfigured=()=>Boolean(env.JUDGE0_API_URL);
+module.exports={LANGUAGES,runOne,runTests,isConfigured};

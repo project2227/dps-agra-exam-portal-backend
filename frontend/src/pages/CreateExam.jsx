@@ -26,7 +26,7 @@ export default function CreateExam() {
     title: '', class: 'IX', section: 'All', subject: 'Computers', type: 'Practical',
     startsAt: times.start, endsAt: times.end, durationMin: 45, passcode: generatePasscode(), instructions: '',
   })
-  const [settings, setSettings] = useState({ requireWebcam: false, requireScreen: false, tabDetection: true, copyPasteRestriction: true, codeExecution: false })
+  const [settings, setSettings] = useState({ requireWebcam: false, requireScreen: false, tabDetection: true, copyPasteRestriction: true, codeExecution: true })
   const [questions, setQuestions] = useState(() => [newQuestion('mcq', 'IX'), newQuestion('code', 'IX')])
   const [errors, setErrors] = useState({})
   const [qErrors, setQErrors] = useState({})
@@ -178,7 +178,7 @@ export default function CreateExam() {
             <Toggle icon={MonitorUp} label="Require screen share" description="Entire screen, Chrome or Edge" checked={settings.requireScreen} onChange={setSetting('requireScreen')} />
             <Toggle icon={ShieldCheck} label="Tab-switch detection" description="Flags tab, window and fullscreen changes" checked={settings.tabDetection} onChange={setSetting('tabDetection')} />
             <Toggle icon={ClipboardX} label="Copy-paste restriction" description="Blocks and records copy, cut and paste" checked={settings.copyPasteRestriction} onChange={setSetting('copyPasteRestriction')} />
-            <Toggle icon={Code2} label="Code execution and checking" description="Run code and auto-check test cases" checked={settings.codeExecution} onChange={setSetting('codeExecution')} />
+            <Toggle icon={Code2} label="Code execution and checking" description="Free browser Python preview; optional isolated auto-grading or secure teacher review" checked={settings.codeExecution} onChange={setSetting('codeExecution')} />
           </GlassCard>
 
           <GlassCard className="p-5">
