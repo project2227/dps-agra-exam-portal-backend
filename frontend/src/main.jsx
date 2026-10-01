@@ -7,6 +7,7 @@ try { document.documentElement.dataset.theme = localStorage.getItem('dps.ui.them
 import './styles/globals.css'
 import './styles/animations.css'
 import './styles/learning-remake.css'
+import './styles/exam-portal.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

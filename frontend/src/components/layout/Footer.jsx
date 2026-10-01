@@ -25,4 +25,4 @@ export function LegacyFooter({ compact = false }) {
   )
 }
 
-export { default } from './LearningFooter'
+export { default } from './ExamFooter'

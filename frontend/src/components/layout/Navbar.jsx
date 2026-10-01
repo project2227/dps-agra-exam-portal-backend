@@ -65,4 +65,4 @@ export function LegacyNavbar() {
 }
 
 // Preserve the original navigation implementation alongside the new public shell.
-export { default } from './LearningNavbar'
+export { default } from './ExamNavbar'

@@ -8,7 +8,7 @@ import { ToastProvider } from './components/common/Toast'
 import { StudentGuard, TeacherGuard } from './components/common/Guards'
 import { Spinner } from './components/common/Feedback'
 import TeacherLayout from './components/layout/TeacherLayout'
-import LandingPage from './pages/LearningLanding'
+import LandingPage from './pages/ExamLanding'
 import StudentJoinPage from './pages/StudentJoinPage'
 import TeacherLogin from './pages/TeacherLogin'
 import NotFound from './pages/NotFound'
@@ -27,7 +27,7 @@ const ManageTeachers = lazy(() => import('./pages/ManageTeachers'))
 const TeacherAccessRequest = lazy(() => import('./pages/TeacherAccessRequest'))
 const GradeAnalysis = lazy(() => import('./pages/GradeAnalysis'))
 const TeacherAccount = lazy(() => import('./pages/TeacherAccount'))
-const AboutPortal = lazy(() => import('./pages/AboutPortal'))
+const AboutPortal = lazy(() => import('./pages/ExamAboutPortal'))
 const StudentDashboard = lazy(() => import('./pages/StudentDashboard'))
 const PracticeIDE = lazy(() => import('./pages/PracticeIDE'))
 const ExamRoom = lazy(() => import('./pages/ExamRoom'))
