@@ -191,11 +191,11 @@ export default function LandingPage() {
             <div className="flex items-start gap-4">
               <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-amber-400/25 bg-amber-400/10 text-amber-300"><Games size={24} aria-hidden="true" /></span>
               <div>
-                <h2 className="font-display text-lg font-bold text-white">Mission break? Have some fun.</h2>
-                <p className="mt-1 max-w-xl text-sm text-slate-300">Need a breather after coding? Explore a game link suggested by the site's creator. The destination is an independent, unverified external website—not affiliated with DPS Lab.</p>
+                <h2 className="font-display text-lg font-bold text-white">Take a brain break in the Logic Arcade.</h2>
+                <p className="mt-1 max-w-xl text-sm text-slate-300">Take a break without leaving DPS Lab. Explore interactive logic circuits, memory challenges and code-building games designed to sharpen your skills.</p>
               </div>
             </div>
-            <a href="https://amongus.free.page/" target="_blank" rel="noopener noreferrer nofollow" referrerPolicy="no-referrer" className="btn btn-ghost shrink-0 border-amber-400/40 text-amber-100" aria-label="Fun break: open external gaming site in a new tab">Fun break <ArrowUpRight size={17} aria-hidden="true" /></a>
+            <Link to="/learn/arcade" className="btn btn-ghost shrink-0 border-amber-400/40 text-amber-100" aria-label="Open the Logic Arcade on DPS Lab">Play Logic Arcade <ArrowUpRight size={17} aria-hidden="true" /></Link>
           </div>
         </section>
 
