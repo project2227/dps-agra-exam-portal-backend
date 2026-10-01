@@ -1,0 +1,25 @@
+name: Download Frontend Source
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/frontend-source-export.yml]
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create source-only ZIP
+        run: |
+          zip -q -r dpslab-frontend-source.zip frontend -x 'frontend/node_modules/*' 'frontend/dist/*' 'frontend/.env.local'
+          sha256sum dpslab-frontend-source.zip > dpslab-frontend-source.zip.sha256
+          unzip -tq dpslab-frontend-source.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dpslab-frontend-source
+          path: |
+            dpslab-frontend-source.zip
+            dpslab-frontend-source.zip.sha256
+          retention-days: 30
