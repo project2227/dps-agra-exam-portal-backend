@@ -9,6 +9,7 @@ import api from '../services/api'
 import { getTeacherToken, setTeacherAuth } from '../services/session'
 import { DEMO_MODE, SCHOOL } from '../config'
 import { DEMO_TEACHER } from '../services/mockData'
+import { isValidTeacherEmail } from '../utils/teacherEmail'
 
 export default function TeacherLogin() {
   const navigate = useNavigate()
@@ -25,13 +26,15 @@ export default function TeacherLogin() {
   const submit = async (e) => {
     e.preventDefault()
     const fe = {}
-    if (!form.email.trim()) fe.email = 'Enter your school email or username.'
+    const email = form.email.trim().toLowerCase()
+    if (!email) fe.email = 'Enter the registered email address for your teacher account.'
+    else if (!isValidTeacherEmail(email)) fe.email = 'Enter a valid email address including the @ symbol (not a period).'
     if (!form.password) fe.password = 'Enter your password.'
     setFieldErrors(fe)
     if (Object.keys(fe).length) return
     setBusy(true); setError('')
     try {
-      const res = await api.teacherLogin({ email: form.email.trim(), password: form.password, remember })
+      const res = await api.teacherLogin({ email, password: form.password, remember })
       setTeacherAuth({ token: res.token, teacher: res.teacher, at: new Date().toISOString() })
       navigate(location.state?.from || '/teacher/dashboard', { replace: true })
     } catch (err) {
@@ -61,11 +64,11 @@ export default function TeacherLogin() {
               <p className="mt-1 text-sm text-slate-400">Sign in using a verified staff account issued by the administrator of this independent student-built learning platform.</p>
 
               <div className="mt-6 space-y-4">
-                <Field label="Email or username" required error={fieldErrors.email}>
+                <Field label="Registered email" required error={fieldErrors.email}>
                   {(p) => (
                     <div className="relative">
                       <Mail size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
-                      <input {...p} className="input pl-9" type="text" autoComplete="username" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="name@dpsagra.edu.in" />
+                      <input {...p} className="input pl-9" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="name@dpsagra.edu.in" />
                     </div>
                   )}
                 </Field>

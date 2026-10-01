@@ -5,7 +5,19 @@ const {asyncWrap,must}=require('../utils/http');const {audit}=require('../servic
 const router=express.Router();
 const limiter=rateLimit({windowMs:15*60*1000,limit:12,standardHeaders:'draft-7',legacyHeaders:false});
 router.post('/teacher/login',limiter,asyncWrap(async(req,res)=>{
- const {email,password}=z.object({email:z.string().email().max(200),password:z.string().min(1).max(200)}).parse(req.body);
+ const parsed=z.object({
+  email:z.string().trim().toLowerCase().email().max(200),
+  password:z.string().min(1).max(200)
+ }).safeParse(req.body);
+ if(!parsed.success){
+  const invalidEmail=parsed.error.issues.some(issue=>issue.path[0]==='email');
+  return res.status(400).json({
+    error:invalidEmail
+      ? 'Enter your registered email address, including the @ symbol.'
+      : 'Please enter your account password.'
+  });
+ }
+ const {email,password}=parsed.data;
  const q=await db.query('SELECT * FROM teachers WHERE email=$1 AND active=true',[email]);
  // Constant-cost hash verification even for missing accounts.
  const dummy='$2a$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36nYkJxb1ylKwJ6/hZJWh2i';
