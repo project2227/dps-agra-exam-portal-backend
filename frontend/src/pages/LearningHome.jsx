@@ -26,6 +26,19 @@ export default function LearningHome() {
     <Link to="/learn/arcade" className="glass motion-surface group flex items-center gap-5 p-6 transition-all hover:-translate-y-1 hover:border-emerald-400/40"><Gamepad2 size={38} className="text-dps-gold"/><div><h2 className="text-xl font-bold">The interactive arcade</h2><p className="mt-1 text-sm text-slate-400">Build code stacks, flip logic gates and train your memory.</p><span className="mt-3 inline-flex items-center gap-1 text-sm text-dps-neon">Enter the arcade <ArrowRight size={15}/></span></div></Link>
     <Link to="/learn/custom-test" className="glass motion-surface group flex items-center gap-5 p-6 transition-all hover:-translate-y-1 hover:border-emerald-400/40"><Sparkles size={38} className="text-dps-neon"/><div><h2 className="text-xl font-bold">Create your own test</h2><p className="mt-1 text-sm text-slate-400">Pick your language, level and timer. Generate your challenge.</p><span className="mt-3 inline-flex items-center gap-1 text-sm text-dps-neon">Open Test Forge <ArrowRight size={15}/></span></div></Link>
   </section>
+
+  <section className="motion-surface relative isolate mt-8 overflow-hidden rounded-3xl border border-dps-green/25 bg-navy-900">
+    <img src="/ai-learning-hero.webp" alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover object-[75%_55%] opacity-75" />
+    <div className="absolute inset-0 bg-gradient-to-r from-navy-950 via-navy-950/90 to-navy-950/30" aria-hidden="true" />
+    <div className="relative max-w-xl p-6 sm:p-9">
+      <span className="font-mono text-xs tracking-[.2em] text-dps-neon">DISCOVER YOUR LAB</span>
+      <h2 className="mt-3 font-display text-2xl font-bold sm:text-3xl">Curiosity looks good on you.</h2>
+      <p className="mt-2 text-sm leading-relaxed text-slate-200">Pick a new programming language, then put your skills to work in the Logic Arcade or Test Forge.</p>
+      <div className="mt-5 flex flex-wrap gap-2"><Link className="btn btn-primary btn-sm" to="/learn/arcade">Enter arcade <ArrowRight size={15}/></Link><a className="btn btn-ghost btn-sm" href="https://amongus.free.page/" target="_blank" rel="noopener noreferrer nofollow" referrerPolicy="no-referrer" aria-label="Fun break opens an unverified external game site">Fun break ↗</a></div>
+      <p className="mt-3 text-[11px] text-slate-400">AI-generated artwork · Fun break opens an external, unverified site.</p>
+    </div>
+  </section>
+
   <div className="mb-6 mt-14 flex flex-wrap items-end justify-between gap-4"><div><span className="text-xs font-semibold uppercase tracking-widest text-dps-neon">Open study library</span><h2 className="mt-2 text-2xl font-bold">Choose your next skill</h2><p className="mt-2 text-slate-400">Original PDF study sheets plus links to trusted public documentation.</p></div><Link to="/learn/profile" className="btn btn-ghost"><GraduationCap size={16}/> {getLearningAuth()?'My practice profile':'Create optional profile'}</Link></div>
   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{cards.map(([key,b],i)=>{
    const done=(progress[key]?.completed||[]).length,total=STARTER_LESSONS[key].length

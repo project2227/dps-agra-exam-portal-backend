@@ -1,4 +1,4 @@
-import { Code2 } from 'lucide-react'
+import { Code2, ExternalLink } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { LOGO_SRC, SCHOOL } from '../../config'
 
@@ -19,7 +19,7 @@ export default function Footer({ compact = false }) {
           </span>
           Made by <span className="credit-name text-gradient">Aryan Agarwal</span>
         </p>
-        <p className="text-xs text-slate-500"><a className="text-dps-neon hover:underline" target="_blank" rel="noopener noreferrer" href="https://dps.ac.in/">Official DPS Agra ↗</a> · <Link to="/about" className="hover:underline">About & privacy</Link> · Independent project © {new Date().getFullYear()}</p>
+        <p className="text-xs text-slate-500"><a className="text-dps-neon hover:underline" target="_blank" rel="noopener noreferrer" href="https://dps.ac.in/">Official DPS Agra ↗</a> · <a className="text-amber-300 hover:underline" href="https://amongus.free.page/" target="_blank" rel="noopener noreferrer nofollow" referrerPolicy="no-referrer" title="External unverified gaming website">Fun break <ExternalLink size={11} className="inline" aria-hidden="true" /></a> · <Link to="/about" className="hover:underline">About & privacy</Link> · Independent project © {new Date().getFullYear()}</p>
       </div>
     </footer>
   )

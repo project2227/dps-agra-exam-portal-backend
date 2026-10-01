@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import {
   BadgeCheck, CalendarDays, Camera, CheckCircle2, Code2, Eye, FileText, GraduationCap, KeyRound, Laptop, LayoutGrid, BookOpen, Gamepad2,
-  LogIn, MonitorPlay, ShieldCheck, Sparkles, TerminalSquare, UserRound,
+  LogIn, MonitorPlay, ShieldCheck, Sparkles, TerminalSquare, UserRound, ArrowUpRight, Gamepad2 as Games,
 } from 'lucide-react'
 import Navbar from '../components/layout/Navbar'
 import Footer from '../components/layout/Footer'
@@ -99,6 +99,31 @@ export default function LandingPage() {
           </div>
         </section>
 
+
+        {/* Original AI-generated art: decorative only, no school crest or game IP */}
+        <section className="mx-auto max-w-7xl px-4 pb-5 sm:px-6" aria-label="Discover your learning universe">
+          <div className="motion-surface group relative isolate min-h-[350px] overflow-hidden rounded-[30px] border border-dps-green/30 bg-navy-900 shadow-[0_22px_90px_-35px_rgba(16,185,129,.45)] sm:min-h-[410px]">
+            <img
+              src="/ai-learning-hero.webp"
+              alt="AI-generated illustration of a futuristic coding studio with holographic code, glowing learning tools, and a robot overlooking a city at night"
+              loading="lazy"
+              className="absolute inset-0 h-full w-full object-cover object-[64%_center] transition duration-700 motion-safe:group-hover:scale-[1.035]"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#051222]/95 via-[#051222]/80 to-[#051222]/15 sm:via-[#051222]/55" aria-hidden="true" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#051222]/70 via-transparent to-transparent" aria-hidden="true" />
+            <div className="relative z-10 flex min-h-[350px] max-w-xl flex-col justify-end p-7 sm:min-h-[410px] sm:justify-center sm:p-12">
+              <p className="mb-4 flex items-center gap-2 font-mono text-xs uppercase tracking-[.24em] text-emerald-300"><Sparkles size={15} aria-hidden="true" /> Beyond the classroom</p>
+              <h2 className="font-display text-3xl font-extrabold leading-tight sm:text-5xl">Step into your next <span className="text-gradient">big idea.</span></h2>
+              <p className="mt-4 max-w-md text-sm leading-relaxed text-slate-200 sm:text-base">Write code, create your own challenges and learn through hands-on games. The best ideas start with a little curiosity.</p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link to="/learn" className="btn btn-primary"><BookOpen size={17} aria-hidden="true" /> Explore courses</Link>
+                <Link to="/learn/arcade" className="btn btn-ghost border-white/25 bg-black/25"><Games size={17} aria-hidden="true" /> Play the arcade</Link>
+              </div>
+              <span className="mt-4 text-[10px] text-slate-400">Original AI-generated concept artwork</span>
+            </div>
+          </div>
+        </section>
+
         {/* Features */}
         <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6" aria-labelledby="features-title">
           <div className="mb-10 max-w-2xl">
@@ -157,6 +182,21 @@ export default function LandingPage() {
               ))}
             </ul>
           </GlassCard>
+        </section>
+
+
+        {/* Optional third-party destination. It is not part of DPS Lab. */}
+        <section className="mx-auto max-w-7xl px-4 py-7 sm:px-6" aria-label="Fun break">
+          <div className="motion-surface flex flex-col items-start justify-between gap-5 overflow-hidden rounded-2xl border border-amber-400/20 bg-gradient-to-r from-amber-400/[.075] via-transparent to-emerald-400/[.065] p-5 sm:flex-row sm:items-center sm:p-7">
+            <div className="flex items-start gap-4">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-amber-400/25 bg-amber-400/10 text-amber-300"><Games size={24} aria-hidden="true" /></span>
+              <div>
+                <h2 className="font-display text-lg font-bold text-white">Mission break? Have some fun.</h2>
+                <p className="mt-1 max-w-xl text-sm text-slate-300">Need a breather after coding? Explore a game link suggested by the site's creator. The destination is an independent, unverified external website—not affiliated with DPS Lab.</p>
+              </div>
+            </div>
+            <a href="https://amongus.free.page/" target="_blank" rel="noopener noreferrer nofollow" referrerPolicy="no-referrer" className="btn btn-ghost shrink-0 border-amber-400/40 text-amber-100" aria-label="Fun break: open external gaming site in a new tab">Fun break <ArrowUpRight size={17} aria-hidden="true" /></a>
+          </div>
         </section>
 
         {/* About */}

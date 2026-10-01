@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
-import { Compass, FlaskConical, Menu, X } from 'lucide-react'
+import { Compass, FlaskConical, Menu, X, ExternalLink } from 'lucide-react'
 import DPSLogoAnimated from '../common/DPSLogoAnimated'
 import ThemeToggle from '../common/ThemeToggle'
 import { DEMO_MODE, SCHOOL } from '../../config'
@@ -43,7 +43,7 @@ export default function Navbar() {
             </span>
           )}
         </div>
-        <div className="ml-auto flex items-center gap-2 lg:ml-2"><button type="button" className="btn btn-ghost btn-sm" aria-label="Replay interactive website tour" title="Explore site features" onClick={()=>window.dispatchEvent(new CustomEvent("dps:tour-replay"))}><Compass size={16}/><span className="hidden xl:inline">Tour</span></button><ThemeToggle />
+        <div className="ml-auto flex items-center gap-2 lg:ml-2"><a href="https://amongus.free.page/" target="_blank" rel="noopener noreferrer nofollow" referrerPolicy="no-referrer" className="hidden items-center gap-1.5 rounded-lg border border-amber-400/20 px-2.5 py-1.5 text-xs text-amber-200 transition-colors hover:border-amber-400/60 hover:bg-amber-400/10 xl:flex" title="Fun break — opens an unverified external website">Fun break <ExternalLink size={12} aria-hidden="true" /></a><button type="button" className="btn btn-ghost btn-sm" aria-label="Replay interactive website tour" title="Explore site features" onClick={()=>window.dispatchEvent(new CustomEvent("dps:tour-replay"))}><Compass size={16}/><span className="hidden xl:inline">Tour</span></button><ThemeToggle />
         <button type="button" className="btn btn-ghost btn-sm lg:hidden" onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Toggle menu">
           {open ? <X size={18} /> : <Menu size={18} />}
         </button></div>
@@ -56,6 +56,7 @@ export default function Navbar() {
               {l.label}
             </NavLink>
           ))}
+          <a href="https://amongus.free.page/" target="_blank" rel="noopener noreferrer nofollow" referrerPolicy="no-referrer" className="mt-2 flex items-center gap-2 rounded-lg border border-amber-400/20 px-3 py-2.5 text-sm text-amber-200">Fun break <ExternalLink size={14} aria-hidden="true" /><span className="ml-auto text-[11px] text-slate-400">External site</span></a>
         </div>
       )}
     </nav>
