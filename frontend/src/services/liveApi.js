@@ -287,6 +287,8 @@ export function createLiveApi(http) {
       }
     },
     getMonitor: monitor,
+    getExamPasscode: async id => t.get('/api/teacher/exams/'+encodeURIComponent(id)+'/passcode'),
+    generateExamPasscode: async id => t.post('/api/teacher/exams/'+encodeURIComponent(id)+'/generate-passcode',{}),
     getClasses,
     initializeClasses: async () => {
       const created = []

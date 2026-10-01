@@ -177,6 +177,12 @@ export const api = {
           return { exam: withStatus(exam), students: mock.db.participants.filter((p) => p.examId === examId) }
         })
       : data(http.get(`/api/teacher/exams/${examId}/monitor`)),
+  getExamPasscode: id => DEMO_MODE
+    ? demo(() => ({available:!!mock.db.exams.find(e=>e.id===id)?.passcode,passcode:mock.db.exams.find(e=>e.id===id)?.passcode||null}))
+    : data(http.get(`/api/teacher/exams/${encodeURIComponent(id)}/passcode`)),
+  generateExamPasscode: id => DEMO_MODE
+    ? demo(() => { const exam=mock.db.exams.find(e=>e.id===id); if(!exam) throw demoError('Exam not found.',404); exam.passcode=uid('NEW').toUpperCase(); return {passcode:exam.passcode}; })
+    : data(http.post(`/api/teacher/exams/${encodeURIComponent(id)}/generate-passcode`,{})),
 
   getClasses: () => (DEMO_MODE ? demo(() => mock.classSummaries()) : data(http.get('/api/teacher/classes'))),
 

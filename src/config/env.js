@@ -19,6 +19,7 @@ const schema = z.object({
   S3_ENDPOINT:z.string().default(''), S3_ACCESS_KEY_ID:z.string().default(''),
   S3_SECRET_ACCESS_KEY:z.string().default(''), S3_FORCE_PATH_STYLE:z.enum(['true','false']).default('false'),
   TURN_KEY_ID:z.string().default(''), TURN_KEY_API_TOKEN:z.string().default(''),
+  EXAM_PASSCODE_KEY:z.string().regex(/^(?:[a-f0-9]{64})?$/i).default(''),
   JUDGE0_API_URL:z.string().default(''), JUDGE0_API_KEY:z.string().default(''),
   JUDGE0_API_HOST:z.string().default(''), JUDGE0_AUTH_TOKEN:z.string().default('')
 });

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, BellRing, CheckCircle2, Eye, EyeOff, KeyRound, LayoutGrid, Maximize, Minimize, ShieldAlert, Users, Wifi, WifiOff } from 'lucide-react'
+import { ArrowLeft, BellRing, CheckCircle2, Copy, Eye, EyeOff, KeyRound, LayoutGrid, Maximize, Minimize, RefreshCcw, ShieldAlert, Users, Wifi, WifiOff } from 'lucide-react'
 import StatusBadge from '../components/common/StatusBadge'
 import StatCard from '../components/common/StatCard'
 import GlassCard from '../components/common/GlassCard'
@@ -45,6 +45,9 @@ export default function ExamMonitor() {
   const [error, setError] = useState('')
   const [connected, setConnected] = useState(false)
   const [showPass, setShowPass] = useState(false)
+  const [recoveredPass,setRecoveredPass] = useState('')
+  const [passNotice,setPassNotice] = useState('')
+  const [passBusy,setPassBusy] = useState(false)
   const [isFs, setIsFs] = useState(false)
   const [now, setNow] = useState(Date.now())
   const socket = useMemo(() => getSocket({ role: 'teacher', token: getTeacherToken() }), [])
@@ -150,6 +153,33 @@ export default function ExamMonitor() {
     toast(`Warning requested for ${student.name}. Delivery is not guaranteed if disconnected.`, 'info')
   }, [socket, examId, toast])
 
+  const revealPasscode=async()=>{
+    if(showPass){setRecoveredPass('');setShowPass(false);return}
+    setPassBusy(true);setPassNotice('')
+    try{
+      const result=await api.getExamPasscode(examId)
+      setRecoveredPass(result.available?result.passcode:'')
+      setPassNotice(result.notice||'')
+      setShowPass(true)
+    }catch(e){setPassNotice(e.message);toast(e.message,'error')}
+    finally{setPassBusy(false)}
+  }
+  const regeneratePasscode=async()=>{
+    if(!window.confirm('Generate a new password for '+exam.title+'? The old password will stop working for anyone who has not joined. You must send all students the replacement.'))return
+    setPassBusy(true);setPassNotice('')
+    try{
+      const result=await api.generateExamPasscode(examId)
+      setRecoveredPass(result.passcode)
+      setShowPass(true)
+      setPassNotice('New password saved securely. Share it with students; their old password will no longer work.')
+      toast('New exam password generated. Copy it before sharing.','success')
+    }catch(e){setPassNotice(e.message);toast(e.message,'error')}
+    finally{setPassBusy(false)}
+  }
+  const copyText=async(value,label)=>{
+    try{await navigator.clipboard.writeText(value);toast(label+' copied to clipboard.','success')}
+    catch{toast('Could not copy. Select the displayed text manually.','error')}
+  }
   const timer = useExamTimer(exam?.endsAt)
   const list = useMemo(() => Object.values(students), [students])
   const counts = useMemo(() => ({
@@ -184,13 +214,16 @@ export default function ExamMonitor() {
             {connected ? <Wifi size={12} aria-hidden="true" /> : <WifiOff size={12} aria-hidden="true" />} {connected ? 'Live updates on' : 'Reconnecting'}
           </span>
           {DEMO_MODE && <span className="chip border-dps-gold/30 text-dps-gold">Simulated students</span>}
-          <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] px-2 py-1">
-            <KeyRound size={14} className="text-dps-gold" aria-hidden="true" />
-            <span className="font-mono text-sm tracking-wider">{showPass ? exam.passcode || 'hidden' : '••••••••'}</span>
-            <button type="button" className="rounded p-1 text-slate-400 hover:text-white" onClick={() => setShowPass((s) => !s)} aria-label={showPass ? 'Hide exam password' : 'Show exam password'}>
-              {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dps-gold/30 bg-dps-gold/5 px-3 py-2">
+            <KeyRound size={16} className="text-dps-gold" aria-hidden="true" />
+            <span aria-live="polite" className="font-mono text-sm tracking-wider text-dps-gold" data-testid="exam-passcode-display">{showPass?(recoveredPass||'Unrecoverable old password'):'Exam password ••••••••'}</span>
+            <button disabled={passBusy} type="button" className="btn btn-ghost btn-sm" onClick={revealPasscode} aria-label={showPass?'Hide exam password':'Reveal exam password'}>
+              {showPass?<EyeOff size={14}/>:<Eye size={14}/>} {showPass?'Hide':'Reveal'}
             </button>
+            {showPass&&recoveredPass&&<button type="button" className="btn btn-ghost btn-sm" onClick={()=>copyText(recoveredPass,'Exam password')} aria-label="Copy exam password"><Copy size={14}/> Copy</button>}
+            {['upcoming','draft'].includes(exam.status)&&<button disabled={passBusy} type="button" className="btn btn-ghost btn-sm" onClick={regeneratePasscode} title="Replace an unrecoverable old exam password" aria-label="Generate a replacement exam password"><RefreshCcw size={14}/> {recoveredPass?'Replace':'Generate new'}</button>}
           </div>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={()=>copyText(window.location.origin+'/#/student/join?exam='+encodeURIComponent(examId),'Student exam link')}><Copy size={14}/> Join link</button>
           {exam.status === 'live' && <Timer formatted={timer.formatted} isWarning={timer.isWarning} isCritical={timer.isCritical} label="Exam ends in" />}
           <button type="button" className={wallMode?'btn btn-primary btn-sm':'btn btn-ghost btn-sm'} onClick={()=>setWallMode(p=>!p)} aria-pressed={wallMode} title="Show all consented screen snapshots on one page">
             <LayoutGrid size={15}/> {wallMode?'Show student cards':'Open screen wall'}
@@ -201,6 +234,7 @@ export default function ExamMonitor() {
         </div>
       </div>
 
+      {passNotice&&<p role="status" className="rounded-xl border border-dps-gold/30 bg-dps-gold/5 px-4 py-3 text-sm text-slate-200">{passNotice}</p>}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard icon={Users} label="Joined" value={counts.joined} accent="sky" />
         <StatCard icon={Eye} label="Writing now" value={counts.active} accent="green" />

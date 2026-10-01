@@ -33,7 +33,7 @@ router.get('/teacher/exams/:examId/monitor',teacher,asyncWrap(async(req,res)=>{
    (NULLIF(BTRIM(COALESCE(a.answer_text,'')),'') IS NOT NULL OR
     NULLIF(BTRIM(COALESCE(a.code,'')),'') IS NOT NULL OR a.file_key IS NOT NULL)) AS answered
  FROM exam_sessions WHERE exam_id=$1 ORDER BY roll_number`,[exam.id]);
- res.json({exam:{id:exam.id,title:exam.title,status:exam.status},students:q.rows});
+ res.json({exam:{id:exam.id,title:exam.title,status:exam.status,class_name:exam.class_name,section:exam.section,exam_type:exam.exam_type,start_time:exam.start_time,end_time:exam.end_time,duration_minutes:exam.duration_minutes},students:q.rows});
 }));
 router.post('/teacher/sessions/:sessionId/reset',teacher,asyncWrap(async(req,res)=>{
  const q=await db.query(`UPDATE exam_sessions s SET status='revoked',token_hash=encode(gen_random_bytes(32),'hex'),

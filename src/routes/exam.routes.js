@@ -2,7 +2,9 @@
 const express=require('express');const crypto=require('crypto');const bcrypt=require('bcryptjs');const {z}=require('zod');
 const db=require('../config/db');const {teacher,ownExam}=require('../middleware/auth');
 const {asyncWrap,must}=require('../utils/http');const {normalizeExamPasscode,isValidExamPasscode}=require('../utils/examPasscode');
-const {audit}=require('../services/audit');const {assertAssignedClass}=require('../services/permissions');
+const {audit}=require('../services/audit');
+const {env}=require('../config/env');
+const {encryptPasscode,decryptPasscode}=require('../services/passcodeVault');const {assertAssignedClass}=require('../services/permissions');
 const router=express.Router();router.use(teacher);
 const settingsSchema=z.object({requireWebcam:z.boolean().default(false),requireScreenShare:z.boolean().default(false),
  enableTabSwitchDetection:z.boolean().default(true),enableCopyPasteDetection:z.boolean().default(true),
@@ -12,7 +14,7 @@ const examShape=z.object({title:z.string().trim().min(3).max(180),subject:z.stri
  className:z.string().trim().min(1).max(40),section:z.string().max(12).default('All'),
  examType:z.enum(['quiz','practical','mixed']),startTime:z.coerce.date(),endTime:z.coerce.date(),
  durationMinutes:z.number().int().min(1).max(360),settings:settingsSchema.default({})}).refine(x=>x.endTime>x.startTime,{message:'End time must be after start time.'});
-const scrub=x=>{const {passcode_hash,...safe}=x;return safe;};
+const scrub=x=>{const {passcode_hash,passcode_ciphertext,...safe}=x;return safe;};
 router.post('/exams',asyncWrap(async(req,res)=>{
  const v=examShape.parse(req.body);
  await assertAssignedClass(req.teacher,v.className,v.section);
@@ -73,17 +75,34 @@ router.post('/exams/:examId/restore',asyncWrap(async(req,res)=>{
  must(q.rowCount,404,'Removed exam not found.');await audit({teacherId:req.teacher.id,examId:q.rows[0].id,action:'exam:restored'});
  res.json({exam:scrub(q.rows[0]),notice:'Restored as closed. It does not automatically resume or republish.'});
 }));
+router.get('/exams/:examId/passcode',asyncWrap(async(req,res)=>{
+ res.set('Cache-Control','private, no-store');
+ const exam=await ownExam(req.params.examId,req.teacher.id);
+ if(!exam.passcode_ciphertext){
+  return res.json({available:false,legacy:true,
+    notice:'This exam was created before encrypted password recovery was enabled. The original password cannot be recovered. Generate a new password to reveal and copy it.'});
+ }
+ must(env.EXAM_PASSCODE_KEY,503,'Password recovery is not configured on the backend.');
+ const passcode=decryptPasscode(exam.passcode_ciphertext,env.EXAM_PASSCODE_KEY);
+ await audit({teacherId:req.teacher.id,examId:exam.id,action:'exam:passcode_revealed'});
+ res.json({available:true,passcode,notice:'Only the authenticated exam owner can view this password.'});
+}));
 router.post('/exams/:examId/generate-passcode',asyncWrap(async(req,res)=>{
  const exam=await ownExam(req.params.examId,req.teacher.id);
  must(['draft','scheduled'].includes(exam.status),409,'Cannot rotate passcode after the exam becomes active.');
+ must(env.EXAM_PASSCODE_KEY,503,'Passcode recovery is not configured on the backend.');
+ const attendees=await db.query("SELECT count(*)::int AS n FROM exam_sessions WHERE exam_id=$1 AND status IN('joined','active','disconnected','flagged')",[exam.id]);
+ must(!attendees.rows[0].n,409,'This exam already has admitted students. Do not change their exam password while it is underway.');
  const custom=req.body?.passcode;
  const passcode=custom===undefined?crypto.randomBytes(5).toString('hex').toUpperCase():
  z.string().min(8).max(64).regex(/^[A-Za-z0-9!@#_\\s-]+$/i).parse(custom).trim().toUpperCase();
  must(isValidExamPasscode(passcode),400,'A passcode must contain 8 to 64 letters, numbers or permitted symbols, excluding separators.');
  const passcodeHash=await bcrypt.hash(normalizeExamPasscode(passcode),12);
- await db.query('UPDATE exams SET passcode_hash=$1,updated_at=now() WHERE id=$2',[passcodeHash,exam.id]);
+ const cipher=encryptPasscode(passcode,env.EXAM_PASSCODE_KEY);
+ await db.query('UPDATE exams SET passcode_hash=$1,passcode_ciphertext=$2,updated_at=now() WHERE id=$3',[passcodeHash,cipher,exam.id]);
  await audit({teacherId:req.teacher.id,examId:exam.id,action:'exam:passcode_rotated'});
- res.json({passcode,notice:'Shown once. Distribute securely; it is not stored in plaintext.'});
+ res.set('Cache-Control','private, no-store');
+ res.json({passcode,notice:'Saved encrypted on the server. You can view it again as the authenticated exam owner.'});
 }));
 router.post('/exams/:examId/publish',asyncWrap(async(req,res)=>{
  const exam=await ownExam(req.params.examId,req.teacher.id);
