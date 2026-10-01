@@ -63,10 +63,10 @@ export default function StudentDetailPanel({ student: s, exam, rtc, cameraStills
   const subscribeStills = cameraStills?.subscribe
   const stopStills = cameraStills?.stop
   useEffect(()=>{
-    if(!sessionId||!wantsMedia||!s?.webcam||DEMO_MODE||!subscribeStills)return
+    if(!sessionId||!wantsMedia||!s?.webcam||s?.stillsConsent===false||DEMO_MODE||!subscribeStills)return
     subscribeStills(sessionId)
     return()=>stopStills?.(sessionId)
-  },[sessionId,wantsMedia,s?.webcam,subscribeStills,stopStills])
+  },[sessionId,wantsMedia,s?.webcam,s?.stillsConsent,subscribeStills,stopStills])
 
   const jpegFrame = cameraStills?.frames?.[sessionId]
   const jpegStatus = cameraStills?.statuses?.[sessionId] || 'off'
@@ -124,7 +124,8 @@ export default function StudentDetailPanel({ student: s, exam, rtc, cameraStills
               <VideoTile stream={mediaStates.webcam==='connected'?live.webcam:null} snapshot={hasRecentStills?jpegFrame.jpeg:null} label={mediaStates.webcam==='connected'&&live.webcam?'Live webcam':hasRecentStills?'Consented webcam still':'Webcam'} icon={Camera} className="aspect-video" placeholder={mediaPlaceholder('webcam',s.webcam)} />
               {wantsMedia && s.webcam && !live.webcam && <button type="button" className="btn btn-ghost btn-sm mt-2 w-full" onClick={()=>watch?.(sessionId,['webcam'])}>Retry webcam</button>}
               {mediaStates.webcam === 'connected' && <p className="mt-1 text-xs text-dps-neon">Peer connection established</p>}
-              {s.webcam && wantsMedia && !DEMO_MODE && (
+              {s.webcam && s.stillsConsent===false && <p className="mt-2 text-xs text-amber-200">This older exam session did not consent to server-relayed stills. Direct webcam video remains available.</p>}
+              {s.webcam && wantsMedia && s.stillsConsent!==false && !DEMO_MODE && (
                 <div className="mt-2 rounded-lg border border-emerald-400/25 bg-emerald-500/5 p-2 text-xs text-emerald-100" role="status">
                   {mediaStates.webcam==='connected'?'Direct webcam video connected.':
                     hasRecentStills?'Receiving temporary camera stills about every 4 seconds.':

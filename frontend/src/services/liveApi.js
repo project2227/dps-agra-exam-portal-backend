@@ -114,7 +114,8 @@ const normalizeSession = (s, examId, examTitle = '') => ({
   status: s.status, joinedAt: s.joined_at, submittedAt: s.submitted_at,
   flagsCount: s.flags_count || 0,
   flags: { tab: 0, blur: 0, fullscreen: 0, copyPaste: 0, devtools: 0, other: s.flags_count || 0 },
-  webcam: s.consent_webcam, screen: s.consent_screen, connected: s.connected,
+  webcam: s.consent_webcam, screen: s.consent_screen,
+  stillsConsent: s.consent_stills===true, connected: s.connected,
   totalQuestions: Number(s.total_questions||0), answered: Number(s.answered||0),
   device: {browser:s.browser||null, os:s.os||null, screen:s.screen_size||null, timezone:s.timezone||null},
   score: s.awarded_marks === undefined ? null : Number(s.awarded_marks),
@@ -186,7 +187,7 @@ export function createLiveApi(http) {
       const joined = await unwrap(http.post(`/api/exams/${encodeURIComponent(p.examId)}/join`, {
         name: p.name, rollNumber: p.rollNumber, className: p.class, section: p.section,
         passcode: p.passcode,
-        consent: p.mediaConsent || { webcam: false, screenShare: false },
+        consent: { ...(p.mediaConsent || {}), stills: Boolean(p.mediaConsent?.webcam || p.mediaConsent?.screenShare) },
         browserMetadata: { userAgent: dev.userAgent, browser: dev.browser, os: dev.os, screenSize: dev.screen, timezone: dev.timezone },
       }))
       const publicExam = normalizeExam({ ...joined.exam, className: p.class, section: p.section, status: 'active' })

@@ -27,7 +27,7 @@ const joinShape=z.object({name:z.string().trim().min(2).max(120),rollNumber:z.st
  passcode:z.string().min(1).max(64),browserMetadata:z.object({userAgent:z.string().max(220).optional(),
  browser:z.string().max(90).optional(),os:z.string().max(90).optional(),screenSize:z.string().max(30).optional(),
  timezone:z.string().max(80).optional(),fingerprint:z.string().max(256).optional()}).default({}),
- consent:z.object({webcam:z.boolean().default(false),screenShare:z.boolean().default(false)}).default({})});
+ consent:z.object({webcam:z.boolean().default(false),screenShare:z.boolean().default(false),stills:z.boolean().default(false)}).default({})});
 router.post('/exams/:examId/join',joinNetworkLimit,joinIdentifierLimit,asyncWrap(async(req,res)=>{
  const v=joinShape.parse(req.body);const eq=await db.query('SELECT * FROM exams WHERE id=$1',[req.params.examId]);
  const e=eq.rows[0];must(e&&examOpen(e),403,'This exam is not currently available.');
@@ -54,12 +54,13 @@ router.post('/exams/:examId/join',joinNetworkLimit,joinIdentifierLimit,asyncWrap
   must(remaining>120,403,'The exam has ended.');
   const token=studentToken({id,exam_id:e.id},remaining);
   const s=await c.query(`INSERT INTO exam_sessions(id,exam_id,student_name,roll_number,class_name,section,token_hash,
-   fingerprint_hash,user_agent,browser,os,screen_size,timezone,ip_address,consent_webcam,consent_screen,status)
-   VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'active') RETURNING id,joined_at,status`,
+   fingerprint_hash,user_agent,browser,os,screen_size,timezone,ip_address,consent_webcam,consent_screen,consent_stills,status)
+   VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,'active') RETURNING id,joined_at,status`,
    [id,e.id,v.name,v.rollNumber,v.className,v.section,hash(token),fingerprintHash,
    v.browserMetadata.userAgent||null,v.browserMetadata.browser||null,v.browserMetadata.os||null,
    v.browserMetadata.screenSize||null,v.browserMetadata.timezone||null,
-   env.STORE_IP==='true'?req.ip:null,v.consent.webcam,v.consent.screenShare]);
+   env.STORE_IP==='true'?req.ip:null,v.consent.webcam,v.consent.screenShare,
+   v.consent.stills===true&&(v.consent.webcam||v.consent.screenShare)]);
   return {session:s.rows[0],token};
  });
  if(result.duplicate){
@@ -72,7 +73,7 @@ router.post('/exams/:examId/join',joinNetworkLimit,joinIdentifierLimit,asyncWrap
  publish(e.id,'exam:studentJoined',{
   sessionId:result.session.id,studentName:v.name,rollNumber:v.rollNumber,
   className:v.className,section:v.section,consentWebcam:v.consent.webcam,
-  consentScreen:v.consent.screenShare,joinedAt:result.session.joined_at,
+  consentScreen:v.consent.screenShare,consentStills:v.consent.stills===true,joinedAt:result.session.joined_at,
   device:{browser:v.browserMetadata.browser||null,os:v.browserMetadata.os||null,
     screen:v.browserMetadata.screenSize||null,timezone:v.browserMetadata.timezone||null}
  });

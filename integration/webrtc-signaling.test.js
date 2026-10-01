@@ -41,8 +41,8 @@ test('independent teacher and student sockets request webcam and screen, exchang
  await pool.query(`INSERT INTO exams(id,title,subject,class_name,section,teacher_id,exam_type,start_time,end_time,duration_minutes,status)
   VALUES($1,'Mock Socket Test','Computers','IX','A',$2,'quiz',now()-interval '2 minutes',now()+interval '45 minutes',45,'active')`,[examId,teacherId]);
  const studentJwt=studentToken({id:sessionId,exam_id:examId},3600);
- await pool.query(`INSERT INTO exam_sessions(id,exam_id,student_name,roll_number,class_name,section,token_hash,status,consent_webcam,consent_screen)
-  VALUES($1,$2,'Synthetic Student','test-roll','IX','A',$3,'active',true,true)`,[sessionId,examId,hash(studentJwt)]);
+ await pool.query(`INSERT INTO exam_sessions(id,exam_id,student_name,roll_number,class_name,section,token_hash,status,consent_webcam,consent_screen,consent_stills)
+  VALUES($1,$2,'Synthetic Student','test-roll','IX','A',$3,'active',true,true,true)`,[sessionId,examId,hash(studentJwt)]);
  const {app}=require('../src/app');
  const server=http.createServer(app);
  const io=new Server(server,{cors:{origin:['http://localhost'],methods:['GET','POST']},pingTimeout:20000});

@@ -9,6 +9,7 @@ function stateOf(student,packet,connection,now){
  if(!isRunningExamStatus(student.status))return 'Exam finished'
  if(student.connected===false)return 'Student offline'
  if(!student.screen)return 'Student has not enabled screen sharing. They can open Monitoring → Share my entire screen.'
+ if(student.stillsConsent===false)return 'This older exam session did not include still-image permission. Open student details for direct video.'
  if(connection==='student-stopped')return 'Student stopped snapshot sharing'
  if(connection==='student-offline')return 'Student disconnected'
  const ts=packet?.ts?Date.parse(packet.ts):0

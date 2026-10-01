@@ -54,7 +54,7 @@ function attachSockets(io){
  }
  async function signalScreenWall(examId,requested){
   const rows=await db.query(`SELECT id FROM exam_sessions
-   WHERE exam_id=$1 AND consent_screen=true AND status IN('joined','active','flagged','disconnected')
+   WHERE exam_id=$1 AND consent_screen=true AND consent_stills=true AND status IN('joined','active','flagged','disconnected')
    AND active_socket_id IS NOT NULL LIMIT $2`,[examId,WALL_MAX_STUDENTS]);
   for(const row of rows.rows)
    privateStudent(row.id,'teacher:screenWallRequested',{requested,sessionId:row.id});
@@ -131,7 +131,7 @@ function attachSockets(io){
    // Pictures require initial student consent and an actively shared camera.
    if(subscribers(s.id,s.exam_id).length)
     socket.emit('teacher:snapshotRequested',{sessionId:s.id,requested:true});
-   if(s.consent_screen&&viewers(s.exam_id).length)
+   if(s.consent_screen&&s.consent_stills&&viewers(s.exam_id).length)
     socket.emit('teacher:screenWallRequested',{sessionId:s.id,requested:true});
   }));
   socket.on('student:heartbeat',()=>guard(async()=>{
@@ -168,7 +168,7 @@ function attachSockets(io){
       [label+'Active']:active,...(label==='screen'?{screen:s.consent_screen}:{}),connected:true});
     // A student may grant optional screen consent after the wall was opened.
     // Send a *separate* snapshot-sharing prompt, never initiate capture.
-    if(label==='screen'&&active&&s.consent_screen&&viewers(s.exam_id).length)
+    if(label==='screen'&&active&&s.consent_screen&&s.consent_stills&&viewers(s.exam_id).length)
      privateStudent(s.id,'teacher:screenWallRequested',{sessionId:s.id,requested:true});
     if(!active&&consent)await event({examId:s.exam_id,sessionId:s.id,
      eventType:label==='webcam'?'WEBCAM_STOPPED':'SCREEN_SHARE_STOPPED',message:'Student reported media sharing stopped.'});
@@ -214,6 +214,9 @@ function attachSockets(io){
    if(!s.consent_webcam){
     return socket.emit('teacher:snapshotStatus',{sessionId:s.id,status:'not-consented'});
    }
+   if(!s.consent_stills){
+    return socket.emit('teacher:snapshotStatus',{sessionId:s.id,status:'legacy-no-stills-consent'});
+   }
    detachTeacher(socket.id); // One selected student per teacher socket, always.
    if(!s.active_socket_id){
     return socket.emit('teacher:snapshotStatus',{sessionId:s.id,status:'student-offline'});
@@ -236,7 +239,7 @@ function attachSockets(io){
    if(!map?.has(socket.id))return;
    const s=await checkOwnedStudent(sessionId);
    if(!socket.rooms.has(teacherRoom(s.exam_id))||
-      !['joined','active','flagged','disconnected'].includes(s.status)||!s.consent_webcam) {
+      !['joined','active','flagged','disconnected'].includes(s.status)||!s.consent_webcam||!s.consent_stills) {
     detachTeacher(socket.id);
     return socket.emit('teacher:snapshotStatus',{sessionId,status:'session-ended'});
    }
@@ -262,7 +265,7 @@ function attachSockets(io){
    const s=await checkStudent();
    if(s.active_socket_id!==socket.id)return;
    const available=subscribers(s.id,s.exam_id);
-   const enabled=data?.enabled===true && s.consent_webcam===true && available.length>0;
+   const enabled=data?.enabled===true && s.consent_webcam===true && s.consent_stills===true && available.length>0;
    socket.data.snapshotOptIn=enabled;
    for(const id of available)io.to(id).emit('teacher:snapshotStatus',{
     sessionId:s.id,status:enabled?'sharing':'student-stopped'
@@ -276,7 +279,7 @@ function attachSockets(io){
    if(typeof jpeg!=='string'||jpeg.length<300||jpeg.length>SNAPSHOT_MAX_DATA_URI||
       !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(jpeg))return;
    const s=await checkStudent();
-   if(s.active_socket_id!==socket.id || !s.consent_webcam)return;
+   if(s.active_socket_id!==socket.id || !s.consent_webcam || !s.consent_stills)return;
    const active=subscribers(s.id,s.exam_id);
    if(!active.length){
     socket.data.snapshotOptIn=false;
@@ -294,7 +297,7 @@ function attachSockets(io){
    if(!socket.rooms.has(teacherRoom(examId)))
     throw Object.assign(new Error('Open the exam monitor first.'),{status:403});
    const q=await db.query(`SELECT count(*)::int AS total FROM exam_sessions
-     WHERE exam_id=$1 AND consent_screen=true
+     WHERE exam_id=$1 AND consent_screen=true AND consent_stills=true
       AND status IN ('joined','active','flagged','disconnected')`,[examId]);
    if(q.rows[0].total>WALL_MAX_STUDENTS){
     return socket.emit('teacher:screenWallStatus',{
@@ -335,7 +338,7 @@ function attachSockets(io){
    const s=await checkStudent();
    if(s.active_socket_id!==socket.id)return;
    const recipients=viewers(s.exam_id);
-   const enabled=data?.enabled===true&&s.consent_screen===true&&recipients.length>0;
+   const enabled=data?.enabled===true&&s.consent_screen===true&&s.consent_stills===true&&recipients.length>0;
    socket.data.screenWallOptIn=enabled;
    for(const id of recipients)io.to(id).emit('teacher:screenWallStudentStatus',{
     sessionId:s.id,status:enabled?'sharing':'student-stopped'
@@ -347,7 +350,7 @@ function attachSockets(io){
    if(typeof jpeg!=='string'||jpeg.length<300||jpeg.length>WALL_JPEG_LIMIT||
      !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(jpeg))return;
    const s=await checkStudent();
-   if(s.active_socket_id!==socket.id||!s.consent_screen)return;
+   if(s.active_socket_id!==socket.id||!s.consent_screen||!s.consent_stills)return;
    const recipients=viewers(s.exam_id);
    if(!recipients.length){
     socket.data.screenWallOptIn=false;

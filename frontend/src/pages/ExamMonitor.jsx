@@ -83,7 +83,7 @@ export default function ExamMonitor() {
     const onDisconnect = () => setConnected(false)
     const upsert = (sessionId, patch) => setStudents(all => ({ ...all, [sessionId]: mergeMonitorStatus({ flags: { ...EMPTY_FLAGS }, timeline: [], ...all[sessionId] },patch) }))
 
-    const onJoined = (s) => s?.sessionId && upsert(s.sessionId, { name: s.studentName || 'Student', rollNumber: s.rollNumber, status: 'active', connected:true, ...s, class:s.className||s.class, section:s.section, webcam:s.consentWebcam===true, screen:s.consentScreen===true, device:s.device||{} })
+    const onJoined = (s) => s?.sessionId && upsert(s.sessionId, { name: s.studentName || 'Student', rollNumber: s.rollNumber, status: 'active', connected:true, ...s, class:s.className||s.class, section:s.section, webcam:s.consentWebcam===true, screen:s.consentScreen===true, stillsConsent:s.consentStills===true, device:s.device||{} })
     const onUpdate = ({ sessionId, ...patch }) => sessionId && upsert(sessionId, patch)
     const onLeft = ({ sessionId, status }) => sessionId && upsert(sessionId, { status: status || 'disconnected', connected:false, webcamActive:false, screenActive:false })
     const onSnapshot = ({ sessionId, webcam, screen, ts }) => sessionId && setSnapshots((m) => ({ ...m, [sessionId]: { webcam: webcam || m[sessionId]?.webcam, screen: screen || m[sessionId]?.screen, ts } }))
