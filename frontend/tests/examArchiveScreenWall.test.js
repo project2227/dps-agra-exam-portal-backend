@@ -18,7 +18,8 @@ test('the student screen wall reuses initially approved screen capture with no r
  assert.match(hook,/active&&requested&&live/)
  assert.match(hook,/student:screenWallConsent/)
  assert.match(hook,/EVERY_MS=8000/)
- assert.doesNotMatch(indicator,/Allow screen wall snapshots/)\n assert.match(indicator,/Stop optional screen sharing/)
+ assert.doesNotMatch(indicator,/Allow screen wall snapshots/)
+ assert.match(indicator,/Stop optional screen sharing/)
  assert.match(room,/useStudentScreenWall/)
 })
 test('one-page teacher wall shows all participant tiles and marks snapshots stale',()=>{
