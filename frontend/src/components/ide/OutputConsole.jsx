@@ -8,7 +8,7 @@ export default function OutputConsole({ lines = [], onClear, running = false, cl
   const end = useRef(null)
   useEffect(() => { end.current?.scrollIntoView({ block: 'nearest' }) }, [lines.length])
   return (
-    <div className={cx('flex h-full min-h-0 flex-col', className)}>
+    <div className={cx('lab-console flex h-full min-h-0 flex-col', className)}>
       <div className="flex items-center justify-between border-b border-white/[0.06] px-3 py-1.5 text-xs text-slate-400">
         <span className="inline-flex items-center gap-1.5"><Terminal size={13} aria-hidden="true" /> Console</span>
         {onClear && <button type="button" className="inline-flex items-center gap-1 hover:text-white" onClick={onClear}><Eraser size={12} aria-hidden="true" /> Clear</button>}

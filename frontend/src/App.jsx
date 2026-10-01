@@ -54,7 +54,7 @@ export default function App() {
       <PointerReactor />
       <ExperienceLayer />
       <ToolFinder />
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-lg focus:bg-dps-green focus:px-4 focus:py-2 focus:text-white">Skip to content</a>
+      <a href="#main" onClick={event => { event.preventDefault(); const content = document.querySelector('#main main') || document.getElementById('main'); content?.setAttribute('tabindex', '-1'); content?.focus() }} className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-lg focus:bg-dps-green focus:px-4 focus:py-2 focus:text-white">Skip to content</a>
       <ToastProvider>
         <div id="main">
           <Suspense fallback={<PageLoader />}>

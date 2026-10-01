@@ -217,6 +217,17 @@ html[data-theme='light'] .text-dps-neon,html[data-theme='light'] .text-emerald-2
 html[data-theme='light'] .bg-emerald-950\/70 { background: var(--lab-soft)!important; }html[data-theme='light'] [class*='from-emerald-950'],html[data-theme='light'] [class*='from-navy-'] { --tw-gradient-from: #e8eee0!important; --tw-gradient-to: #f8f9f500!important; --tw-gradient-stops: var(--tw-gradient-from),var(--tw-gradient-to)!important; }html[data-theme='light'] [class*='via-navy-'] { --tw-gradient-stops: var(--tw-gradient-from),#eff3e9,var(--tw-gradient-to)!important; }html[data-theme='light'] [class*='to-navy-'] { --tw-gradient-to: #f4f6ef!important; }
 html[data-theme='light'] .table-base th { color: var(--lab-muted); border-color: var(--lab-line); }html[data-theme='light'] .table-base td { border-color: var(--lab-line); }html[data-theme='light'] .kbd { color: var(--lab-ink); border-color: var(--lab-line); background: var(--lab-soft); }html[data-theme='light'] input[type='datetime-local']::-webkit-calendar-picker-indicator,html[data-theme='light'] input[type='date']::-webkit-calendar-picker-indicator,html[data-theme='light'] input[type='time']::-webkit-calendar-picker-indicator { filter: none; }
 html[data-theme] .classroom-grid h2,html[data-theme] .classroom-steps h3 { color: #edf2e5!important; }
+/* Console output is a dark reading surface in both themes. */
+.lab-console [role='log'],html[data-theme] .lab-console [role='log'] { background: #182e23!important; color: #edf4e5; }
+html[data-theme] .lab-console [role='log'] .text-slate-100 { color: #edf4e5!important; }
+html[data-theme] .lab-console [role='log'] .text-slate-400,html[data-theme] .lab-console [role='log'] .text-slate-500,html[data-theme] .lab-console [role='log'] .text-slate-600 { color: #adbea8!important; }
+html[data-theme] .lab-console [role='log'] .text-red-300 { color: #ffb4aa!important; }
+html[data-theme] .lab-console [role='log'] .text-dps-gold { color: #ead399!important; }
+html[data-theme] .lab-console [role='log'] .text-sky-300 { color: #acd6ea!important; }
+html[data-theme] .lab-console [role='log'] .text-dps-neon { color: #c8e7b0!important; }
+html[data-theme] .lab-code-panel textarea[aria-label='Program input'] { background: #182e23!important; color: #edf4e5!important; }
+html[data-theme] .lab-code-panel textarea[aria-label='Program input']::placeholder { color: #adbea8!important; }
+html[data-theme='light'] .lab-code-panel [role='tab'][aria-selected='true'] { background: #e1ebd5!important; color: #2c523a!important; }
 /* On-demand brand intro remains its original dark canvas in either theme. */
 .experience-entry h2,html[data-theme='light'] .experience-entry h2,.tour-overlay h3,html[data-theme='light'] .tour-overlay h3 { color: #f1f5e9!important; }html[data-theme='light'] .experience-entry .text-slate-300,html[data-theme='light'] .experience-entry .text-slate-400,html[data-theme='light'] .tour-overlay .text-slate-300 { color: #c3d2c6!important; }
 

@@ -155,7 +155,7 @@ export default function CodeEditorPanel({
   ].filter(Boolean)
 
   return (
-    <div className="glass overflow-hidden rounded-2xl">
+    <div className="lab-code-panel glass overflow-hidden rounded-2xl">
       {/* toolbar */}
       <div className="flex flex-wrap items-center gap-2 border-b border-white/[0.06] bg-navy-950/60 px-3 py-2">
         <div className="flex flex-wrap gap-1" role="tablist" aria-label="Language">
