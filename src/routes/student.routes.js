@@ -72,12 +72,27 @@ router.post('/exams/:examId/join',joinNetworkLimit,joinIdentifierLimit,asyncWrap
  publish(e.id,'exam:studentJoined',{
   sessionId:result.session.id,studentName:v.name,rollNumber:v.rollNumber,
   className:v.className,section:v.section,consentWebcam:v.consent.webcam,
-  consentScreen:v.consent.screen,joinedAt:result.session.joined_at,
+  consentScreen:v.consent.screenShare,joinedAt:result.session.joined_at,
   device:{browser:v.browserMetadata.browser||null,os:v.browserMetadata.os||null,
     screen:v.browserMetadata.screenSize||null,timezone:v.browserMetadata.timezone||null}
  });
  res.status(201).json({token:result.token,session:result.session,exam:{id:e.id,title:e.title,endTime:e.end_time,
   durationMinutes:e.duration_minutes,settings:e.settings},monitoring:{webcam:v.consent.webcam,screen:v.consent.screenShare}});
+}));
+// The student can voluntarily grant optional screen sharing during an exam.
+// A separate browser getDisplayMedia prompt must also be accepted to capture.
+router.post('/student/media-consent',student,asyncWrap(async(req,res)=>{
+ studentAllowed(req.student);
+ const body=z.object({screenShare:z.boolean()}).strict().parse(req.body);
+ const q=await db.query(`UPDATE exam_sessions SET consent_screen=$1,updated_at=now()
+   WHERE id=$2 AND status IN('joined','active','disconnected','flagged')
+   RETURNING id,consent_screen`,[body.screenShare,req.student.id]);
+ must(q.rowCount,409,'This session can no longer change sharing preferences.');
+ publish(req.student.exam_id,'exam:studentStatusUpdate',{
+  sessionId:req.student.id,screen:body.screenShare,
+  ...(body.screenShare?{}:{screenActive:false})
+ });
+ res.json({screenShare:q.rows[0].consent_screen});
 }));
 router.get('/student/session',student,(req,res)=>{
  const {token_hash,fingerprint_hash,ip_address,active_socket_id,...s}=req.student;res.json({session:s});

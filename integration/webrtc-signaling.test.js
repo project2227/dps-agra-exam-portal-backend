@@ -43,11 +43,20 @@ test('independent teacher and student sockets request webcam and screen, exchang
  const studentJwt=studentToken({id:sessionId,exam_id:examId},3600);
  await pool.query(`INSERT INTO exam_sessions(id,exam_id,student_name,roll_number,class_name,section,token_hash,status,consent_webcam,consent_screen)
   VALUES($1,$2,'Synthetic Student','test-roll','IX','A',$3,'active',true,true)`,[sessionId,examId,hash(studentJwt)]);
- const server=http.createServer((req,res)=>{res.statusCode=404;res.end()});
+ const {app}=require('../src/app');
+ const server=http.createServer(app);
  const io=new Server(server,{cors:{origin:['http://localhost'],methods:['GET','POST']},pingTimeout:20000});
  attachSockets(io);
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const url='http://127.0.0.1:'+server.address().port;
+ const consent=async value=>{
+  const response=await fetch(url+'/api/student/media-consent',{
+   method:'POST',headers:{'content-type':'application/json',Authorization:'Bearer '+studentJwt},
+   body:JSON.stringify({screenShare:value})
+  });
+  assert.equal(response.status,200,'Authenticated student must be able to change optional permission');
+  assert.equal((await response.json()).screenShare,value);
+ };
  const opts={transports:['websocket'],forceNew:true,reconnection:false};
  const teacher=connect(url,{...opts,auth:{token:teacherToken({id:teacherId,role:'teacher'})}});
  const student=connect(url,{...opts,auth:{token:studentJwt}});
@@ -159,6 +168,47 @@ test('independent teacher and student sockets request webcam and screen, exchang
  teacher.emit('teacher:screenWallStop',{examId});
  await wallOff;
  teacher.off('teacher:screenWallFrame',onWall);
+ // Regression: a test originally joined with NO optional screen permission,
+ // then the student grants it after the teacher has already opened the wall.
+ const revoked=waitFor(teacher,'exam:studentStatusUpdate',p=>p.sessionId===sessionId&&p.screen===false);
+ await consent(false);
+ await revoked;
+ await pause(780);
+ const noConsent=waitFor(teacher,'teacher:mediaStatus',
+   p=>p.sessionId===sessionId&&p.mediaType==='screen'&&p.status==='not-consented');
+ teacher.emit('teacher:requestMediaPreview',{sessionId,mediaType:'screen'});
+ await noConsent;
+ const reopened=waitFor(teacher,'teacher:screenWallStatus',
+   p=>p.examId===examId&&p.status==='watching');
+ teacher.emit('teacher:screenWallStart',{examId});
+ await reopened;
+ const permitted=waitFor(teacher,'exam:studentStatusUpdate',
+   p=>p.sessionId===sessionId&&p.screen===true);
+ await consent(true);
+ await permitted;
+ const newlyPrompted=waitFor(student,'teacher:screenWallRequested',p=>p.requested===true);
+ const updatedScreen=waitFor(teacher,'exam:studentStatusUpdate',
+   p=>p.sessionId===sessionId&&p.screen===true&&p.screenActive===true);
+ student.emit('student:screenStatus',{active:true});
+ await Promise.all([newlyPrompted,updatedScreen]);
+ const laterStatus=waitFor(teacher,'teacher:screenWallStudentStatus',
+   p=>p.sessionId===sessionId&&p.status==='sharing');
+ student.emit('student:screenWallConsent',{enabled:true});
+ await laterStatus;
+ const afterGrant=waitFor(teacher,'teacher:screenWallFrame',p=>p.sessionId===sessionId);
+ student.emit('student:screenWallFrame',{jpeg:fakeJpeg});
+ assert.equal((await afterGrant).jpeg,fakeJpeg);
+ student.emit('student:screenWallConsent',{enabled:false});
+ await pause(100);
+ await consent(false);
+ // Even if a client claims the screen is still active, it cannot request a
+ // live screen preview or forward screenshots after permission was revoked.
+ await pause(780);
+ const stillDenied=waitFor(teacher,'teacher:mediaStatus',
+   p=>p.sessionId===sessionId&&p.mediaType==='screen'&&p.status==='not-consented');
+ teacher.emit('teacher:requestMediaPreview',{sessionId,mediaType:'screen'});
+ await stillDenied;
+ teacher.emit('teacher:screenWallStop',{examId});
  const q=await pool.query('SELECT cheating_score FROM exam_sessions WHERE id=$1',[sessionId]);
  assert.equal(q.rows[0].cheating_score,4,'A teacher note never adds automatic cheating points');
 });

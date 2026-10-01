@@ -81,6 +81,8 @@ export default function StudentJoinPage() {
     setExamId(exam.id)
     setErrors((x) => ({ ...x, examId: '' }))
     setForm((f) => ({ ...f, passcode: exam.id===examId ? f.passcode : '', class: exam.class, section: exam.section !== 'All' ? exam.section : f.section }))
+    // Media choices apply to one exam only; never carry them into another.
+    if(exam.id!==examId)setMediaConsent({webcam:false,screenShare:false})
   }
   useEffect(()=>{
     if(appliedLink.current || !examFromLink)return;
@@ -232,12 +234,14 @@ export default function StudentJoinPage() {
                 I understand this exam may use webcam, screen sharing, tab-switch detection, and activity monitoring as per school exam rules.
               </label>
               {errors.consent && <p id="consent-err" className="error-text" role="alert">{errors.consent}</p>}
-              {(selected?.settings?.requireWebcam || selected?.settings?.requireScreen) && (
+              {selected && (
                 <div className="mt-4 space-y-3 rounded-xl border border-dps-gold/40 bg-dps-gold/5 p-4 text-sm">
                   <p className="font-semibold text-white">Explicit media consent for this exam</p>
                   <p className="text-slate-300">Your browser will separately ask permission when you start the exam. Nothing is captured on this page. You may refuse and ask your teacher for another arrangement.</p>
                   {selected?.settings?.requireWebcam && <label className="flex gap-3"><input type="checkbox" className="accent-dps-green" checked={mediaConsent.webcam} onChange={e => setMediaConsent(v => ({...v,webcam:e.target.checked}))} /> I agree to share my webcam live with the authorized exam teacher while taking this exam.</label>}
-                  {selected?.settings?.requireScreen && <label className="flex gap-3"><input type="checkbox" className="accent-dps-green" checked={mediaConsent.screenShare} onChange={e => setMediaConsent(v => ({...v,screenShare:e.target.checked}))} /> I agree to share my screen live with the authorized exam teacher while taking this exam.</label>}
+                  <label className="flex gap-3"><input type="checkbox" className="accent-dps-green" checked={mediaConsent.screenShare} onChange={e => setMediaConsent(v => ({...v,screenShare:e.target.checked}))} />
+                    <span>{selected.settings.requireScreen?'Required for this exam:':'Optional:'} I choose to share my entire screen with the authorized teacher. My browser will ask separately before screen capture begins, and screen-wall snapshots require another opt-in.</span>
+                   </label>
                   {errors.webcam && <p className="error-text" role="alert">{errors.webcam}</p>}
                   {errors.screen && <p className="error-text" role="alert">{errors.screen}</p>}
                 </div>

@@ -7,7 +7,7 @@ import { cx } from '../../utils/format'
  * Always-visible indicator that tells the student exactly what is being shared.
  * Includes an optional self-view so the student can see their own camera feed.
  */
-export default function MonitoringIndicator({ webcamStream, screenStream, activityMonitoring = true, connected = true, snapshotRequested = false, snapshotAllowed = false, snapshotStatus = 'off', onSnapshotChange, screenWallRequested = false, screenWallAllowed = false, screenWallStatus = 'off', onScreenWallChange }) {
+export default function MonitoringIndicator({ webcamStream, screenStream, activityMonitoring = true, connected = true, snapshotRequested = false, snapshotAllowed = false, snapshotStatus = 'off', onSnapshotChange, screenWallRequested = false, screenWallAllowed = false, screenWallStatus = 'off', onScreenWallChange, onEnableScreen, screenOptInBusy = false, screenOptInMessage = '', optionalScreen = false, onStopScreen }) {
   const [open, setOpen] = useState(true)
   useEffect(()=>{if(snapshotRequested||screenWallRequested)setOpen(true)},[snapshotRequested,screenWallRequested])
   const items = [
@@ -57,6 +57,24 @@ export default function MonitoringIndicator({ webcamStream, screenStream, activi
                 {snapshotAllowed?'Stop sharing snapshots':'Allow webcam snapshots'}
               </button>
             </section>
+          )}
+          {!screenStream && (
+            <section className="rounded-xl border border-sky-400/40 bg-sky-500/10 p-3" aria-label="Optional screen sharing">
+              <p className="text-xs font-semibold text-sky-200">Optional screen sharing</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-slate-200">
+                Only you can start sharing. If you agree, your browser will ask you to select your entire screen.
+                You may decline optional sharing.
+              </p>
+              <button type="button" className="btn btn-primary btn-sm mt-2 w-full"
+                onClick={onEnableScreen} disabled={screenOptInBusy || !connected}>
+                <MonitorUp size={13}/> {screenOptInBusy?'Waiting for your permission…':'Share my entire screen'}
+              </button>
+              {screenOptInMessage && <p className="mt-2 text-[11px] text-sky-100" role="status">{screenOptInMessage}</p>}
+            </section>
+          )}
+          {screenStream && optionalScreen && (
+            <button type="button" className="btn btn-ghost btn-sm w-full border border-sky-400/30"
+              onClick={onStopScreen}>Stop optional screen sharing</button>
           )}
           {screenWallRequested && (
             <section className="rounded-xl border border-sky-400/50 bg-sky-500/10 p-3" aria-label="Optional screen wall snapshots">

@@ -164,7 +164,12 @@ function attachSockets(io){
     const consent=name==='student:webcamStatus'?s.consent_webcam:s.consent_screen;
     if(active&&!consent)return;
     const label=name==='student:webcamStatus'?'webcam':'screen';
-    publish(s.exam_id,'exam:studentStatusUpdate',{sessionId:s.id,[label+'Active']:active,connected:true});
+    publish(s.exam_id,'exam:studentStatusUpdate',{sessionId:s.id,
+      [label+'Active']:active,...(label==='screen'?{screen:s.consent_screen}:{}),connected:true});
+    // A student may grant optional screen consent after the wall was opened.
+    // Send a *separate* snapshot-sharing prompt, never initiate capture.
+    if(label==='screen'&&active&&s.consent_screen&&viewers(s.exam_id).length)
+     privateStudent(s.id,'teacher:screenWallRequested',{sessionId:s.id,requested:true});
     if(!active&&consent)await event({examId:s.exam_id,sessionId:s.id,
      eventType:label==='webcam'?'WEBCAM_STOPPED':'SCREEN_SHARE_STOPPED',message:'Student reported media sharing stopped.'});
    }));

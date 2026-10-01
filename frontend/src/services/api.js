@@ -54,6 +54,10 @@ const publicExam = ({ passcode, ...rest }) => withStatus(rest)
 
 /* ------------------------------ API ------------------------------- */
 export const api = {
+  // Student-initiated consent only: never called in response to a teacher's request.
+  setScreenMediaConsent: screenShare => DEMO_MODE
+    ? Promise.resolve({screenShare})
+    : data(http.post('/api/student/media-consent',{screenShare})),
   // ---------- auth ----------
   teacherLogin: (creds) =>
     DEMO_MODE

@@ -192,6 +192,7 @@ export function createLiveApi(http) {
       const publicExam = normalizeExam({ ...joined.exam, className: p.class, section: p.section, status: 'active' })
       return {
         token: joined.token, sessionId: joined.session.id,
+        monitoring: joined.monitoring,
         student: { name: p.name, rollNumber: p.rollNumber, class: p.class, section: p.section },
         exam: publicExam,
         joinedAt: joined.session.joined_at,

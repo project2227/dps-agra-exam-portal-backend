@@ -36,10 +36,11 @@ function Step({ done, required, icon: Icon, title, children }) {
  * Nothing starts until the student clicks the buttons here.
  * onReady({ webcam, screen }) is called after fullscreen is entered.
  */
-export default function ProctoringConsentModal({ open, exam, onReady, onDecline }) {
+export default function ProctoringConsentModal({ open, exam, allowOptionalScreen = false, onReady, onDecline }) {
   const settings = exam?.settings || {}
   const needCam = !!settings.requireWebcam
   const needScreen = !!settings.requireScreen
+  const canStartScreen = needScreen || allowOptionalScreen
   const [webcam, setWebcam] = useState(null)
   const [screen, setScreen] = useState(null)
   const [busy, setBusy] = useState('')
@@ -102,7 +103,7 @@ export default function ProctoringConsentModal({ open, exam, onReady, onDecline 
   return (
     <Modal open={open} title="Before you start: exam monitoring" size="lg" dismissible={false}>
       <p className="text-sm text-slate-300">
-        Your school uses monitoring during this exam so that everyone is assessed fairly. Here is exactly what will be shared
+        This exam can use consent-based monitoring so that participants know what is shared. Here is exactly what will be shared
         with your teacher, <strong className="text-white">only while the exam is open</strong>. A monitoring indicator stays on screen the whole time.
       </p>
 
@@ -130,7 +131,7 @@ export default function ProctoringConsentModal({ open, exam, onReady, onDecline 
 
         <Step done={!!screen} required={needScreen} icon={MonitorUp} title="Screen share">
           <p className="text-xs text-slate-400">Your teacher sees your entire screen to confirm no other apps or websites are open. Choose "Entire screen" when asked.</p>
-          {needScreen && (
+          {canStartScreen && (
             <>
               {screen && <VideoTile stream={screen} label="Preview" icon={MonitorUp} contain className="mt-3 aspect-video" />}
               <button type="button" className={cx('btn btn-sm mt-3', screen ? 'btn-ghost' : 'btn-primary')} onClick={startScreen} disabled={!!busy || !mediaSupport.screen}>
