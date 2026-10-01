@@ -1,0 +1,55 @@
+name: Neon small-file upload integration
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/services/storage.js'
+      - 'src/routes/handout.routes.js'
+      - 'src/config/env.js'
+      - 'db/migrations/007_small_file_storage.sql'
+      - 'integration/storage/**'
+      - '.github/workflows/storage-integration.yml'
+  pull_request:
+    paths:
+      - 'src/services/storage.js'
+      - 'src/routes/handout.routes.js'
+      - 'db/migrations/007_small_file_storage.sql'
+      - 'integration/storage/**'
+jobs:
+  storage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dps_upload_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d dps_upload_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      NODE_ENV: test
+      FRONTEND_URL: http://localhost:5173
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/dps_upload_test
+      DATABASE_SSL: 'false'
+      JWT_SECRET: test-only-jwt-secret-for-disposable-storage-database-001
+      STUDENT_SESSION_SECRET: test-only-student-secret-for-disposable-storage-db
+      FINGERPRINT_PEPPER: test-only-private-pepper-for-disposable-ci-db
+      UPLOAD_PROVIDER: postgres
+      API_PUBLIC_URL: http://localhost:5000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run migrate
+      - run: node --test integration/storage/*.test.js

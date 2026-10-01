@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { FileText, Loader2, UploadCloud } from 'lucide-react'
+import { FileText, UploadCloud } from 'lucide-react'
 import PageHeader from '../components/common/PageHeader'
 import GlassCard from '../components/common/GlassCard'
 import UploadBox from '../components/common/UploadBox'
@@ -12,7 +12,7 @@ import api from '../services/api'
 import { CLASSES, SECTIONS } from '../config'
 import { cx } from '../utils/format'
 
-const ACCEPT = '.pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.zip'
+const ACCEPT = '.pdf,.txt,.docx,.pptx,.png,.jpg,.jpeg'
 
 export default function Handouts() {
   const toast = useToast()
@@ -20,7 +20,7 @@ export default function Handouts() {
   const [error, setError] = useState('')
   const [filterClass, setFilterClass] = useState('')
   const [files, setFiles] = useState([])
-  const [form, setForm] = useState({ title: '', description: '', class: 'XII', sections: ['All'] })
+  const [form, setForm] = useState({ title: '', description: '', class: 'IX', sections: ['All'] })
   const [progress, setProgress] = useState(null)
   const [errors, setErrors] = useState({})
   const [confirm, setConfirm] = useState(null)
@@ -28,14 +28,13 @@ export default function Handouts() {
   const load = () => { setError(''); api.getHandouts().then(setList).catch((e) => setError(e.message)) }
   useEffect(load, [])
 
-  const toggleSection = (s) => setForm((f) => {
-    if (s === 'All') return { ...f, sections: ['All'] }
-    const cur = f.sections.filter((x) => x !== 'All')
-    const next = cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s]
-    return { ...f, sections: next.length ? next : ['All'] }
-  })
+  const toggleSection = (s) => setForm(f => ({ ...f, sections:[s] }))
 
   const onFiles = (fs) => {
+    if(fs[0]?.name.toLowerCase().endsWith('.txt') && fs[0].size>2*1024*1024){
+      setErrors(e=>({...e,file:'Text files must be 2 MB or smaller.'}))
+      return
+    }
     setFiles(fs)
     if (fs[0] && !form.title) setForm((f) => ({ ...f, title: fs[0].name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ') }))
     setErrors((e) => ({ ...e, file: '' }))
@@ -67,13 +66,14 @@ export default function Handouts() {
 
   return (
     <div>
-      <PageHeader title="Handouts" subtitle="Share notes, slides, practical file formats and sample programs. Students of the chosen class and sections can download them from their dashboard." />
+      <PageHeader title="Handouts" subtitle="Share notes, PDFs, slides and sample programs. Students in the selected class and section can download them after joining an exam." />
       <div className="grid gap-6 xl:grid-cols-[400px,1fr]">
         <form onSubmit={upload} noValidate>
           <GlassCard glow className="space-y-4 p-5 xl:sticky xl:top-20">
+            <p className="text-xs text-slate-400">Small-file storage uses Neon with a shared 64 MB quota. Avoid uploading personal or confidential student information.</p>
             <h2 className="section-title flex items-center gap-2"><UploadCloud size={18} className="text-dps-neon" aria-hidden="true" /> Upload a handout</h2>
             <div>
-              <UploadBox accept={ACCEPT} maxSizeMB={25} files={files} onFiles={onFiles} disabled={progress !== null} hint="PDF, DOC/DOCX, PPT/PPTX, images or ZIP, up to 25 MB" />
+              <UploadBox accept={ACCEPT} maxSizeMB={5} files={files} onFiles={onFiles} disabled={progress !== null} hint="PDF, DOCX, PPTX, PNG or JPG up to 5 MB; TXT up to 2 MB. For large files, use private S3 storage." />
               {errors.file && <p className="error-text" role="alert">{errors.file}</p>}
             </div>
             <Field label="Title" required error={errors.title}>
@@ -106,7 +106,7 @@ export default function Handouts() {
               </div>
             )}
             <button type="submit" className="btn btn-primary w-full" disabled={progress !== null}>
-              {progress !== null ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <UploadCloud size={16} aria-hidden="true" />} Upload and share
+              {progress !== null ? <span className="loader-code" aria-hidden="true"><i/><i/><i/></span> : <UploadCloud size={16} aria-hidden="true" />} Upload and share
             </button>
           </GlassCard>
         </form>

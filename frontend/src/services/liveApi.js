@@ -127,9 +127,9 @@ const normalizeHandout = h => ({
   class: h.class_name,
   sections: [h.section || 'All'],
   uploadedAt: h.created_at,
-  type: /pdf/i.test(h.file_type) ? 'pdf' : /image|png|jpeg/i.test(h.file_type) ? 'image' : 'doc',
-  fileName: h.title,
-  size: 0,
+  type: /pdf/i.test(h.file_type) ? 'pdf' : /presentation/i.test(h.file_type) ? 'ppt' : /image|png|jpeg/i.test(h.file_type) ? 'image' : 'doc',
+  fileName: h.file_name || h.title,
+  size: Number(h.file_size||0),
 })
 const normalizeDate = d => ({ ...d, class: d.class_name, notes: d.description, type: 'Exam', date: d.date })
 
