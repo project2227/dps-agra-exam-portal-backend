@@ -8,6 +8,8 @@ import { DEMO_MODE, FLAG_BUCKETS, LANGUAGES, PROCTOR_EVENTS } from '../../config
 import { cx, formatDateTime, formatTime, relativeTime } from '../../utils/format'
 import { isRunningExamStatus, canPreviewStudent } from '../../utils/monitoringState'
 import { ICE_SERVERS } from '../../config'
+import IncidentClips from './IncidentClips'
+import ParticipantControls from './ParticipantControls'
 
 const PRESETS = [
   'Please keep your eyes on your own screen.',
@@ -30,7 +32,7 @@ function Section({ icon: Icon, title, children, className = '' }) {
  * Opens a live WebRTC stream for webcam + screen (when the exam uses them)
  * and closes it again when the panel closes.
  */
-export default function StudentDetailPanel({ student: s, exam, rtc, cameraStills, snapshot = {}, onClose, onWarn, now }) {
+export default function StudentDetailPanel({ student: s, exam, rtc, cameraStills, snapshot = {}, onClose, onWarn, onChanged, socket, now }) {
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
   const closeBtn = useRef(null)
@@ -142,6 +144,8 @@ export default function StudentDetailPanel({ student: s, exam, rtc, cameraStills
             </div>
           </div>
 
+          {!DEMO_MODE&&<ParticipantControls student={s} onChanged={onChanged}/>}
+          {!DEMO_MODE&&<IncidentClips socket={socket} sessionId={sessionId} consented={s.recordingConsent}/>}
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
             {Object.entries(FLAG_BUCKETS).map(([k, b]) => {
               const n = s.flags?.[k] || 0

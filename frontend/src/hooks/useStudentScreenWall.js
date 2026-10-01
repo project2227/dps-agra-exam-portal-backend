@@ -3,7 +3,7 @@ import {useEffect,useRef,useState} from 'react'
 // The participant selects and permits their entire screen ONCE before the
 // exam. This hook uses that already-granted track only while the authorized
 // exam teacher is actively watching the bounded screen wall. No extra prompt.
-const EVERY_MS=8000,MAX_URI=158000;
+const EVERY_MS=1500,MAX_URI=158000;
 export function useStudentScreenWall(socket,screen,active){
  const [requested,setRequested]=useState(false);
  const [status,setStatus]=useState('off');
@@ -50,7 +50,7 @@ export function useStudentScreenWall(socket,screen,active){
     let jpeg=canvas.toDataURL('image/jpeg',.36);
     if(jpeg.length>MAX_URI)jpeg=canvas.toDataURL('image/jpeg',.22);
     if(jpeg.length>=300&&jpeg.length<=MAX_URI){
-     socket.emit('student:screenWallFrame',{jpeg});
+     socket.volatile.emit('student:screenWallFrame',{jpeg,capturedAt:Date.now()});
      setStatus('sharing');
     }else setStatus('image-too-large');
    }catch{setStatus('screen-unavailable');}
@@ -59,10 +59,11 @@ export function useStudentScreenWall(socket,screen,active){
   socket.emit('student:screenWallConsent',{enabled:true});
   setStatus('starting');
   video.play().catch(()=>{if(!stopped)setStatus('screen-unavailable')});
-  const first=setTimeout(capture,1500);
+  video.addEventListener('loadeddata',capture);
+  const first=setTimeout(capture,150);
   const timer=setInterval(capture,EVERY_MS);
   return()=>{
-   stopped=true;clearTimeout(first);clearInterval(timer);
+   stopped=true;clearTimeout(first);clearInterval(timer);video.removeEventListener('loadeddata',capture);
    if(socket.connected)socket.emit('student:screenWallConsent',{enabled:false});
    sent.current=false;
    video.pause();video.srcObject=null;canvas.width=0;canvas.height=0;

@@ -33,7 +33,7 @@ export default function StudentJoinPage() {
   const [form, setForm] = useState({ name: '', rollNumber: '', class: '', section: '', passcode: '' })
   const [examId, setExamId] = useState('')
   const [consent, setConsent] = useState(false)
-  const [mediaConsent, setMediaConsent] = useState({ webcam: false, screenShare: false })
+  const [mediaConsent, setMediaConsent] = useState({ webcam: false, screenShare: false, recording: false })
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [serverError, setServerError] = useState('')
@@ -65,7 +65,7 @@ export default function StudentJoinPage() {
     return ()=>controller.abort();
   },[])
 
-  const live = useMemo(() => exams.filter((e) => e.status === 'live' && (!form.class || e.class === form.class)), [exams, form.class])
+  const live = useMemo(() => exams.filter((e) => ['live','upcoming'].includes(e.status) && (!form.class || e.class === form.class)), [exams, form.class])
   const upcoming = useMemo(() => exams.filter((e) => e.status === 'upcoming' && (!form.class || e.class === form.class)), [exams, form.class])
   const selected = exams.find((e) => e.id === examId)
 
@@ -82,7 +82,7 @@ export default function StudentJoinPage() {
     setErrors((x) => ({ ...x, examId: '' }))
     setForm((f) => ({ ...f, passcode: exam.id===examId ? f.passcode : '', class: exam.class, section: exam.section !== 'All' ? exam.section : f.section }))
     // Media choices apply to one exam only; never carry them into another.
-    if(exam.id!==examId)setMediaConsent({webcam:false,screenShare:false})
+    if(exam.id!==examId)setMediaConsent({webcam:false,screenShare:false,recording:false})
   }
   useEffect(()=>{
     if(appliedLink.current || !examFromLink)return;
@@ -183,8 +183,8 @@ export default function StudentJoinPage() {
               {loading ? <Spinner label="Loading exams" /> : loadError ? <ErrorNote message={loadError} onRetry={load} /> : (
                 <>
                   {live.length === 0 ? (
-                    <EmptyState icon={Users} title={form.class ? `No live exam for Class ${form.class} right now` : 'No exam is live right now'}>
-                      When your teacher starts the exam it will appear here. Press Refresh.
+                    <EmptyState icon={Users} title={form.class ? `No live exam for Class ${form.class} right now` : 'No exam is open for check-in'}>
+                      Check-in opens 30 minutes before the scheduled start. Your teacher will share the exam password.
                     </EmptyState>
                   ) : (
                     <div className="grid gap-3" role="list">
@@ -194,7 +194,7 @@ export default function StudentJoinPage() {
                   {errors.examId && <p className="error-text" role="alert">{errors.examId}</p>}
                   {upcoming.length > 0 && (
                     <div className="mt-5 border-t border-white/10 pt-4">
-                      <p className="mb-2 text-sm font-medium text-slate-300">Coming up</p>
+                      <p className="mb-2 text-sm font-medium text-slate-300">Check in early</p><p className="text-sm text-slate-400">Select an upcoming exam above to enter its waiting room. Questions unlock automatically at the scheduled start.</p>
                       <ul className="space-y-1.5 text-sm text-slate-400">
                         {upcoming.slice(0, 4).map((e) => <li key={e.id}>Class {e.class}: {e.title} <span className="text-slate-500">({formatDateTime(e.startsAt)})</span></li>)}
                       </ul>
@@ -239,9 +239,10 @@ export default function StudentJoinPage() {
                   <p className="font-semibold text-white">Explicit media consent for this exam</p>
                   <p className="text-slate-300">Your browser will separately ask permission when you start the exam. Nothing is captured on this page. You may refuse and ask your teacher for another arrangement.</p>
                   {selected?.settings?.requireWebcam && <label className="flex gap-3"><input type="checkbox" className="accent-dps-green" checked={mediaConsent.webcam} onChange={e => setMediaConsent(v => ({...v,webcam:e.target.checked}))} /> I agree to share my webcam with the authorized exam teacher while taking this exam, including temporary compressed stills if direct video cannot connect. No webcam recordings are saved by the portal.</label>}
-                  <label className="flex gap-3"><input type="checkbox" className="accent-dps-green" checked={mediaConsent.screenShare} onChange={e => setMediaConsent(v => ({...v,screenShare:e.target.checked}))} />
-                    <span>{selected.settings.requireScreen?'Required for this exam:':'Optional:'} I choose to share my entire screen with the authorized teacher. My browser will ask separately before screen capture begins, and may send temporary low-resolution screen stills through the exam server while the teacher watches. No additional in-app permission request.</span>
+                  <label className="flex gap-3"><input type="checkbox" className="accent-dps-green" checked={mediaConsent.screenShare} onChange={e => setMediaConsent(v => ({...v,screenShare:e.target.checked,recording:e.target.checked?v.recording:false}))} />
+                    <span>{selected.settings.requireScreen?'Required for this exam:':'Optional:'} I choose to share my entire screen with the authorized teacher. My browser will ask separately before screen capture begins, and may send temporary low-resolution screen stills through the exam server while the teacher watches. The browser permission stays active until you stop sharing or leave the exam.</span>
                    </label>
+                  <label className="flex gap-3"><input type="checkbox" className="accent-dps-green" disabled={!mediaConsent.screenShare} checked={mediaConsent.recording} onChange={e=>setMediaConsent(v=>({...v,recording:e.target.checked}))}/><span>Optional incident recording: if I leave fullscreen, switch tabs or minimise the exam, record the screen I have approved until I return to the exam in fullscreen and focus it. Only my exam teacher can review clips; clips expire after 7 days. Webcam and audio are not recorded. A clip may stop if sharing ends, the connection fails or the 12 MB clip limit is reached.</span></label>
                   {errors.webcam && <p className="error-text" role="alert">{errors.webcam}</p>}
                   {errors.screen && <p className="error-text" role="alert">{errors.screen}</p>}
                 </div>

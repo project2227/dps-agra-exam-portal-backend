@@ -45,7 +45,7 @@ test('independent teacher and student sockets request webcam and screen, exchang
   VALUES($1,$2,'Synthetic Student','test-roll','IX','A',$3,'active',true,true,true)`,[sessionId,examId,hash(studentJwt)]);
  const {app}=require('../src/app');
  const server=http.createServer(app);
- const io=new Server(server,{cors:{origin:['http://localhost'],methods:['GET','POST']},pingTimeout:20000});
+ const io=new Server(server,{cors:{origin:['http://localhost'],methods:['GET','POST']},pingTimeout:20000,maxHttpBufferSize:192*1024});
  attachSockets(io);
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const url='http://127.0.0.1:'+server.address().port;
@@ -123,7 +123,7 @@ test('independent teacher and student sockets request webcam and screen, exchang
  let seen=0;
  const onImage=()=>{seen++};
  teacher.on('teacher:snapshotFrame',onImage);
- const fakeJpeg='data:image/jpeg;base64,'+'A'.repeat(600);
+ const fakeJpeg='data:image/jpeg;base64,'+'A'.repeat(22000);
  student.emit('student:snapshotFrame',{jpeg:fakeJpeg});
  await pause(120);
  assert.equal(seen,0,'A camera frame must not relay before the authenticated capture hook starts');
@@ -153,14 +153,14 @@ test('independent teacher and student sockets request webcam and screen, exchang
  let leaked=0;
  const onWall=()=>{leaked++};
  teacher.on('teacher:screenWallFrame',onWall);
- student.emit('student:screenWallFrame',{jpeg:fakeJpeg});
+ student.emit('student:screenWallFrame',{jpeg:fakeJpeg,capturedAt:Date.now()});
  await pause(130);
  assert.equal(leaked,0,'No screen frames may relay until the authenticated capture hook starts');
  const sharing=waitFor(teacher,'teacher:screenWallStudentStatus',p=>p.sessionId===sessionId&&p.status==='sharing');
  student.emit('student:screenWallConsent',{enabled:true});
  await sharing;
  const wallImage=waitFor(teacher,'teacher:screenWallFrame',p=>p.sessionId===sessionId);
- student.emit('student:screenWallFrame',{jpeg:fakeJpeg});
+ student.emit('student:screenWallFrame',{jpeg:fakeJpeg,capturedAt:Date.now()});
  assert.equal((await wallImage).jpeg,fakeJpeg,'consented student screen reaches the authorized wall viewer');
  const wallStopped=waitFor(teacher,'teacher:screenWallStudentStatus',p=>p.sessionId===sessionId&&p.status==='student-stopped');
  student.emit('student:screenWallConsent',{enabled:false});
@@ -196,11 +196,11 @@ test('independent teacher and student sockets request webcam and screen, exchang
    p=>p.sessionId===sessionId&&p.status==='sharing');
  student.emit('student:screenWallConsent',{enabled:true});
  await laterStatus;
- // Per-student bandwidth quota intentionally permits one wall frame per 7.5s.
+ // Per-student bandwidth quota intentionally permits one wall frame per 1.2s.
  // Wait for that limit rather than treating normal backpressure as a bug.
- await pause(7650);
+ await pause(1300);
  const afterGrant=waitFor(teacher,'teacher:screenWallFrame',p=>p.sessionId===sessionId);
- student.emit('student:screenWallFrame',{jpeg:fakeJpeg});
+ student.emit('student:screenWallFrame',{jpeg:fakeJpeg,capturedAt:Date.now()});
  assert.equal((await afterGrant).jpeg,fakeJpeg);
  student.emit('student:screenWallConsent',{enabled:false});
  await pause(100);

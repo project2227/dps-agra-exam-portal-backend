@@ -6,12 +6,22 @@ on:
       - 'src/sockets/**'
       - 'src/routes/student.routes.js'
       - 'src/routes/proctor.routes.js'
+      - 'src/routes/adminData.routes.js'
+      - 'src/routes/incident.routes.js'
+      - 'src/services/examLifecycle.js'
+      - 'src/middleware/auth.js'
+      - 'src/server.js'
+      - 'db/migrations/008_final_exam_controls.sql'
       - 'integration/**'
       - 'package.json'
       - '.github/workflows/webrtc-signaling.yml'
   pull_request:
     paths:
       - 'src/sockets/**'
+      - 'src/routes/**'
+      - 'src/services/examLifecycle.js'
+      - 'src/middleware/auth.js'
+      - 'db/migrations/**'
       - 'integration/**'
       - 'package.json'
 jobs:
@@ -42,7 +52,7 @@ jobs:
       JWT_SECRET: test-only-jwt-secret-for-ephemeral-integration-database
       STUDENT_SESSION_SECRET: test-only-student-secret-for-ephemeral-integration
       FINGERPRINT_PEPPER: test-only-fingerprint-pepper
-      UPLOAD_PROVIDER: disabled
+      UPLOAD_PROVIDER: postgres
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

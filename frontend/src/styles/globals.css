@@ -5,7 +5,7 @@
 
 @layer base {
   :root { color-scheme: dark; }
-  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; overflow-x: clip; }
   body {
     @apply bg-navy-950 text-slate-200 font-sans antialiased;
     min-height: 100vh;

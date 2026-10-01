@@ -42,6 +42,8 @@ export default function ExamMonitor() {
   const [snapshots, setSnapshots] = useState({})
   const [feed, setFeed] = useState([])
   const [selectedId, setSelectedId] = useState(null)
+  const [searchStudent,setSearchStudent]=useState('')
+  const [statusFilter,setStatusFilter]=useState('all')
   const [error, setError] = useState('')
   const [connected, setConnected] = useState(false)
   const [showPass, setShowPass] = useState(false)
@@ -58,7 +60,7 @@ export default function ExamMonitor() {
   const progressTimer = useRef(null)
   studentsRef.current = students
 
-  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 5000); return () => clearInterval(t) }, [])
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t) }, [])
   useEffect(() => {
     const h = () => setIsFs(!!document.fullscreenElement)
     document.addEventListener('fullscreenchange', h)
@@ -83,7 +85,7 @@ export default function ExamMonitor() {
     const onDisconnect = () => setConnected(false)
     const upsert = (sessionId, patch) => setStudents(all => ({ ...all, [sessionId]: mergeMonitorStatus({ flags: { ...EMPTY_FLAGS }, timeline: [], ...all[sessionId] },patch) }))
 
-    const onJoined = (s) => s?.sessionId && upsert(s.sessionId, { name: s.studentName || 'Student', rollNumber: s.rollNumber, status: 'active', connected:true, ...s, class:s.className||s.class, section:s.section, webcam:s.consentWebcam===true, screen:s.consentScreen===true, stillsConsent:s.consentStills===true, device:s.device||{} })
+    const onJoined = (s) => s?.sessionId && upsert(s.sessionId, { name: s.studentName || 'Student', rollNumber: s.rollNumber, status: 'active', connected:true, ...s, class:s.className||s.class, section:s.section, webcam:s.consentWebcam===true, screen:s.consentScreen===true, stillsConsent:s.consentStills===true, recordingConsent:s.consentRecording===true, device:s.device||{} })
     const onUpdate = ({ sessionId, ...patch }) => sessionId && upsert(sessionId, patch)
     const onLeft = ({ sessionId, status }) => sessionId && upsert(sessionId, { status: status || 'disconnected', connected:false, webcamActive:false, screenActive:false })
     const onSnapshot = ({ sessionId, webcam, screen, ts }) => sessionId && setSnapshots((m) => ({ ...m, [sessionId]: { webcam: webcam || m[sessionId]?.webcam, screen: screen || m[sessionId]?.screen, ts } }))
@@ -128,6 +130,7 @@ export default function ExamMonitor() {
     if (socket.connected) join()
     socket.on('connect', join)
     socket.on('disconnect', onDisconnect)
+    socket.on('exam:closed',load)
     socket.on(EVENTS.MONITOR_STUDENT_JOINED, onJoined)
     socket.on(EVENTS.MONITOR_STUDENT_UPDATE, onUpdate)
     socket.on(EVENTS.MONITOR_STUDENT_LEFT, onLeft)
@@ -138,6 +141,7 @@ export default function ExamMonitor() {
       socket.emit(EVENTS.TEACHER_LEAVE_MONITOR, { examId })
       socket.off('connect', join)
       socket.off('disconnect', onDisconnect)
+      socket.off('exam:closed',load)
       socket.off(EVENTS.MONITOR_STUDENT_JOINED, onJoined)
       socket.off(EVENTS.MONITOR_STUDENT_UPDATE, onUpdate)
       socket.off(EVENTS.MONITOR_STUDENT_LEFT, onLeft)
@@ -184,11 +188,17 @@ export default function ExamMonitor() {
   const list = useMemo(() => Object.values(students), [students])
   const counts = useMemo(() => ({
     joined: list.length,
-    active: list.filter((s) => isRunningExamStatus(s.status) && s.connected!==false).length,
+    active: list.filter((s) => s.status!=='joined' && isRunningExamStatus(s.status) && s.connected!==false).length,
+    waiting: list.filter(s=>s.status==='joined').length,
     submitted: list.filter((s) => s.status === 'submitted').length,
     flagged: list.filter((s) => flagTotal(s.flags) > 0).length,
     flags: list.reduce((a, s) => a + flagTotal(s.flags), 0),
   }), [list])
+  const filtered = useMemo(()=>list.filter(s=>{
+    const match=(s.name+' '+s.rollNumber+' '+s.class+' '+s.section).toLowerCase().includes(searchStudent.toLowerCase())
+    const status=statusFilter==='all'||(statusFilter==='waiting'&&s.status==='joined')||(statusFilter==='active'&&s.status!=='joined'&&isRunningExamStatus(s.status)&&s.connected!==false)||(statusFilter==='flagged'&&flagTotal(s.flags)>0)||(statusFilter==='offline'&&s.connected===false)||(statusFilter==='submitted'&&s.status==='submitted')||(statusFilter==='removed'&&s.kicked)
+    return match&&status
+  }),[list,searchStudent,statusFilter])
   const selected = selectedId ? students[selectedId] : null
 
   const toggleFs = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {})
@@ -236,18 +246,19 @@ export default function ExamMonitor() {
 
       {passNotice&&<p role="status" className="rounded-xl border border-dps-gold/30 bg-dps-gold/5 px-4 py-3 text-sm text-slate-200">{passNotice}</p>}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatCard icon={Users} label="Joined" value={counts.joined} accent="sky" />
+        <StatCard icon={Users} label="Joined" value={counts.joined} accent="sky" hint={`${counts.waiting} in the waiting room`} />
         <StatCard icon={Eye} label="Writing now" value={counts.active} accent="green" />
         <StatCard icon={CheckCircle2} label="Submitted" value={counts.submitted} accent="gold" />
         <StatCard icon={ShieldAlert} label="Students flagged" value={counts.flagged} accent="red" hint={`${counts.flags} flags in total`} />
       </div>
 
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 p-3"><label className="min-w-[200px] flex-1"><span className="sr-only">Find student by name or roll number</span><input className="input" type="search" value={searchStudent} onChange={e=>setSearchStudent(e.target.value)} placeholder="Find a student by name or roll number…"/></label><label><span className="sr-only">Filter student status</span><select className="input" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>{[['all','All students'],['waiting','Waiting room'],['active','Writing now'],['flagged','Flagged'],['offline','Offline'],['submitted','Submitted'],['removed','Removed by teacher']].map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label><span className="text-xs text-slate-400">{filtered.length} of {list.length}</span><button type="button" className="btn btn-ghost btn-sm" onClick={load}><RefreshCcw size={14}/> Refresh</button></div>
       {wallMode ? (
-        <ScreenWall students={list} frames={wall.frames} statuses={wall.statuses} state={wall.state} now={now}
+        <ScreenWall students={filtered} frames={wall.frames} statuses={wall.statuses} state={wall.state} now={now}
           onSelect={s=>setSelectedId(s.sessionId)} />
       ) : (
       <div className="grid gap-5 2xl:grid-cols-[1fr,320px]">
-        <LiveStudentGrid students={list} snapshots={snapshots} selectedId={selectedId} onSelect={(s) => setSelectedId(s.sessionId)} now={now} />
+        <LiveStudentGrid students={filtered} snapshots={snapshots} selectedId={selectedId} onSelect={(s) => setSelectedId(s.sessionId)} now={now} />
 
         <GlassCard className="h-fit p-4 2xl:sticky 2xl:top-20" aria-labelledby="feed-title">
           <h2 id="feed-title" className="mb-3 flex items-center gap-2 text-sm font-semibold"><BellRing size={15} className="text-dps-orange" aria-hidden="true" /> Live alerts</h2>
@@ -274,7 +285,7 @@ export default function ExamMonitor() {
       </div>)}
 
       {selected && (
-        <StudentDetailPanel student={selected} exam={exam} rtc={rtc} cameraStills={cameraStills} snapshot={{...snapshots[selected.sessionId],screen:wall.frames[selected.sessionId]?.jpeg || snapshots[selected.sessionId]?.screen}} onClose={() => { cameraStills.stop(selected.sessionId); setSelectedId(null) }} onWarn={warn} now={now} />
+        <StudentDetailPanel socket={socket} onChanged={load} student={selected} exam={exam} rtc={rtc} cameraStills={cameraStills} snapshot={{...snapshots[selected.sessionId],screen:wall.frames[selected.sessionId]?.jpeg || snapshots[selected.sessionId]?.screen}} onClose={() => { cameraStills.stop(selected.sessionId); setSelectedId(null) }} onWarn={warn} now={now} />
       )}
     </div>
   )

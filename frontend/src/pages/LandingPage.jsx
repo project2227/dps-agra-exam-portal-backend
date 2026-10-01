@@ -76,7 +76,7 @@ export default function LandingPage() {
       <main className="flex-1">
         {/* Hero */}
         <section className="motion-surface relative mx-auto grid max-w-7xl items-center gap-12 px-4 pb-16 pt-12 sm:px-6 lg:grid-cols-[1.1fr,0.9fr] lg:pt-20">
-          <div className="animate-fade-up">
+          <div className="min-w-0 animate-fade-up">
             <p className="chip mb-5 border-dps-green/30 text-dps-neon"><Sparkles size={12} aria-hidden="true" /> {SCHOOL.name} | {SCHOOL.department}</p>
             <h1 className="font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
               Learn. Create. <span className="text-gradient">Make it count.</span>
@@ -93,9 +93,9 @@ export default function LandingPage() {
             </p>
             <p className="mt-4 text-xs text-slate-500">Independent student-built learning platform; not an officially affiliated school website. <a href="https://dps.ac.in/" target="_blank" rel="noopener noreferrer" className="text-dps-neon hover:underline">Go to the official school website ↗</a></p>
           </div>
-          <div className="flex flex-col items-center gap-8">
+          <div className="flex min-w-0 flex-col items-center gap-8">
             <DPSLogoAnimated size={300} />
-            <div className="w-full max-w-md"><TerminalCard /></div>
+            <div className="w-full min-w-0 max-w-md"><TerminalCard /></div>
           </div>
         </section>
 

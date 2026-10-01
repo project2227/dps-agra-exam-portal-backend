@@ -3,6 +3,7 @@ const express=require('express');const crypto=require('crypto');const bcrypt=req
 const db=require('../config/db');const {teacher,ownExam}=require('../middleware/auth');
 const {asyncWrap,must}=require('../utils/http');const {normalizeExamPasscode,isValidExamPasscode}=require('../utils/examPasscode');
 const {audit}=require('../services/audit');
+const {getIo,publish}=require('../services/events');
 const {env}=require('../config/env');
 const {encryptPasscode,decryptPasscode}=require('../services/passcodeVault');const {assertAssignedClass}=require('../services/permissions');
 const router=express.Router();router.use(teacher);
@@ -120,6 +121,8 @@ router.post('/exams/:examId/close',asyncWrap(async(req,res)=>{
  const exam=await ownExam(req.params.examId,req.teacher.id);
  await db.query("UPDATE exams SET status='closed',updated_at=now() WHERE id=$1",[exam.id]);
  await audit({teacherId:req.teacher.id,examId:exam.id,action:'exam:closed'});
+ getIo()?.to(`exam:${exam.id}:students`).emit('exam:closed',{reason:'Your teacher closed this exam.'});
+ publish(exam.id,'exam:closed',{examId:exam.id});
  res.json({status:'closed'});
 }));
 const qShape=z.object({type:z.enum(['mcq','short','long','code','file']),title:z.string().min(1).max(240),

@@ -37,7 +37,18 @@ export function useStudentRTC(socket, streamsRef, enabled=true) {
       const pc=new RTCPeerConnection({iceServers:await requestIceServers(socket,API_BASE_URL,ICE_SERVERS)})
       const entry={pc,candidates:[]}
       peers.current.set(key,entry)
-      stream.getTracks().filter(t=>t.readyState==='live').forEach(t=>pc.addTrack(t,stream))
+      stream.getTracks().filter(t=>t.readyState==='live').forEach(t=>{
+        if(mediaType==='screen'&&t.kind==='video')t.contentHint='motion'
+        pc.addTrack(t,stream)
+      })
+      if(mediaType==='screen')for(const sender of pc.getSenders()){
+        if(sender.track?.kind!=='video')continue
+        const parameters=sender.getParameters()
+        parameters.encodings=parameters.encodings?.length?parameters.encodings:[{}]
+        parameters.encodings[0].maxBitrate=900000
+        parameters.degradationPreference='balanced'
+        sender.setParameters(parameters).catch(()=>{})
+      }
       pc.onicecandidate=e=>{
         if(e.candidate&&socket.connected)
           socket.emit('webrtc:iceCandidate',{sessionId,mediaType,payload:e.candidate.toJSON()})

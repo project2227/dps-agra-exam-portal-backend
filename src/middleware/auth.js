@@ -1,6 +1,7 @@
 'use strict';
 const jwt=require('jsonwebtoken');const crypto=require('crypto');
 const db=require('../config/db');const {env}=require('../config/env');const {asyncWrap,must}=require('../utils/http');
+const {sessionStart}=require('../services/examLifecycle');
 const hash=token=>crypto.createHash('sha256').update(token).digest('hex');
 const teacherToken=t=>jwt.sign({kind:'teacher',sub:t.id,role:t.role},env.JWT_SECRET,{issuer:'dps-exam',expiresIn:'8h'});
 const studentToken=(s,seconds)=>jwt.sign({kind:'student',sub:s.id,examId:s.exam_id},env.STUDENT_SESSION_SECRET,{issuer:'dps-exam',expiresIn:Math.max(120,Math.min(seconds,8*3600))});
@@ -27,7 +28,7 @@ const ownExam=async(examId,teacherId)=>{
 const examOpen=e=>{const now=Date.now();return ['active','scheduled'].includes(e.status)&&now>=new Date(e.start_time).getTime()&&now<=new Date(e.end_time).getTime();};
 const studentAllowed=s=>{
  must(examOpen({status:s.exam_status,start_time:s.start_time,end_time:s.end_time}),403,'Exam is not currently active.');
- const personalEnd=new Date(s.joined_at).getTime()+Number(s.duration_minutes)*60000;
+ const personalEnd=sessionStart(s)+Number(s.duration_minutes)*60000;
  must(Date.now()<=personalEnd,403,'Your exam duration has ended.');
 };
 module.exports={hash,teacherToken,studentToken,teacher,admin,student,ownExam,examOpen,studentAllowed};

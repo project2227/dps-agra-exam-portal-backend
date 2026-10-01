@@ -15,7 +15,7 @@ test('webRTC relay allows bounded ICE candidate bursts for both media types',()=
 test('student heartbeats distinguish transport connection from exam status',()=>{
  const s=read('src/sockets/exam.socket.js');
  assert.doesNotMatch(s,/status:'online'/);
- assert.match(s,/status:s\.status==='flagged'\?'flagged':'active',connected:true/);
+ assert.match(s,/status:Date\.now\(\)<Date\.parse\(s\.start_time\)\?'joined':s\.status==='flagged'\?'flagged':'active',connected:true/);
  assert.match(s,/teacher:mediaStatus/);
 })
 test('a teacher observation is audited and not added to automatic cheating score',()=>{

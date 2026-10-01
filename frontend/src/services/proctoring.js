@@ -59,7 +59,7 @@ export function requestWebcam() {
 
 export function requestScreen() {
   return navigator.mediaDevices.getDisplayMedia({
-    video: { displaySurface: 'monitor', frameRate: { ideal: 5, max: 10 } },
+    video: { displaySurface: 'monitor', frameRate: { ideal: 10, max: 15 } },
     audio: false,
     selfBrowserSurface: 'include',
     surfaceSwitching: 'exclude',

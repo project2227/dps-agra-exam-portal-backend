@@ -1,7 +1,8 @@
 import {useEffect,useState} from 'react'
 import {useLocation,useNavigate} from 'react-router-dom'
 import {ArrowRight,ArrowUpRight,Compass,MousePointer2,X} from 'lucide-react'
-const KEY='dps.tour.done.v4'
+import AryanCodeStage from './AryanCodeStage'
+const KEY='dps.tour.done.v5'
 const tours=[
  ['home','Your launchpad','One home for fair exams, creative coding and learning.','/'],
  ['join','Enter exam mode','Select the correct exam and use the teacher-issued passcode.','/student/join'],
@@ -19,7 +20,7 @@ const modes=[
 function hasSeen(){try{return localStorage.getItem(KEY)==='1'}catch{return false}}
 export default function ExperienceLayer(){
  const nav=useNavigate(),loc=useLocation()
- const [phase,setPhase]=useState(()=>hasSeen()?'off':'welcome')
+ const [phase,setPhase]=useState(()=>hasSeen()||loc.pathname!=='/'?'off':'welcome')
  const [mode]=useState(()=>modes[Math.floor(Math.random()*modes.length)])
  const [index,setIndex]=useState(0),[box,setBox]=useState(null)
  const close=()=>{try{localStorage.setItem(KEY,'1')}catch{}setPhase('off')}
@@ -47,19 +48,35 @@ export default function ExperienceLayer(){
   const key=e=>{if(e.key==='Escape')close();if(e.key==='ArrowRight')setIndex(i=>Math.min(tours.length-1,i+1));if(e.key==='ArrowLeft')setIndex(i=>Math.max(0,i-1))}
   window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key)
  },[phase])
+ useEffect(()=>{
+  if(phase==='off')return
+  const panel=document.querySelector('.experience-entry,.tour-overlay'),previous=document.activeElement
+  panel?.querySelector('button')?.focus()
+  const trap=e=>{
+   if(e.key==='Escape'){close();return}
+   if(e.key!=='Tab'||!panel)return
+   const buttons=[...panel.querySelectorAll('button')].filter(b=>!b.disabled),first=buttons[0],last=buttons[buttons.length-1]
+   if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus()}
+   else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus()}
+  }
+  window.addEventListener('keydown',trap)
+  return()=>{window.removeEventListener('keydown',trap);previous?.focus?.()}
+ },[phase])
  if(phase==='off')return null
- if(phase==='welcome')return <div role="dialog" aria-modal="true" aria-label="Welcome to the learning hub" className={"experience-entry experience-"+mode[3]}>
-  <div className="experience-grid" aria-hidden="true"/>
+ if(phase==='welcome')return <div role="dialog" aria-modal="true" aria-label="Welcome to the learning hub" className={"experience-entry experience-brand experience-"+mode[3]}>
+  <div className="experience-backdrop" aria-hidden="true"><div className="experience-grid"/></div>
   <button type="button" className="experience-skip" onClick={close}>Skip intro <X size={15}/></button>
   <div className="experience-center">
-   <div className="experience-symbol" aria-hidden="true"><span>{mode[2]}</span><i/><i/></div>
+   <AryanCodeStage />
+   <div className="experience-symbol sr-only" aria-hidden="true"><span>{mode[2]}</span><i/><i/></div>
    <p className="experience-eyebrow">{mode[0]}</p>
    <h2 className="experience-title">{mode[1]}</h2>
-   <p className="experience-tagline">To stop cheats for a brighter future</p>
-   <div className="mt-10 flex flex-wrap justify-center gap-3">
+   <p className="experience-tagline">DPS Lab · Learn with curiosity. Build with confidence.</p>
+   <div className="mt-6 flex flex-wrap justify-center gap-3">
     <button className="btn btn-primary btn-lg" type="button" onClick={()=>{nav('/');setPhase('tour')}}><Compass size={18}/> Show me around <ArrowRight size={17}/></button>
     <button className="btn btn-ghost btn-lg" type="button" onClick={close}>Explore independently <ArrowUpRight size={16}/></button>
    </div>
+   <div className="mt-4 flex flex-wrap justify-center gap-3 text-sm"><button type="button" className="text-dps-neon hover:underline" onClick={()=>{close();nav('/student/join')}}>Join an exam</button><span aria-hidden="true">·</span><button type="button" className="text-slate-300 hover:underline" onClick={()=>{close();nav('/teacher/login')}}>Teacher workspace</button></div>
    <p className="mt-6 text-xs text-slate-400">An independent, student-built learning experience · Skip anytime</p>
   </div>
  </div>

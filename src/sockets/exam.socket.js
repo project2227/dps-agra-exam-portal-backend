@@ -2,6 +2,7 @@
 const jwt=require('jsonwebtoken');const db=require('../config/db');const {env}=require('../config/env');
 const {hash}=require('../middleware/auth');const {event,EVENT_SEVERITY}=require('../services/proctor');
 const {attach,teacherRoom,studentRoom,publish,privateStudent}=require('../services/events');const {audit}=require('../services/audit');
+const {sessionStart}=require('../services/examLifecycle');
 const LIMIT=12000;
 function attachSockets(io){
  attach(io);
@@ -95,14 +96,14 @@ function attachSockets(io){
   socket.data.screenWallOptIn=false;
   const limited=(event,minMs=250)=>{const now=Date.now();if(now-(throttle.get(event)||0)<minMs)return true;throttle.set(event,now);return false;};
   const guard=async(fn)=>{try{await fn();}catch(err){socket.emit('exam:error',{message:err.status?err.message:'Operation rejected.'});}};
-  const checkStudent=async()=>{
+  const checkStudent=async(allowLobby=false)=>{
    if(ident.kind!=='student')throw Object.assign(new Error('Student session required.'),{status:403});
    const q=await db.query(`SELECT s.*,e.status AS exam_status,e.start_time,e.end_time,e.duration_minutes
      FROM exam_sessions s JOIN exams e ON e.id=s.exam_id WHERE s.id=$1`,[ident.id]);
    const s=q.rows[0];if(!s||['revoked','submitted'].includes(s.status))throw Object.assign(new Error('Session closed.'),{status:403});
-   if(!['active','scheduled'].includes(s.exam_status)||Date.now()<new Date(s.start_time).getTime()||
+   if(!['active','scheduled'].includes(s.exam_status)||(!allowLobby&&Date.now()<new Date(s.start_time).getTime())||
       Date.now()>new Date(s.end_time).getTime()||
-      Date.now()>new Date(s.joined_at).getTime()+s.duration_minutes*60000)
+      Date.now()>sessionStart(s)+s.duration_minutes*60000)
     throw Object.assign(new Error('Exam session time expired.'),{status:403});
    return s;
   };
@@ -123,10 +124,10 @@ function attachSockets(io){
    socket.join('teachers:community');socket.emit('teachers:communityJoined',{ok:true});
   }));
   socket.on('student:joinExamRoom',()=>guard(async()=>{
-   const s=await checkStudent();socket.join(`exam:${s.exam_id}:students`);socket.join(studentRoom(s.id));
-   await db.query(`UPDATE exam_sessions SET active_socket_id=$1,status=CASE WHEN status='disconnected' THEN 'active' ELSE status END
-   WHERE id=$2`,[socket.id,s.id]);
-   publish(s.exam_id,'exam:studentStatusUpdate',{sessionId:s.id,status:s.status==='flagged'?'flagged':'active',connected:true});
+   const s=await checkStudent(true);socket.join(`exam:${s.exam_id}:students`);socket.join(studentRoom(s.id));
+   await db.query(`UPDATE exam_sessions SET active_socket_id=$1,status=CASE WHEN now()<$3 THEN 'joined' WHEN status IN('joined','disconnected') THEN 'active' ELSE status END
+   WHERE id=$2`,[socket.id,s.id,s.start_time]);
+   publish(s.exam_id,'exam:studentStatusUpdate',{sessionId:s.id,status:Date.now()<Date.parse(s.start_time)?'joined':s.status==='flagged'?'flagged':'active',connected:true});
    socket.emit('exam:joined',{sessionId:s.id,monitoring:{webcam:s.consent_webcam,screen:s.consent_screen}});
    // Pictures require initial student consent and an actively shared camera.
    if(subscribers(s.id,s.exam_id).length)
@@ -135,9 +136,9 @@ function attachSockets(io){
     socket.emit('teacher:screenWallRequested',{sessionId:s.id,requested:true});
   }));
   socket.on('student:heartbeat',()=>guard(async()=>{
-   if(limited('heartbeat',10000))return;const s=await checkStudent();
+   if(limited('heartbeat',10000))return;const s=await checkStudent(true);
    await db.query('UPDATE exam_sessions SET updated_at=now() WHERE id=$1',[s.id]);
-   publish(s.exam_id,'exam:studentStatusUpdate',{sessionId:s.id,status:s.status==='flagged'?'flagged':'active',connected:true,at:new Date().toISOString()});
+   publish(s.exam_id,'exam:studentStatusUpdate',{sessionId:s.id,status:Date.now()<Date.parse(s.start_time)?'joined':s.status==='flagged'?'flagged':'active',connected:true,at:new Date().toISOString()});
   }));
   for(const name of ['student:answerUpdate','student:codeUpdate','student:questionChange']){
    socket.on(name,data=>guard(async()=>{
@@ -345,8 +346,13 @@ function attachSockets(io){
    });
   }));
   socket.on('student:screenWallFrame',data=>guard(async()=>{
-   if(!socket.data.screenWallOptIn || limited('wall-frame',7500))return;
+   if(!socket.data.screenWallOptIn || limited('wall-frame',1200))return;
    const jpeg=data?.jpeg;
+   const capturedAt=Number(data?.capturedAt);
+   if(data?.capturedAt!==undefined&&!Number.isFinite(capturedAt))return;
+   // Client clocks can differ. Volatile delivery drops buffered frames; use
+   // receipt time for freshness rather than rejecting a valid screen share.
+   const receivedAt=Date.now();
    if(typeof jpeg!=='string'||jpeg.length<300||jpeg.length>WALL_JPEG_LIMIT||
      !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(jpeg))return;
    const s=await checkStudent();
@@ -357,8 +363,8 @@ function attachSockets(io){
     return socket.emit('teacher:screenWallRequested',{sessionId:s.id,requested:false});
    }
    // Never publish to the exam-wide teacher room: only explicit wall viewers.
-   const packet={sessionId:s.id,jpeg,ts:new Date().toISOString()};
-   for(const id of recipients)io.to(id).emit('teacher:screenWallFrame',packet);
+   const packet={sessionId:s.id,jpeg,ts:new Date(receivedAt).toISOString()};
+   for(const id of recipients)io.to(id).volatile.emit('teacher:screenWallFrame',packet);
   }));
   // ---- End consented screen wall ----
   socket.on('teacher:requestStudentDetail',data=>guard(async()=>{

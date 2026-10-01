@@ -118,7 +118,8 @@ export default function ProctoringConsentModal({ open, exam, allowOptionalScreen
 
       <div className="mt-5 grid gap-3 md:grid-cols-2">
         <Step done={!!webcam} required={needCam} icon={Camera} title="Webcam">
-          <p className="text-xs text-slate-400">An authorized teacher may view your camera during this exam. If direct video fails, temporary compressed camera stills can be forwarded through the exam server. No audio is shared and the website does not record frames.</p>
+          <p className="mb-3 text-xs text-slate-300">If you separately opted into screen incident recording when joining, switching tabs, leaving fullscreen or minimising starts a clip of your approved screen. Return to this exam in fullscreen with the window focused to stop recording. Only your exam teacher can review clips for 7 days. No audio or webcam is recorded.</p>
+          <p className="text-xs text-slate-400">An authorized teacher may view your camera during this exam. If direct video fails, temporary compressed camera stills can be forwarded through the exam server. No audio is shared and the website does not record webcam frames.</p>
           {needCam && (
             <>
               {webcam && <VideoTile stream={webcam} label="Preview" icon={Camera} mirror className="mt-3 aspect-video" />}

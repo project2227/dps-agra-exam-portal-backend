@@ -80,7 +80,8 @@ jobs:
               const asset = await fetch(frontend + path, { signal: AbortSignal.timeout(20000) });
               if (asset.status !== 200) throw Error('Study resource unavailable: ' + path + ' (' + asset.status + ')');
             }
-            if (json.version !== '2.0.0-learning-staging') throw Error('API is serving an outdated backend build');
+            if (json.release !== 'dpslab-final-v1') throw Error('API is missing the final release');
+            if (json.version !== '2.1.0-final') throw Error('API is serving an outdated backend build');
             console.log('PASS: frontend HTTP 200 serves HTML');
             console.log('PASS: frontend HTML identifies learning-hub-v2');
             console.log('PASS: public course catalog returns courses array');

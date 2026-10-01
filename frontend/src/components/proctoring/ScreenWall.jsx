@@ -4,8 +4,10 @@ import GlassCard from '../common/GlassCard'
 import {isRunningExamStatus} from '../../utils/monitoringState'
 import {flagTotal} from './StudentMonitorCard'
 
-const FRESH_MS=24000
+const FRESH_MS=7000
 function stateOf(student,packet,connection,now){
+ if(student.kicked)return 'Removed by teacher'
+ if(student.status==='joined')return 'Checked in · Waiting for exam start'
  if(!isRunningExamStatus(student.status))return 'Exam finished'
  if(student.connected===false)return 'Student offline'
  if(!student.screen)return 'Student has not enabled screen sharing. They can open Monitoring → Share my entire screen.'
@@ -28,8 +30,8 @@ export default function ScreenWall({students=[],frames={},statuses={},state='off
  return <section aria-label="All participating student screens" className="space-y-4">
   <GlassCard className="flex flex-wrap items-start justify-between gap-3 border-sky-400/20 p-4">
    <div><h2 className="flex items-center gap-2 text-xl font-semibold"><LayoutGrid size={21} className="text-sky-300"/> One-page screen wall</h2>
-    <p className="mt-1 max-w-2xl text-sm text-slate-300">Students who enabled screen sharing before the exam appear automatically; their temporary screen stills refresh roughly every 8 seconds. Open any tile to view the selected student's already-consented webcam and screen.</p>
-    <p className="mt-2 text-xs text-amber-200">These are consented images, not continuous live video. No image is recorded by the portal; interrupted or stale feeds are clearly marked.</p>
+    <p className="mt-1 max-w-2xl text-sm text-slate-300">Consented screen previews refresh about every 1.5 seconds. Open a tile for direct video, incident clips and participant controls.</p>
+    <p className="mt-2 text-xs text-amber-200">Wall previews are temporary. Separately consented screen incident clips are available in student details for 7 days. Interrupted and stale feeds are marked.</p>
    </div>
    <div className="flex flex-wrap gap-2"><span className="chip border-sky-400/40 text-sky-200"><MonitorUp size={14}/> {shared}/{waiting} fresh feeds</span>
     <span className="chip"><ShieldCheck size={14}/> {sorted.length} student tiles</span>

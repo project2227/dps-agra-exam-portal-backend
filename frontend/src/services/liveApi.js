@@ -112,6 +112,7 @@ const normalizeSession = (s, examId, examTitle = '') => ({
   id: s.id, sessionId: s.id, examId, examTitle,
   name: s.student_name, rollNumber: s.roll_number, class: s.class_name, section: s.section,
   status: s.status, joinedAt: s.joined_at, submittedAt: s.submitted_at,
+  kicked: Boolean(s.kicked_at), kickReason: s.kick_reason, recordingConsent: s.consent_recording===true,
   flagsCount: s.flags_count || 0,
   flags: { tab: 0, blur: 0, fullscreen: 0, copyPaste: 0, devtools: 0, other: s.flags_count || 0 },
   webcam: s.consent_webcam, screen: s.consent_screen,
@@ -190,7 +191,7 @@ export function createLiveApi(http) {
         consent: { ...(p.mediaConsent || {}), stills: Boolean(p.mediaConsent?.webcam || p.mediaConsent?.screenShare) },
         browserMetadata: { userAgent: dev.userAgent, browser: dev.browser, os: dev.os, screenSize: dev.screen, timezone: dev.timezone },
       }))
-      const publicExam = normalizeExam({ ...joined.exam, className: p.class, section: p.section, status: 'active' })
+      const publicExam = normalizeExam({ ...joined.exam, className: p.class, section: p.section })
       return {
         token: joined.token, sessionId: joined.session.id,
         monitoring: joined.monitoring,
@@ -211,6 +212,9 @@ export function createLiveApi(http) {
       return { student: session.student, currentExam: session.exam, upcomingExams: active.filter(e => e.status === 'upcoming'), handouts, examDates: dates }
     },
     getExamQuestions: async examId => {
+      const entry = await s.get(`/api/student/exams/${encodeURIComponent(examId)}/entry`)
+      const exam = normalizeExam(entry.exam)
+      if (entry.waiting) return { exam, questions: [], savedAnswers: {}, serverTime: entry.serverTime, startedAt: entry.startedAt }
       const [response, autosaved] = await Promise.all([
         s.get(`/api/student/exams/${encodeURIComponent(examId)}/questions`),
         s.get(`/api/student/exams/${encodeURIComponent(examId)}/answers`),
@@ -222,9 +226,7 @@ export function createLiveApi(http) {
           ? { language: a.language, drafts: { [a.language]: a.code } }
           : (a.answer_text ?? '')
       ]))
-      const sess = getStudentSession()
-      const exam = sess?.exam?.id === examId ? sess.exam : null
-      return { exam: exam || normalizeExam({ id: examId, endTime: response.endTime, status: 'active' }), questions, savedAnswers, serverTime: response.serverTime }
+      return { exam, questions, savedAnswers, serverTime: response.serverTime || entry.serverTime, startedAt: response.startedAt || entry.startedAt }
     },
     saveAnswers,
     uploadAnswerFile: async (examId, questionId, file, onProgress) => {
@@ -234,8 +236,15 @@ export function createLiveApi(http) {
       return { fileId: questionId, fileName: file.name, size: file.size, saved: r.saved }
     },
     submitExam: async (examId, payload) => {
-      await saveAnswers(examId, payload)
-      const r = await s.post(`/api/student/exams/${encodeURIComponent(examId)}/submit`, {})
+      let finalAnswers=[]
+      try { await saveAnswers(examId, payload) }
+      catch (error) {
+        // The server's bounded final-submit grace period can accept the last
+        // draft atomically when normal autosave has closed or was interrupted.
+        finalAnswers=Object.entries(payload.answers||{}).map(([id,value])=>asSave(id,value)).filter(Boolean)
+        if(new Blob([JSON.stringify({finalAnswers})]).size>90000)throw new Error('Your final draft is too large to resend at once. Contact your teacher; previously saved answers and the local backup are retained.')
+      }
+      const r = await s.post(`/api/student/exams/${encodeURIComponent(examId)}/submit`, {finalAnswers})
       return { ok: r.submitted, submittedAt: new Date().toISOString() }
     },
     sendProctorEvent: async e => {

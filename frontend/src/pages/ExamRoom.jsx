@@ -20,11 +20,12 @@ import useExamTimer from '../hooks/useExamTimer'
 import useAutoSave, { clearBackup, loadBackup } from '../hooks/useAutoSave'
 import { useStudentRTC } from '../hooks/useWebRTC'
 import { useStudentSnapshots } from '../hooks/useSnapshots'
+import { useIncidentRecorder } from '../hooks/useIncidentRecorder'
 import { useStudentScreenWall } from '../hooks/useStudentScreenWall'
 import api from '../services/api'
 import { EVENTS, getSocket } from '../services/socket'
 import { createProctorReporter, getDeviceMetadata, isFullScreenShare, requestScreen, requestWebcam, stopStream } from '../services/proctoring'
-import { getStudentSession, setStudentSession } from '../services/session'
+import { getStudentSession, setStudentSession, clearStudentSession } from '../services/session'
 import { PROCTOR_EVENTS } from '../config'
 import { cx, examStatus, formatDateTime, formatTime } from '../utils/format'
 
@@ -90,8 +91,12 @@ export default function ExamRoom() {
 
   const streamsRef = useRef({})
   streamsRef.current = streams
+  const phaseRef = useRef(phase)
+  phaseRef.current = phase
   const socket = useMemo(() => (session?.token ? getSocket({ role: 'student', token: session.token }) : null), [session?.token])
   const reporter = useMemo(() => createProctorReporter({ examId, sessionId, socket }), [examId, sessionId, socket])
+  const incident = useIncidentRecorder(streams.screen, phase === 'active' || phase === 'submitting', session?.monitoring?.recording === true)
+  const [lobbySeconds, setLobbySeconds] = useState(0)
   const submittingRef = useRef(false)
 
   /* ---------- load exam ---------- */
@@ -105,6 +110,7 @@ export default function ExamRoom() {
         const offset = res.serverTime ? new Date(res.serverTime).getTime() - Date.now() : 0
         setServerOffset(Math.abs(offset) > 2000 ? offset : 0)
         setExam(res.exam)
+        if (res.startedAt) setStartedAt(res.startedAt)
         setQuestions(res.questions || [])
         const backup = loadBackup(backupKey)
         const saved = res.savedAnswers
@@ -125,12 +131,38 @@ export default function ExamRoom() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [examId])
 
-  // Waiting room: re-check every 10 s until the exam opens.
+  // Keep the waiting room on the server clock; fetch questions only after opening.
   useEffect(() => {
     if (phase !== 'waiting' || !exam) return undefined
-    const t = setInterval(() => { if (examStatus(exam, Date.now() + serverOffset) === 'live') setPhase('consent') }, 10_000)
-    return () => clearInterval(t)
-  }, [phase, exam, serverOffset])
+    let alive = true, busy = false, retryAt = 0, refreshAt = Date.now()+5000
+    const check = async () => {
+      const remaining = Math.max(0, Math.ceil((Date.parse(exam.startsAt) - Date.now() - serverOffset) / 1000))
+      setLobbySeconds(remaining)
+      if (busy || Date.now() < retryAt || (remaining && Date.now() < refreshAt)) return
+      refreshAt=Date.now()+5000
+      busy = true
+      try {
+        const res = await api.getExamQuestions(examId)
+        if (!alive) return
+        if (res.exam.status === 'upcoming') {
+          setExam(previous=>previous.startsAt!==res.exam.startsAt||previous.endsAt!==res.exam.endsAt?res.exam:previous)
+          if(res.serverTime&&Math.abs(Date.parse(res.serverTime)-Date.now()-serverOffset)>2000)setServerOffset(Date.parse(res.serverTime)-Date.now())
+          return
+        }
+        setExam(res.exam); setQuestions(res.questions || [])
+        if(res.startedAt)setStartedAt(res.startedAt)
+        if(res.serverTime)setServerOffset(Date.parse(res.serverTime)-Date.now())
+        setPhase('consent')
+      } catch(e) {
+        if(!alive)return
+        if([401,403,409].includes(e.status)){setError({title:'Waiting room closed',message:e.message});setPhase('error')}
+        else {setConnected(false);retryAt=Date.now()+3000}
+      } finally { busy = false }
+    }
+    check()
+    const timer = setInterval(check, 1000)
+    return () => { alive = false; clearInterval(timer) }
+  }, [phase, exam, examId, serverOffset])
 
   /* ---------- timing ---------- */
   const effectiveEnd = useMemo(() => {
@@ -163,6 +195,7 @@ export default function ExamRoom() {
     setConfirmOpen(false)
     setSubmitError('')
     setPhase('submitting')
+    await Promise.race([incident.finish('exam-submitted'), new Promise(resolve=>setTimeout(resolve,30000))])
     const payload = { sessionId, answers, review, reason, flagsCount: flagCount, clientTime: new Date().toISOString() }
     let lastErr
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -188,7 +221,7 @@ export default function ExamRoom() {
     if (s) setStudentSession({ ...s, submittedExamIds: [...new Set([...(s.submittedExamIds || []), examId])] })
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {})
     setPhase('submitted')
-  }, [sessionId, answers, review, flagCount, examId, reporter, stopAllMedia, backupKey])
+  }, [sessionId, answers, review, flagCount, examId, reporter, stopAllMedia, backupKey, incident.finish])
 
   const submitRef = useRef(submit)
   submitRef.current = submit
@@ -200,24 +233,36 @@ export default function ExamRoom() {
 
   /* ---------- anti-cheat ---------- */
   const onProctorEvent = useCallback((type, details) => {
+    incident.report(type)
     reporter.report(type, details)
     if (type === 'fullscreen_exit' && document.fullscreenEnabled) setFsLost(true)
     if (type === 'fullscreen_enter') setFsLost(false)
     if (FLAGGED(type)) setFlagCount((n) => n + 1)
     const warn = PROCTOR_EVENTS[type]?.warn
     if (warn) setWarning({ type, message: warn, ts: new Date().toISOString(), source: 'system' })
-  }, [reporter])
+  }, [reporter, incident.report])
 
   useAntiCheat({ active: phase === 'active', examId, settings: exam?.settings || {}, onEvent: onProctorEvent })
 
   /* ---------- live connection ---------- */
   useEffect(() => {
-    if (!socket || !['consent', 'active'].includes(phase)) return undefined
+    if (!socket || !['waiting', 'consent', 'active'].includes(phase)) return undefined
     const join = () => {
       setConnected(true)
       socket.emit(EVENTS.STUDENT_JOIN_ROOM, { examId, sessionId, student: session.student, device: getDeviceMetadata() })
     }
     const onDisconnect = () => setConnected(false)
+    const onConnectError = (e) => {
+      setConnected(false)
+      if(e?.message==='Authentication expired or invalid.'){
+        incident.finish('session-expired');stopAllMedia();clearStudentSession()
+        setError({title:'This exam session has ended',message:'Your session was removed, reset or expired. Contact the exam teacher before rejoining.'});setPhase('error')
+      }
+    }
+    const onClosed = (p) => {
+      if(phaseRef.current==='active')submitRef.current('teacher_closed')
+      else {stopAllMedia();setError({title:'Exam closed by teacher',message:p?.reason||'Contact your teacher.'});setPhase('error')}
+    }
     const onWarning = (p) => {
       setWarning({ type: 'teacher_warning', message: p?.message || 'Please follow the exam rules.', ts: new Date().toISOString(), source: 'teacher' })
       reporter.report('teacher_warning', { message: p?.message })
@@ -227,23 +272,29 @@ export default function ExamRoom() {
       setError({ title: 'Exam opened on another device', message: p?.message || 'This exam session was opened in another browser or computer, so it has been locked here. Tell your teacher immediately.' })
       setPhase('error')
     }
-    const onForce = (p) => { stopAllMedia(); setError({title:'Session closed by teacher',message:p?.reason || 'Contact your teacher to rejoin.'}); setPhase('error') }
+    const onForce = (p) => { incident.finish('teacher-ended-session'); stopAllMedia(); clearStudentSession(); setError({title:'Session closed by teacher',message:p?.reason || 'Contact your teacher to rejoin.'}); setPhase('error') }
     const onTime = (p) => p?.endsAt && setExam((e) => ({ ...e, endsAt: p.endsAt }))
     if (socket.connected) join()
     socket.on('connect', join)
     socket.on('disconnect', onDisconnect)
+    socket.on('connect_error', onConnectError)
+    socket.on('exam:closed', onClosed)
     socket.on(EVENTS.STUDENT_WARNING, onWarning)
     socket.on(EVENTS.SESSION_CONFLICT, onConflict)
     socket.on(EVENTS.EXAM_TIME_UPDATE, onTime)
+    socket.on('teacher:lockExam', onForce)
     return () => {
       socket.off('connect', join)
       socket.off('disconnect', onDisconnect)
+      socket.off('connect_error', onConnectError)
+      socket.off('exam:closed', onClosed)
       socket.off(EVENTS.STUDENT_WARNING, onWarning)
       socket.off(EVENTS.SESSION_CONFLICT, onConflict)
       socket.off(EVENTS.EXAM_TIME_UPDATE, onTime)
+      socket.off('teacher:lockExam', onForce)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [socket, phase === 'active' || phase === 'consent', examId, sessionId])
+  }, [socket, ['waiting','active','consent'].includes(phase), examId, sessionId])
 
   useStudentRTC(socket, streamsRef, phase === 'active')
   const snapshots = useStudentSnapshots(socket,streams.webcam,phase==='active')
@@ -277,7 +328,7 @@ export default function ExamRoom() {
   }, [phase, socket, examId, sessionId, current, answeredCount, questions.length])
 
   useEffect(() => {
-    if (phase !== 'active' || !socket) return undefined
+    if (!['waiting','consent','active'].includes(phase) || !socket) return undefined
     const t = setInterval(() => socket.emit(EVENTS.STUDENT_HEARTBEAT, { examId, sessionId, ts: new Date().toISOString(), visible: document.visibilityState === 'visible', fullscreen: !!document.fullscreenElement }), 15_000)
     return () => clearInterval(t)
   }, [phase, socket, examId, sessionId])
@@ -345,7 +396,7 @@ export default function ExamRoom() {
   /* ---------- actions ---------- */
   const onConsentReady = ({ webcam, screen }) => {
     setStreams({ webcam, screen })
-    const started = startedAt || new Date().toISOString()
+    const started = startedAt || new Date(Date.now()+serverOffset).toISOString()
     setStartedAt(started)
     const s = getStudentSession()
     if (s) setStudentSession({ ...s, startedAt: { ...(s.startedAt || {}), [examId]: started } })
@@ -437,7 +488,7 @@ export default function ExamRoom() {
   if (phase === 'waiting') {
     return (
       <CenterCard icon={Clock} tone="gold" title="The exam has not started yet" actions={<Link to="/student/dashboard" className="btn btn-ghost">Go to dashboard</Link>}>
-        <p>{exam?.title} opens at <strong className="text-white">{formatTime(exam?.startsAt)}</strong>. This page will open it automatically. Keep it open.</p>
+        <p>{exam?.title} opens at <strong className="text-white">{formatTime(exam?.startsAt)}</strong>. Questions open automatically at the scheduled start. Your exam time starts then.</p><p className="mt-5 font-mono text-4xl text-dps-neon" aria-live="off">{Math.floor(lobbySeconds/60).toString().padStart(2,'0')}:{(lobbySeconds%60).toString().padStart(2,'0')}</p><p className="mt-3 text-sm">{connected?'Checked in · Waiting for the scheduled start':'Reconnecting to the exam server…'}</p>
       </CenterCard>
     )
   }
@@ -472,6 +523,7 @@ export default function ExamRoom() {
         </button>
       </header>
 
+      {incident.status!=='idle'&&<div role="status" className={cx('border-b px-4 py-2 text-xs',incident.status==='recording'?'border-red-400/40 bg-red-500/15 text-red-100':'border-white/10 bg-white/5 text-slate-300')}><span className="font-semibold">{incident.status==='recording'?'● Recording screen incident: ':''}</span>{incident.message}</div>}
       <AntiCheatWarningBanner warning={warning} flagCount={flagCount} onDismiss={dismissWarning} />
       {submitError && (
         <div className="flex items-center gap-3 border-b border-red-400/40 bg-red-500/15 px-5 py-2 text-sm text-red-100" role="alert">
@@ -540,8 +592,8 @@ export default function ExamRoom() {
           <div className="glass-strong max-w-md p-8 text-center">
             <Maximize size={28} className="mx-auto mb-3 text-dps-orange" aria-hidden="true" />
             <h2 id="fs-title" className="text-xl font-semibold">Return to fullscreen</h2>
-            <p className="mt-2 text-sm text-slate-300">The exam must stay in fullscreen. Leaving fullscreen has been recorded. Your timer is still running.</p>
-            <button type="button" className="btn btn-primary mt-5" autoFocus onClick={() => document.documentElement.requestFullscreen?.().then(() => setFsLost(false)).catch(() => setFsLost(false))}>
+            <p className="mt-2 text-sm text-slate-300">The exam must stay in fullscreen. Leaving fullscreen has been recorded. Your timer is still running.</p>{incident.status==='recording'&&<p className="mt-3 text-sm text-red-200" role="status">Your approved screen incident is being recorded. Return to fullscreen with this window focused to stop it.</p>}
+            <button type="button" className="btn btn-primary mt-5" autoFocus onClick={() => document.documentElement.requestFullscreen?.().then(() => setFsLost(false)).catch(() => setWarning({type:'fullscreen',message:'Fullscreen could not open. Allow fullscreen in this browser and try again.',source:'system'}))}>
               <Maximize size={16} aria-hidden="true" /> Go fullscreen and continue
             </button>
           </div>

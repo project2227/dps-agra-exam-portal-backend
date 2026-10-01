@@ -15,12 +15,14 @@ export const TEACHER_NAV = [
   { to: '/teacher/community', label: 'Staff discussion', icon: MessageCircle },
   { to: '/teacher/grades', label: 'Grade analysis', icon: BarChart3 },
   { to: '/teacher/manage-teachers', label: 'Manage teachers', icon: UserPlus, adminOnly: true },
+  { to: '/teacher/test-data', label: 'Test data management', icon: Archive, adminOnly: true },
   { to: '/teacher/account', label: 'My account', icon: KeyRound },
 ]
 
 export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile, liveExams = [] }) {
   const content = (isMobile) => (
     <div className="flex h-full flex-col gap-1 p-3">
+      <button type="button" className="btn btn-ghost btn-sm mb-2" onClick={()=>{window.dispatchEvent(new Event('dps:find-tool'));if(isMobile)onCloseMobile()}} title="Find a tool (Ctrl/Cmd + K)">⌕ <span className={cx(collapsed&&!isMobile&&'sr-only')}>Find a tool <kbd className="ml-2 text-xs text-slate-500">⌘ K</kbd></span></button>
       {isMobile && (
         <div className="mb-2 flex justify-end">
           <button type="button" className="btn btn-ghost btn-sm" onClick={onCloseMobile} aria-label="Close menu"><X size={16} /></button>

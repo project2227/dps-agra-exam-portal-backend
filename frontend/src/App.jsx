@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import ExperienceLayer from './components/common/ExperienceLayer'
 import PointerReactor from './components/common/PointerReactor'
+import ToolFinder from './components/common/ToolFinder'
 import { BrowserRouter, HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ToastProvider } from './components/common/Toast'
 import { StudentGuard, TeacherGuard } from './components/common/Guards'
@@ -34,6 +35,7 @@ const ClassManagement = lazy(() => import('./pages/ClassManagement'))
 const CreateExam = lazy(() => import('./pages/CreateExam'))
 const ExamMonitor = lazy(() => import('./pages/ExamMonitor'))
 const ManageHostedExams = lazy(() => import('./pages/ManageHostedExams'))
+const AdminDataManagement = lazy(() => import('./pages/AdminDataManagement'))
 const Submissions = lazy(() => import('./pages/Submissions'))
 const Handouts = lazy(() => import('./pages/Handouts'))
 const ExamDates = lazy(() => import('./pages/ExamDates'))
@@ -49,6 +51,7 @@ export default function App() {
       <div className="tech-bg" aria-hidden="true" />
       <PointerReactor />
       <ExperienceLayer />
+      <ToolFinder />
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-lg focus:bg-dps-green focus:px-4 focus:py-2 focus:text-white">Skip to content</a>
       <ToastProvider>
         <div id="main">
@@ -91,6 +94,7 @@ export default function App() {
                 <Route path="community" element={<TeacherCommunity />} />
                 <Route path="grades" element={<GradeAnalysis />} />
                 <Route path="manage-teachers" element={<ManageTeachers />} />
+                <Route path="test-data" element={<AdminDataManagement />} />
                 <Route path="account" element={<TeacherAccount />} />
               </Route>
 

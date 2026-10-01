@@ -5,7 +5,10 @@ import { cx } from '../../utils/format'
 export default function VideoTile({ stream, snapshot, label, icon: Icon, placeholder = 'No feed', className = '', mirror = false, contain = false }) {
   const ref = useRef(null)
   useEffect(() => {
-    if (ref.current && ref.current.srcObject !== stream) ref.current.srcObject = stream || null
+    if (ref.current && ref.current.srcObject !== stream) {
+      ref.current.srcObject = stream || null
+      if(stream)ref.current.play().catch(()=>{})
+    }
   }, [stream])
 
   return (
