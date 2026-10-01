@@ -52,8 +52,14 @@ router.delete('/exams/:examId',asyncWrap(async(req,res)=>{
   must(!exam.archived_at,409,'This exam is already removed.');
   must(confirmation.confirmation.trim()===exam.title,400,'Type the exact exam title to confirm removal.');
   const participants=await c.query("SELECT count(*)::int AS n FROM exam_sessions WHERE exam_id=$1 AND status NOT IN ('submitted','revoked')",[exam.id]);
-  must(!(exam.status==='active'&&participants.rows[0].n>0),409,
-    'Students are still taking this exam. Wait until they submit, then remove it. Existing answers must be preserved.');
+  // Scheduled exams may also be underway without their status being
+  // promoted yet; expired live exams should still be removable.
+  const now=Date.now();
+  const windowOpen=['active','scheduled'].includes(exam.status) &&
+    now>=new Date(exam.start_time).getTime() &&
+    now<=new Date(exam.end_time).getTime();
+  must(!(windowOpen && participants.rows[0].n>0),409,
+    'Students are still taking this exam. Wait until they submit or the exam window ends. Existing answers must be preserved.');
   const q=await c.query("UPDATE exams SET archived_at=now(),status='closed',updated_at=now() WHERE id=$1 AND teacher_id=$2 RETURNING id",
    [exam.id,req.teacher.id]);
   return q.rows[0];
