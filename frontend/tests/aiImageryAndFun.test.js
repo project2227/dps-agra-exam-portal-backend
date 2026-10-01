@@ -16,8 +16,9 @@ test('arcade links remain inside DPS Lab rather than sending students to an exte
  const nav=source('components/layout/Navbar.jsx')
  const footer=source('components/layout/Footer.jsx')
  for(const page of [home,nav,footer]){
-  assert.match(page,/to="\\/learn\\/arcade"/)
-  assert.doesNotMatch(page,/amongus\\.free\\.page|unverified external gaming website/)
+  assert.ok(page.includes('to="/learn/arcade"'),'The internal arcade must be linked')
+  assert.ok(!page.includes('amongus.free.page'),'Remove external game redirect')
+  assert.ok(!page.includes('unverified external gaming website'),'Remove outdated external description')
  }
  assert.match(home,/Take a brain break in the Logic Arcade/)
 })
