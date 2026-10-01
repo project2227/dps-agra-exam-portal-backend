@@ -11,14 +11,13 @@ test('original AI artwork is installed, optimized and included on the home and s
  assert.match(homepage,/AI-generated concept artwork/)
  assert.match(learn,/ai-learning-hero\.webp/)
 })
-test('Fun break external link is opt-in, visible, separate and safely opens a new tab',()=>{
+test('arcade links remain inside DPS Lab rather than sending students to an external site',()=>{
  const home=source('pages/LandingPage.jsx')
  const nav=source('components/layout/Navbar.jsx')
  const footer=source('components/layout/Footer.jsx')
- for(const text of [home,nav,footer]){
-  assert.match(text,/https:\/\/amongus\.free\.page\//)
-  assert.match(text,/target="_blank"/)
-  assert.match(text,/noopener noreferrer nofollow/)
+ for(const page of [home,nav,footer]){
+  assert.match(page,/to="\\/learn\\/arcade"/)
+  assert.doesNotMatch(page,/amongus\\.free\\.page|unverified external gaming website/)
  }
- assert.match(home,/unverified external website/)
+ assert.match(home,/Take a brain break in the Logic Arcade/)
 })
