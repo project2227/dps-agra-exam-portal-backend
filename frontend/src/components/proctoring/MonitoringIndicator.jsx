@@ -7,9 +7,9 @@ import { cx } from '../../utils/format'
  * Always-visible indicator that tells the student exactly what is being shared.
  * Includes an optional self-view so the student can see their own camera feed.
  */
-export default function MonitoringIndicator({ webcamStream, screenStream, activityMonitoring = true, connected = true, snapshotRequested = false, snapshotAllowed = false, snapshotStatus = 'off', onSnapshotChange }) {
+export default function MonitoringIndicator({ webcamStream, screenStream, activityMonitoring = true, connected = true, snapshotRequested = false, snapshotAllowed = false, snapshotStatus = 'off', onSnapshotChange, screenWallRequested = false, screenWallAllowed = false, screenWallStatus = 'off', onScreenWallChange }) {
   const [open, setOpen] = useState(true)
-  useEffect(()=>{if(snapshotRequested)setOpen(true)},[snapshotRequested])
+  useEffect(()=>{if(snapshotRequested||screenWallRequested)setOpen(true)},[snapshotRequested,screenWallRequested])
   const items = [
     webcamStream && { icon: Camera, text: 'Webcam' },
     screenStream && { icon: MonitorUp, text: 'Screen' },
@@ -29,7 +29,7 @@ export default function MonitoringIndicator({ webcamStream, screenStream, activi
       >
         <span className="live-dot" aria-hidden="true" />
         <Eye size={14} className="text-dps-neon" aria-hidden="true" />
-        {snapshotRequested && !snapshotAllowed ? 'Camera stills requested' : snapshotAllowed ? 'Camera stills ON' : 'Exam activity monitoring'}
+        {screenWallRequested && !screenWallAllowed ? 'Teacher requested screen wall' : screenWallAllowed ? 'Screen wall snapshots ON' : snapshotRequested && !snapshotAllowed ? 'Camera stills requested' : snapshotAllowed ? 'Camera stills ON' : 'Exam activity monitoring'}
         <span className="ml-auto text-slate-400">{open ? <ChevronDown size={14} /> : <ChevronUp size={14} />}</span>
       </button>
       {open && (
@@ -55,6 +55,31 @@ export default function MonitoringIndicator({ webcamStream, screenStream, activi
               <button type="button" onClick={()=>onSnapshotChange?.(!snapshotAllowed)}
                 className={snapshotAllowed?'btn btn-ghost btn-sm mt-2 w-full':'btn btn-primary btn-sm mt-2 w-full'}>
                 {snapshotAllowed?'Stop sharing snapshots':'Allow webcam snapshots'}
+              </button>
+            </section>
+          )}
+          {screenWallRequested && (
+            <section className="rounded-xl border border-sky-400/50 bg-sky-500/10 p-3" aria-label="Optional screen wall snapshots">
+              <p className="text-xs font-semibold text-sky-200">
+                {screenWallAllowed?'You enabled screen wall images':'Teacher requested optional screen snapshots'}
+              </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-slate-200">
+                With your permission, a compressed image of your currently shared screen is forwarded to
+                an authorized teacher about every 9 seconds. It may include other visible applications.
+                Images are not recorded or stored by the portal. You can stop these snapshots at any time.
+              </p>
+              <p className="mt-1 text-[11px] text-sky-200" role="status">
+                {screenWallAllowed?({
+                  sharing:'Screen wall snapshots are being sent.',starting:'Starting snapshots…',
+                  'image-too-large':'The screen image is too large to send.',
+                  'screen-unavailable':'Screen sharing is unavailable or stopped.',
+                  reconnecting:'Reconnecting; snapshots are paused.'
+                }[screenWallStatus]||'Screen snapshots enabled'):'Screen snapshots remain off until you opt in.'}
+              </p>
+              <button type="button" disabled={!screenStream && !screenWallAllowed}
+                className={screenWallAllowed?'btn btn-ghost btn-sm mt-2 w-full':'btn btn-primary btn-sm mt-2 w-full'}
+                onClick={()=>onScreenWallChange?.(!screenWallAllowed)}>
+                {screenWallAllowed?'Stop screen wall snapshots':screenStream?'Allow screen wall snapshots':'Share your screen first'}
               </button>
             </section>
           )}

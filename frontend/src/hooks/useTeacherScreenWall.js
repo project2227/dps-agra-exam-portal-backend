@@ -30,7 +30,14 @@ export function useTeacherScreenWall(socket,examId,enabled){
    setFrames(previous=>({...previous,[p.sessionId]:item}));
    setStatus(p.sessionId,'sharing');
   };
-  const onStudent=p=>{if(p?.sessionId)setStatus(p.sessionId,p.status)};
+  const onStudent=p=>{
+    if(!p?.sessionId)return;
+    setStatus(p.sessionId,p.status);
+    if(['student-stopped','student-offline','not-consented','session-ended'].includes(p.status)){
+      delete frameRef.current[p.sessionId];
+      setFrames(old=>{const next={...old};delete next[p.sessionId];return next;});
+    }
+  };
   socket.on('teacher:monitorJoined',joined);
   socket.on('disconnect',disconnected);
   socket.on('teacher:screenWallStatus',onState);

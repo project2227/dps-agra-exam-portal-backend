@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Activity, CalendarClock, ClipboardCheck, FilePlus2, FileText, MonitorPlay, ShieldAlert, Users, UserPlus, Archive } from 'lucide-react'
+import { Activity, CalendarClock, ClipboardCheck, FilePlus2, FileText, MonitorPlay, ShieldAlert, Users, UserPlus, Archive, LayoutGrid } from 'lucide-react'
 import PageHeader from '../components/common/PageHeader'
 import StatCard from '../components/common/StatCard'
 import ClassCard from '../components/teacher/ClassCard'
@@ -67,6 +67,7 @@ export default function TeacherDashboard() {
                 {data.activeExams.map((e) => (
                   <ExamCard key={e.id} exam={e} actions={<>
                     <Link to={`/teacher/exams/${e.id}/monitor`} className="btn btn-primary btn-sm"><MonitorPlay size={14} aria-hidden="true" /> Open monitor</Link>
+                    <Link to={`/teacher/exams/${e.id}/monitor?view=wall`} className="btn btn-ghost btn-sm"><LayoutGrid size={14} aria-hidden="true" /> Screen wall</Link>
                     {e.joined != null && <span className="chip"><Users size={12} aria-hidden="true" /> {e.joined} joined</span>}
                   </>} />
                 ))}

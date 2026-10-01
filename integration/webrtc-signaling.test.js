@@ -134,6 +134,31 @@ test('independent teacher and student sockets request webcam and screen, exchang
  teacher.emit('teacher:snapshotUnsubscribe',{sessionId});
  await unsub;
  teacher.off('teacher:snapshotFrame',onImage);
+ // An authorized teacher can request a whole-class wall, but a screen frame
+ // must never leave a student before a SECOND, visible screen-wall opt-in.
+ const wallStatus=waitFor(teacher,'teacher:screenWallStatus',p=>p.examId===examId&&p.status==='watching');
+ const wallPrompt=waitFor(student,'teacher:screenWallRequested',p=>p.requested===true);
+ teacher.emit('teacher:screenWallStart',{examId});
+ await Promise.all([wallStatus,wallPrompt]);
+ let leaked=0;
+ const onWall=()=>{leaked++};
+ teacher.on('teacher:screenWallFrame',onWall);
+ student.emit('student:screenWallFrame',{jpeg:fakeJpeg});
+ await pause(130);
+ assert.equal(leaked,0,'A screen wall MUST NOT capture before student opt-in');
+ const sharing=waitFor(teacher,'teacher:screenWallStudentStatus',p=>p.sessionId===sessionId&&p.status==='sharing');
+ student.emit('student:screenWallConsent',{enabled:true});
+ await sharing;
+ const wallImage=waitFor(teacher,'teacher:screenWallFrame',p=>p.sessionId===sessionId);
+ student.emit('student:screenWallFrame',{jpeg:fakeJpeg});
+ assert.equal((await wallImage).jpeg,fakeJpeg,'consented student screen reaches the authorized wall viewer');
+ const wallStopped=waitFor(teacher,'teacher:screenWallStudentStatus',p=>p.sessionId===sessionId&&p.status==='student-stopped');
+ student.emit('student:screenWallConsent',{enabled:false});
+ await wallStopped;
+ const wallOff=waitFor(student,'teacher:screenWallRequested',p=>p.requested===false);
+ teacher.emit('teacher:screenWallStop',{examId});
+ await wallOff;
+ teacher.off('teacher:screenWallFrame',onWall);
  const q=await pool.query('SELECT cheating_score FROM exam_sessions WHERE id=$1',[sessionId]);
  assert.equal(q.rows[0].cheating_score,4,'A teacher note never adds automatic cheating points');
 });

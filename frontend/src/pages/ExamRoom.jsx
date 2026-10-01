@@ -20,6 +20,7 @@ import useExamTimer from '../hooks/useExamTimer'
 import useAutoSave, { clearBackup, loadBackup } from '../hooks/useAutoSave'
 import { useStudentRTC } from '../hooks/useWebRTC'
 import { useStudentSnapshots } from '../hooks/useSnapshots'
+import { useStudentScreenWall } from '../hooks/useStudentScreenWall'
 import api from '../services/api'
 import { EVENTS, getSocket } from '../services/socket'
 import { createProctorReporter, getDeviceMetadata, isFullScreenShare, requestScreen, requestWebcam, stopStream } from '../services/proctoring'
@@ -244,6 +245,7 @@ export default function ExamRoom() {
 
   useStudentRTC(socket, streamsRef, phase === 'active')
   const snapshots = useStudentSnapshots(socket,streams.webcam,phase==='active')
+  const wallSnapshots = useStudentScreenWall(socket,streams.screen,phase==='active')
 
   // A student may grant permissions before their Socket.IO connection is ready.
   // Resend media readiness after the session joins the room and on reconnect;
@@ -471,7 +473,7 @@ export default function ExamRoom() {
       </div>
 
       {phase !== 'consent' && (
-        <MonitoringIndicator webcamStream={streams.webcam} screenStream={streams.screen} activityMonitoring={s.tabDetection !== false} connected={connected} snapshotRequested={snapshots.requested} snapshotAllowed={snapshots.allowed} snapshotStatus={snapshots.status} onSnapshotChange={snapshots.setAllowed} />
+        <MonitoringIndicator webcamStream={streams.webcam} screenStream={streams.screen} activityMonitoring={s.tabDetection !== false} connected={connected} snapshotRequested={snapshots.requested} snapshotAllowed={snapshots.allowed} snapshotStatus={snapshots.status} onSnapshotChange={snapshots.setAllowed} screenWallRequested={wallSnapshots.requested} screenWallAllowed={wallSnapshots.allowed} screenWallStatus={wallSnapshots.status} onScreenWallChange={wallSnapshots.setAllowed} />
       )}
 
       <ProctoringConsentModal open={phase === 'consent'} exam={exam} onReady={onConsentReady} onDecline={() => navigate('/student/dashboard')} />

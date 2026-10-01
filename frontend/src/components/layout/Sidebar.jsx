@@ -41,7 +41,7 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
         <div className={cx('mt-5', collapsed && !isMobile && 'hidden')}>
           <p className="px-3 pb-2 text-xs font-semibold text-slate-500">Live now</p>
           {liveExams.map((e) => (
-            <NavLink key={e.id} to={`/teacher/exams/${e.id}/monitor`} onClick={isMobile ? onCloseMobile : undefined}
+            <NavLink key={e.id} to={`/teacher/exams/${e.id}/monitor?view=wall`} onClick={isMobile ? onCloseMobile : undefined}
               className={({ isActive }) => cx('flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition', isActive ? 'bg-white/[0.07] text-white' : 'text-slate-300 hover:bg-white/[0.05]')}>
               <span className="live-dot text-dps-neon" aria-hidden="true" />
               <span className="truncate">Class {e.class}: {e.title}</span>

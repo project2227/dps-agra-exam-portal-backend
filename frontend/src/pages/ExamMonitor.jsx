@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, BellRing, CheckCircle2, Eye, EyeOff, KeyRound, Maximize, Minimize, ShieldAlert, Users, Wifi, WifiOff } from 'lucide-react'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { ArrowLeft, BellRing, CheckCircle2, Eye, EyeOff, KeyRound, LayoutGrid, Maximize, Minimize, ShieldAlert, Users, Wifi, WifiOff } from 'lucide-react'
 import StatusBadge from '../components/common/StatusBadge'
 import StatCard from '../components/common/StatCard'
 import GlassCard from '../components/common/GlassCard'
 import Timer from '../components/exam/Timer'
 import LiveStudentGrid from '../components/proctoring/LiveStudentGrid'
+import ScreenWall from '../components/proctoring/ScreenWall'
 import StudentDetailPanel from '../components/proctoring/StudentDetailPanel'
 import { flagTotal } from '../components/proctoring/StudentMonitorCard'
 import { ErrorNote, Spinner } from '../components/common/Feedback'
@@ -13,6 +14,7 @@ import { useToast } from '../components/common/Toast'
 import useExamTimer from '../hooks/useExamTimer'
 import { useTeacherRTC } from '../hooks/useWebRTC'
 import { useTeacherSnapshots } from '../hooks/useTeacherSnapshots'
+import { useTeacherScreenWall } from '../hooks/useTeacherScreenWall'
 import api from '../services/api'
 import { EVENTS, getSocket } from '../services/socket'
 import { getTeacherToken } from '../services/session'
@@ -32,6 +34,8 @@ const SERVER_EVENT_TYPES = {
 
 export default function ExamMonitor() {
   const { examId } = useParams()
+  const [params] = useSearchParams()
+  const [wallMode,setWallMode] = useState(()=>params.get('view')==='wall')
   const toast = useToast()
   const [exam, setExam] = useState(null)
   const [students, setStudents] = useState({})
@@ -46,6 +50,7 @@ export default function ExamMonitor() {
   const socket = useMemo(() => getSocket({ role: 'teacher', token: getTeacherToken() }), [])
   const rtc = useTeacherRTC(socket)
   const cameraStills = useTeacherSnapshots(socket)
+  const wall = useTeacherScreenWall(socket,examId,wallMode&&!DEMO_MODE)
   const studentsRef = useRef(students)
   const progressTimer = useRef(null)
   studentsRef.current = students
@@ -187,6 +192,9 @@ export default function ExamMonitor() {
             </button>
           </div>
           {exam.status === 'live' && <Timer formatted={timer.formatted} isWarning={timer.isWarning} isCritical={timer.isCritical} label="Exam ends in" />}
+          <button type="button" className={wallMode?'btn btn-primary btn-sm':'btn btn-ghost btn-sm'} onClick={()=>setWallMode(p=>!p)} aria-pressed={wallMode} title="Show all consented screen snapshots on one page">
+            <LayoutGrid size={15}/> {wallMode?'Show student cards':'Open screen wall'}
+          </button>
           <button type="button" className="btn btn-ghost btn-sm" onClick={toggleFs} aria-label={isFs ? 'Exit fullscreen' : 'Fullscreen monitor'}>
             {isFs ? <Minimize size={15} /> : <Maximize size={15} />}
           </button>
@@ -200,6 +208,10 @@ export default function ExamMonitor() {
         <StatCard icon={ShieldAlert} label="Students flagged" value={counts.flagged} accent="red" hint={`${counts.flags} flags in total`} />
       </div>
 
+      {wallMode ? (
+        <ScreenWall students={list} frames={wall.frames} statuses={wall.statuses} state={wall.state} now={now}
+          onSelect={s=>setSelectedId(s.sessionId)} />
+      ) : (
       <div className="grid gap-5 2xl:grid-cols-[1fr,320px]">
         <LiveStudentGrid students={list} snapshots={snapshots} selectedId={selectedId} onSelect={(s) => setSelectedId(s.sessionId)} now={now} />
 
@@ -225,7 +237,7 @@ export default function ExamMonitor() {
           )}
           <p className="mt-3 border-t border-white/10 pt-3 text-xs text-slate-500">Students can see that they are being monitored. Open a card to watch live video and review the full timeline.</p>
         </GlassCard>
-      </div>
+      </div>)}
 
       {selected && (
         <StudentDetailPanel student={selected} exam={exam} rtc={rtc} cameraStills={cameraStills} snapshot={snapshots[selected.sessionId]} onClose={() => { cameraStills.stop(selected.sessionId); setSelectedId(null) }} onWarn={warn} now={now} />

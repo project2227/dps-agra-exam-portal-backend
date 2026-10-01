@@ -9,7 +9,7 @@ export function useStudentScreenWall(socket,screen,active){
  const [status,setStatus]=useState('off');
  const onRef=useRef(false);
  useEffect(()=>{
-  if(!socket||!active){setRequested(false);setAllowed(false);return}
+  if(!socket){setRequested(false);setAllowed(false);return}
   const requestedByTeacher=p=>{
    const needed=p?.requested===true;
    setRequested(needed);
