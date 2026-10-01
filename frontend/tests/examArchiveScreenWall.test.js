@@ -11,14 +11,14 @@ test('the teacher can remove and restore hosted exams from a dedicated managemen
  assert.match(app,/path="exams\/manage"/)
  assert.match(nav,/\/teacher\/exams\/manage/)
 })
-test('the student screen wall requires a separately visible and revocable opt-in',()=>{
+test('the student screen wall reuses initially approved screen capture with no repeated prompt',()=>{
  const hook=src('hooks/useStudentScreenWall.js')
  const indicator=src('components/proctoring/MonitoringIndicator.jsx')
  const room=src('pages/ExamRoom.jsx')
- assert.match(hook,/active&&requested&&allowed/)
+ assert.match(hook,/active&&requested&&live/)
  assert.match(hook,/student:screenWallConsent/)
- assert.match(hook,/EVERY_MS=9000/)
- assert.match(indicator,/Stop screen wall snapshots/)
+ assert.match(hook,/EVERY_MS=8000/)
+ assert.doesNotMatch(indicator,/Allow screen wall snapshots/)\n assert.match(indicator,/Stop optional screen sharing/)
  assert.match(room,/useStudentScreenWall/)
 })
 test('one-page teacher wall shows all participant tiles and marks snapshots stale',()=>{
