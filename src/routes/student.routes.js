@@ -17,7 +17,7 @@ router.get('/exams/active',asyncWrap(async(req,res)=>{
  const q=await db.query(`SELECT id,title,subject,class_name,section,exam_type,start_time,end_time,duration_minutes,
  'active'::text AS status,
  settings->>'requireWebcam' AS webcam_required,settings->>'requireScreenShare' AS screen_required
- FROM exams WHERE status IN('active','scheduled') AND now() BETWEEN start_time AND end_time
+ FROM exams WHERE archived_at IS NULL AND status IN('active','scheduled') AND now() BETWEEN start_time AND end_time
  AND ($1::text IS NULL OR lower(class_name)=lower($1))
  AND ($2::text IS NULL OR lower(section)='all' OR lower(section)=lower($2)) ORDER BY end_time LIMIT 100`,
  [filters.className||null,filters.section||null]);res.json({exams:q.rows});

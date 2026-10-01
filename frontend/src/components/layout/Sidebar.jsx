@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { CalendarDays, ClipboardCheck, FilePlus2, FileText, LayoutDashboard, PanelLeftClose, PanelLeftOpen, School, X, BookOpen, MessageCircle, BarChart3, UserPlus, KeyRound } from 'lucide-react'
+import { CalendarDays, ClipboardCheck, FilePlus2, FileText, Archive, LayoutDashboard, PanelLeftClose, PanelLeftOpen, School, X, BookOpen, MessageCircle, BarChart3, UserPlus, KeyRound } from 'lucide-react'
 import { cx } from '../../utils/format'
 import { getTeacherAuth } from '../../services/session'
 
@@ -7,6 +7,7 @@ export const TEACHER_NAV = [
   { to: '/teacher/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/teacher/classes', label: 'Classes', icon: School },
   { to: '/teacher/exams/create', label: 'Create exam', icon: FilePlus2 },
+  { to: '/teacher/exams/manage', label: 'Manage hosted exams', icon: Archive },
   { to: '/teacher/submissions', label: 'Submissions', icon: ClipboardCheck },
   { to: '/teacher/handouts', label: 'Handouts', icon: FileText },
   { to: '/teacher/exam-dates', label: 'Exam dates', icon: CalendarDays },

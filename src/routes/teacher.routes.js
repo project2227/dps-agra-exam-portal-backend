@@ -20,7 +20,7 @@ router.get('/dashboard',asyncWrap(async(req,res)=>{
  const q=await db.query(`SELECT e.id,e.title,e.class_name,e.section,e.status,e.start_time,e.end_time,
  (SELECT count(*)::int FROM exam_sessions s WHERE s.exam_id=e.id) AS participants,
  (SELECT count(*)::int FROM exam_sessions s WHERE s.exam_id=e.id AND s.submitted_at IS NOT NULL) AS submissions
- FROM exams e WHERE e.teacher_id=$1 ORDER BY e.start_time DESC LIMIT 100`,[req.teacher.id]);
+ FROM exams e WHERE e.teacher_id=$1 AND e.archived_at IS NULL ORDER BY e.start_time DESC LIMIT 100`,[req.teacher.id]);
  res.json({exams:q.rows});
 }));
 module.exports=router;

@@ -33,6 +33,7 @@ const TeacherDashboard = lazy(() => import('./pages/TeacherDashboard'))
 const ClassManagement = lazy(() => import('./pages/ClassManagement'))
 const CreateExam = lazy(() => import('./pages/CreateExam'))
 const ExamMonitor = lazy(() => import('./pages/ExamMonitor'))
+const ManageHostedExams = lazy(() => import('./pages/ManageHostedExams'))
 const Submissions = lazy(() => import('./pages/Submissions'))
 const Handouts = lazy(() => import('./pages/Handouts'))
 const ExamDates = lazy(() => import('./pages/ExamDates'))
@@ -81,6 +82,7 @@ export default function App() {
                 <Route path="dashboard" element={<TeacherDashboard />} />
                 <Route path="classes" element={<ClassManagement />} />
                 <Route path="exams/create" element={<CreateExam />} />
+                <Route path="exams/manage" element={<ManageHostedExams />} />
                 <Route path="exams/:examId/monitor" element={<ExamMonitor />} />
                 <Route path="submissions" element={<Submissions />} />
                 <Route path="handouts" element={<Handouts />} />

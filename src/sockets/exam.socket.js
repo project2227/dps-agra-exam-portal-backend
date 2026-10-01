@@ -36,6 +36,38 @@ function attachSockets(io){
    io.to(id).emit('teacher:snapshotStatus',{sessionId,status});
  }
 
+ // Screen wall: an expressly enabled, low-bandwidth screen-snapshot view.
+ // The exam teacher must open their monitor; participants must consent to
+ // sharing the entire screen AND individually enable screen-wall stills.
+ const wallViewers=new Map(); // examId => Map(teacherSocketId,expiresAt)
+ const WALL_LEASE_MS=48000,WALL_MAX_VIEWERS=2,WALL_MAX_STUDENTS=48;
+ const WALL_JPEG_LIMIT=160000;
+ function viewers(examId){
+  const group=wallViewers.get(examId);if(!group)return [];
+  const now=Date.now();
+  for(const [id,until] of group){
+   const peer=io.sockets.sockets.get(id);
+   if(until<now||!peer||!peer.rooms.has(teacherRoom(examId)))group.delete(id);
+  }
+  if(!group.size){wallViewers.delete(examId);return [];}
+  return [...group.keys()];
+ }
+ async function signalScreenWall(examId,requested){
+  const rows=await db.query(`SELECT id FROM exam_sessions
+   WHERE exam_id=$1 AND consent_screen=true AND status IN('joined','active','flagged','disconnected')
+   AND active_socket_id IS NOT NULL LIMIT $2`,[examId,WALL_MAX_STUDENTS]);
+  for(const row of rows.rows)
+   privateStudent(row.id,'teacher:screenWallRequested',{requested,sessionId:row.id});
+ }
+ function dropWallViewer(teacherSocketId){
+  const finished=[];
+  for(const [examId,group] of wallViewers){
+   group.delete(teacherSocketId);
+   if(!viewers(examId).length)finished.push(examId);
+  }
+  for(const examId of finished)signalScreenWall(examId,false).catch(()=>{});
+ }
+
  io.use(async(socket,next)=>{
   const token=socket.handshake.auth?.token;
   if(typeof token!=='string')return next(new Error('Authentication required.'));
@@ -60,6 +92,7 @@ function attachSockets(io){
   const throttle=new Map();
   const relayWindow=[]; // Permit ICE bursts, but bound total signaling traffic per socket.
   socket.data.snapshotOptIn=false;
+  socket.data.screenWallOptIn=false;
   const limited=(event,minMs=250)=>{const now=Date.now();if(now-(throttle.get(event)||0)<minMs)return true;throttle.set(event,now);return false;};
   const guard=async(fn)=>{try{await fn();}catch(err){socket.emit('exam:error',{message:err.status?err.message:'Operation rejected.'});}};
   const checkStudent=async()=>{
@@ -98,6 +131,8 @@ function attachSockets(io){
    // A student can only begin sending pictures after explicitly opting in.
    if(subscribers(s.id,s.exam_id).length)
     socket.emit('teacher:snapshotRequested',{sessionId:s.id,requested:true});
+   if(s.consent_screen&&viewers(s.exam_id).length)
+    socket.emit('teacher:screenWallRequested',{sessionId:s.id,requested:true});
   }));
   socket.on('student:heartbeat',()=>guard(async()=>{
    if(limited('heartbeat',10000))return;const s=await checkStudent();
@@ -246,6 +281,78 @@ function attachSockets(io){
    for(const id of active)io.to(id).emit('teacher:snapshotFrame',packet);
   }));
   // ---- End private webcam snapshot relay ----
+  // ---- Optional consented one-page screen wall, JPEGs relayed in memory ----
+  socket.on('teacher:screenWallStart',data=>guard(async()=>{
+   if(limited('wall-start',900))return;
+   const examId=String(data?.examId||'');
+   await checkTeacher(examId);
+   if(!socket.rooms.has(teacherRoom(examId)))
+    throw Object.assign(new Error('Open the exam monitor first.'),{status:403});
+   const q=await db.query(`SELECT count(*)::int AS total FROM exam_sessions
+     WHERE exam_id=$1 AND consent_screen=true
+      AND status IN ('joined','active','flagged','disconnected')`,[examId]);
+   if(q.rows[0].total>WALL_MAX_STUDENTS){
+    return socket.emit('teacher:screenWallStatus',{
+     examId,status:'limit',message:'This wall can display up to 48 students. Use another exam for a larger class.'
+    });
+   }
+   const active=viewers(examId);
+   let group=wallViewers.get(examId);
+   if(active.length>=WALL_MAX_VIEWERS&&!group?.has(socket.id)){
+    return socket.emit('teacher:screenWallStatus',{examId,status:'busy',message:'Two authorized viewing sessions are already active.'});
+   }
+   if(!group){group=new Map();wallViewers.set(examId,group);}
+   group.set(socket.id,Date.now()+WALL_LEASE_MS);
+   socket.emit('teacher:screenWallStatus',{examId,status:'watching',capacity:WALL_MAX_STUDENTS});
+   await signalScreenWall(examId,true);
+  }));
+  socket.on('teacher:screenWallKeepalive',data=>guard(async()=>{
+   if(limited('wall-heartbeat',11500))return;
+   const examId=String(data?.examId||'');
+   const group=wallViewers.get(examId);
+   if(!group?.has(socket.id))return;
+   await checkTeacher(examId);
+   if(!socket.rooms.has(teacherRoom(examId)))return dropWallViewer(socket.id);
+   group.set(socket.id,Date.now()+WALL_LEASE_MS);
+  }));
+  socket.on('teacher:screenWallStop',data=>guard(async()=>{
+   if(ident.kind!=='teacher')return;
+   const examId=String(data?.examId||'');
+   const group=wallViewers.get(examId);
+   if(!group?.has(socket.id))return;
+   group.delete(socket.id);
+   socket.emit('teacher:screenWallStatus',{examId,status:'stopped'});
+   if(!viewers(examId).length)await signalScreenWall(examId,false);
+  }));
+  socket.on('student:screenWallConsent',data=>guard(async()=>{
+   // Opt-out has no throttle. Opt-in requires a live authenticated exam socket.
+   if(data?.enabled===true && limited('wall-consent',500))return;
+   const s=await checkStudent();
+   if(s.active_socket_id!==socket.id)return;
+   const recipients=viewers(s.exam_id);
+   const enabled=data?.enabled===true&&s.consent_screen===true&&recipients.length>0;
+   socket.data.screenWallOptIn=enabled;
+   for(const id of recipients)io.to(id).emit('teacher:screenWallStudentStatus',{
+    sessionId:s.id,status:enabled?'sharing':'student-stopped'
+   });
+  }));
+  socket.on('student:screenWallFrame',data=>guard(async()=>{
+   if(!socket.data.screenWallOptIn || limited('wall-frame',7500))return;
+   const jpeg=data?.jpeg;
+   if(typeof jpeg!=='string'||jpeg.length<300||jpeg.length>WALL_JPEG_LIMIT||
+     !/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(jpeg))return;
+   const s=await checkStudent();
+   if(s.active_socket_id!==socket.id||!s.consent_screen)return;
+   const recipients=viewers(s.exam_id);
+   if(!recipients.length){
+    socket.data.screenWallOptIn=false;
+    return socket.emit('teacher:screenWallRequested',{sessionId:s.id,requested:false});
+   }
+   // Never publish to the exam-wide teacher room: only explicit wall viewers.
+   const packet={sessionId:s.id,jpeg,ts:new Date().toISOString()};
+   for(const id of recipients)io.to(id).emit('teacher:screenWallFrame',packet);
+  }));
+  // ---- End consented screen wall ----
   socket.on('teacher:requestStudentDetail',data=>guard(async()=>{
    if(limited('detail',1000))return;
    const s=await checkOwnedStudent(String(data?.sessionId||''));
@@ -301,8 +408,14 @@ function attachSockets(io){
   socket.on('disconnect',()=>{
    if(ident.kind==='teacher'){
     detachTeacher(socket.id);
+    dropWallViewer(socket.id);
     return;
    }
+   socket.data.screenWallOptIn=false;
+   const watchers=viewers(ident.examId);
+   for(const id of watchers)io.to(id).emit('teacher:screenWallStudentStatus',{
+    sessionId:ident.id,status:'student-offline'
+   });
    socket.data.snapshotOptIn=false;
    const old=snapshotSubscribers.get(ident.id);
    if(old)for(const id of old.keys())io.to(id).emit('teacher:snapshotStatus',{

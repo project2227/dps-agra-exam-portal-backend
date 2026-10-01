@@ -7,7 +7,7 @@ const teacher = (http) => ({
   get: (path, options) => unwrap(http.get(path, { ...options, headers: { ...options?.headers, Authorization: `Bearer ${getTeacherToken()}` } })),
   post: (path, payload) => unwrap(http.post(path, payload, { headers: { Authorization: `Bearer ${getTeacherToken()}` } })),
   put: (path, payload) => unwrap(http.put(path, payload, { headers: { Authorization: `Bearer ${getTeacherToken()}` } })),
-  delete: (path) => unwrap(http.delete(path, { headers: { Authorization: `Bearer ${getTeacherToken()}` } })),
+  delete: (path,payload) => unwrap(http.delete(path, { data:payload, headers: { Authorization: `Bearer ${getTeacherToken()}` } })),
 })
 const studentHeaders = () => ({ Authorization: `Bearer ${getStudentSession()?.token || ''}` })
 const student = (http) => ({
@@ -170,7 +170,9 @@ export function createLiveApi(http) {
     const response = await t.get(`/api/teacher/exams/${encodeURIComponent(examId)}/monitor`)
     return { exam: normalizeExam(response.exam), students: response.students.map(x => normalizeSession(x, examId, response.exam.title)) }
   }
-  const getTeacherExams = async () => (await t.get('/api/teacher/exams')).exams.map(normalizeExam)
+  const getTeacherExams = async (options = {}) => (
+    await t.get('/api/teacher/exams',options.archived?{params:{archived:'true'}}:undefined)
+   ).exams.map(normalizeExam)
   const getClasses = async () => {
     const { classes } = await t.get('/api/teacher/classes')
     return classes.map(c => ({ id: c.id, name: c.class_name, sections: c.sections || [], teacher: c.computer_teacher_id || 'School teacher', handoutCount: 0 }))
@@ -264,6 +266,8 @@ export function createLiveApi(http) {
       }
     },
     getTeacherExams,
+    removeExam: (id,title) => t.delete(`/api/teacher/exams/${encodeURIComponent(id)}`,{confirmation:title}),
+    restoreExam: id => t.post(`/api/teacher/exams/${encodeURIComponent(id)}/restore`,{}),
     createExam: async p => {
       // Exam creation is an explicit sequence, not a pretend single request.
       const created = (await t.post('/api/teacher/exams', toBackendExam(p))).exam

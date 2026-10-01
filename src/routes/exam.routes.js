@@ -23,7 +23,11 @@ router.post('/exams',asyncWrap(async(req,res)=>{
  res.status(201).json({exam:scrub(q.rows[0])});
 }));
 router.get('/exams',asyncWrap(async(req,res)=>{
- const q=await db.query('SELECT * FROM exams WHERE teacher_id=$1 ORDER BY created_at DESC LIMIT 200',[req.teacher.id]);res.json({exams:q.rows.map(scrub)});
+ const archived=req.query.archived==='true';
+ const q=await db.query(
+ 'SELECT * FROM exams WHERE teacher_id=$1 AND (archived_at IS NOT NULL)=$2 ORDER BY created_at DESC LIMIT 200',
+ [req.teacher.id,archived]);
+ res.json({exams:q.rows.map(scrub)});
 }));
 router.get('/exams/:examId',asyncWrap(async(req,res)=>res.json({exam:scrub(await ownExam(req.params.examId,req.teacher.id))})));
 router.put('/exams/:examId',asyncWrap(async(req,res)=>{
@@ -36,12 +40,32 @@ router.put('/exams/:examId',asyncWrap(async(req,res)=>{
  JSON.stringify(v.settings),current.id,req.teacher.id]);
  must(q.rowCount,409,'Exam status changed; reload.');res.json({exam:scrub(q.rows[0])});
 }));
+// Remove a published exam from the active teacher/student lists, retaining
+// submitted work in the database for review and recovery.
 router.delete('/exams/:examId',asyncWrap(async(req,res)=>{
- const exam=await ownExam(req.params.examId,req.teacher.id);
- must(exam.status==='draft',409,'Only draft exams may be deleted. Close other exams to preserve submissions.');
- const q=await db.query(`DELETE FROM exams WHERE id=$1 AND teacher_id=$2 AND status='draft'
- AND NOT EXISTS(SELECT 1 FROM exam_sessions WHERE exam_id=$1) RETURNING id`,[exam.id,req.teacher.id]);
- must(q.rowCount,409,'Cannot delete an exam with participants.');res.json({deleted:true});
+ const confirmation=z.object({confirmation:z.string().min(1).max(180)}).parse(req.body||{});
+ const result=await db.transaction(async c=>{
+  const owned=await c.query('SELECT * FROM exams WHERE id=$1 AND teacher_id=$2 FOR UPDATE',
+   [req.params.examId,req.teacher.id]);
+  must(owned.rowCount,404,'Exam not found.');
+  const exam=owned.rows[0];
+  must(!exam.archived_at,409,'This exam is already removed.');
+  must(confirmation.confirmation.trim()===exam.title,400,'Type the exact exam title to confirm removal.');
+  const participants=await c.query("SELECT count(*)::int AS n FROM exam_sessions WHERE exam_id=$1 AND status NOT IN ('submitted','revoked')",[exam.id]);
+  must(!(exam.status==='active'&&participants.rows[0].n>0),409,
+    'Students are still taking this exam. Wait until they submit, then remove it. Existing answers must be preserved.');
+  const q=await c.query("UPDATE exams SET archived_at=now(),status='closed',updated_at=now() WHERE id=$1 AND teacher_id=$2 RETURNING id",
+   [exam.id,req.teacher.id]);
+  return q.rows[0];
+ });
+ await audit({teacherId:req.teacher.id,examId:result.id,action:'exam:archived'});
+ res.json({removed:true,archived:true,notice:'Exam removed from current lists. Existing submissions remain available to restore.'});
+}));
+router.post('/exams/:examId/restore',asyncWrap(async(req,res)=>{
+ const q=await db.query(`UPDATE exams SET archived_at=NULL,status='closed',updated_at=now()
+   WHERE id=$1 AND teacher_id=$2 AND archived_at IS NOT NULL RETURNING *`,[req.params.examId,req.teacher.id]);
+ must(q.rowCount,404,'Removed exam not found.');await audit({teacherId:req.teacher.id,examId:q.rows[0].id,action:'exam:restored'});
+ res.json({exam:scrub(q.rows[0]),notice:'Restored as closed. It does not automatically resume or republish.'});
 }));
 router.post('/exams/:examId/generate-passcode',asyncWrap(async(req,res)=>{
  const exam=await ownExam(req.params.examId,req.teacher.id);
