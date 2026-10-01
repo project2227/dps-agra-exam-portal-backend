@@ -19,6 +19,7 @@ jobs:
         env:
           API_URL: https://dps-agra-exam-api.onrender.com
           FRONTEND_URL: https://dps-agra-exam-frontend.onrender.com
+          SHORT_FRONTEND_URL: https://dpslab.onrender.com
         run: |
           node <<'NODE'
           const api = process.env.API_URL;
@@ -44,6 +45,26 @@ jobs:
             console.log('PASS: CORS allows only the configured staging origin');
             const html = await home.text();
             if (!html.includes('learning-hub-v2')) throw Error('Frontend is not the latest learning-hub-v2 release');
+            const short = process.env.SHORT_FRONTEND_URL;
+            const shortHome = await fetch(short + '/', {signal:AbortSignal.timeout(20000)});
+            const shortHtml = await shortHome.text();
+            if (shortHome.status !== 200 || !shortHtml.includes('learning-hub-v2')) {
+              throw Error('Short DPS Lab website is not serving the deployed learning hub');
+            }
+            const shortHealth = await fetch(api+'/api/health', {headers:{Origin:short},signal:AbortSignal.timeout(20000)});
+            if(shortHealth.status!==200||shortHealth.headers.get('access-control-allow-origin')!==short)
+              throw Error('Backend does not allow the short DPS Lab website');
+            for(const path of ['/api/teacher/exams','/api/teacher/exams/00000000-0000-0000-0000-000000000000/restore']){
+              const denied=await fetch(api+path,{signal:AbortSignal.timeout(20000)});
+              if(denied.status!==401)throw Error('Teacher exam management must require staff authentication: '+path);
+            }
+            const forbiddenRemove=await fetch(api+'/api/teacher/exams/00000000-0000-0000-0000-000000000000',{
+              method:'DELETE',headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({confirmation:'unauthorized'}),
+              signal:AbortSignal.timeout(20000)
+            });
+            if(forbiddenRemove.status!==401)throw Error('Anonymous users must never remove a hosted exam');
+            console.log('PASS: both DPS Lab websites load and authenticated exam removal is protected');
             const courses = await fetch(api + '/api/learning/courses', { headers: { Origin: frontend }, signal: AbortSignal.timeout(20000) });
             if (courses.status !== 200 || !Array.isArray((await courses.json()).courses)) throw Error('Course catalog endpoint unavailable');
             for (const path of ['/api/learning/me', '/api/learning/teacher/courses', '/api/learning/teacher/admin/teachers']) {
