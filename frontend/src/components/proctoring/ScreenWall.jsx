@@ -14,7 +14,7 @@ function stateOf(student,packet,connection,now){
  const ts=packet?.ts?Date.parse(packet.ts):0
  if(packet&&Number.isFinite(ts)&&now-ts<=FRESH_MS)return 'Updated '+Math.max(0,Math.round((now-ts)/1000))+'s ago'
  if(packet)return 'Feed stale — waiting for a fresh snapshot'
- return 'Waiting for the participant's already-granted screen stream or next still image'
+ return "Waiting for the participant's already-granted screen stream or next still image"
 }
 export default function ScreenWall({students=[],frames={},statuses={},state='off',now=Date.now(),onSelect}){
  const sorted=useMemo(()=>[...students].sort((a,b)=>String(a.rollNumber).localeCompare(String(b.rollNumber),undefined,{numeric:true})),[students])
