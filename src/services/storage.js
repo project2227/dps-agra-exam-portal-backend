@@ -68,12 +68,12 @@ async function upload(buffer,prefix,originalName=''){
      VALUES($1,$2,$3,$4,$5)`,
     [key,buffer,kind.type,cleanName(originalName,kind.ext),buffer.length]);
   });
-  return {key,type:kind.type,size:buffer.length};
+  return {key,type:kind.type,size:buffer.length,name:cleanName(originalName,kind.ext)};
  }
  await storage().send(new PutObjectCommand({
   Bucket:env.S3_BUCKET,Key:key,Body:buffer,ContentType:kind.type,ServerSideEncryption:'AES256'
  }));
- return {key,type:kind.type,size:buffer.length};
+ return {key,type:kind.type,size:buffer.length,name:cleanName(originalName,kind.ext)};
 }
 const signature=body=>crypto.createHmac('sha256',env.STUDENT_SESSION_SECRET).update(body).digest('base64url');
 async function signedRead(key){

@@ -25,7 +25,7 @@ router.post('/teacher/handouts/upload',teacher,uploader.single('file'),asyncWrap
  const file=await upload(req.file.buffer,'handouts',req.file.originalname);
  try {const q=await db.query(`INSERT INTO handouts(title,description,file_key,file_type,class_name,section,uploaded_by)
  VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id,title,description,file_type,class_name,section,created_at`,
- [v.title,v.description,file.key,file.type,v.className,v.section,req.teacher.id]);res.status(201).json({handout:q.rows[0]});}
+ [v.title,v.description,file.key,file.type,v.className,v.section,req.teacher.id]);res.status(201).json({handout:{...q.rows[0],file_name:file.name,file_size:file.size}});}
  catch(e){await remove(file.key).catch(()=>{});throw e;}
 }));
 router.get('/teacher/handouts',teacher,asyncWrap(async(req,res)=>{

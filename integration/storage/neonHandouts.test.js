@@ -35,6 +35,8 @@ test('authorized teacher can upload, list, securely download and delete a Neon h
  });
  if(created.status!==201)assert.fail('Handout upload failed: '+created.status+' '+(await created.text()).slice(0,350));
  const uploaded=await created.json();
+ assert.equal(uploaded.handout.file_name,'sample-guide.pdf');
+ assert.equal(uploaded.handout.file_size,pdf.length);
  const handoutId=uploaded.handout.id;
  const rows=await fetch(base+'/api/teacher/handouts',{headers:{Authorization:auth}});
  assert.equal(rows.status,200);
