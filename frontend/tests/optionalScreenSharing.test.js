@@ -26,7 +26,7 @@ test('previously approved capture is obtained once through the browser and can b
 test('an authorized screen-wall request cannot bypass the initial database consent',()=>{
  const server=readFileSync('../src/sockets/exam.socket.js','utf8')
  assert.match(server,/privateStudent\(s\.id,'teacher:screenWallRequested'/)
- assert.match(server,/s\.consent_screen&&viewers\(s\.exam_id\)/)
+ assert.match(server,/s\.consent_screen&&s\.consent_stills&&viewers\(s\.exam_id\)/)
  assert.match(server,/socket\.data\.screenWallOptIn=enabled/)
  assert.match(server,/s\.active_socket_id!==socket\.id\|\|!s\.consent_screen/)
  const wall=read('components/proctoring/ScreenWall.jsx')
