@@ -26,7 +26,7 @@ test('one-page teacher wall shows all participant tiles and marks snapshots stal
  const monitor=src('pages/ExamMonitor.jsx')
  assert.match(wall,/sorted\.map\(s=>/)
  assert.match(wall,/FRESH_MS=24000/)
- assert.match(wall,/screen sharing was not consented to|Screen sharing was not consented to/)
+ assert.match(wall,/Student has not enabled screen sharing/)
  assert.match(monitor,/useTeacherScreenWall/)
  assert.match(monitor,/ScreenWall students=\{list\}/)
 });

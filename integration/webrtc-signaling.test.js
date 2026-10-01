@@ -195,6 +195,9 @@ test('independent teacher and student sockets request webcam and screen, exchang
    p=>p.sessionId===sessionId&&p.status==='sharing');
  student.emit('student:screenWallConsent',{enabled:true});
  await laterStatus;
+ // Per-student bandwidth quota intentionally permits one wall frame per 7.5s.
+ // Wait for that limit rather than treating normal backpressure as a bug.
+ await pause(7650);
  const afterGrant=waitFor(teacher,'teacher:screenWallFrame',p=>p.sessionId===sessionId);
  student.emit('student:screenWallFrame',{jpeg:fakeJpeg});
  assert.equal((await afterGrant).jpeg,fakeJpeg);
