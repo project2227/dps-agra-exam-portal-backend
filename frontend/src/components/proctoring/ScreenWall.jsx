@@ -14,7 +14,7 @@ function stateOf(student,packet,connection,now){
  const ts=packet?.ts?Date.parse(packet.ts):0
  if(packet&&Number.isFinite(ts)&&now-ts<=FRESH_MS)return 'Updated '+Math.max(0,Math.round((now-ts)/1000))+'s ago'
  if(packet)return 'Feed stale — waiting for a fresh snapshot'
- return 'Awaiting student permission and screen sharing'
+ return 'Waiting for the participant's already-granted screen stream or next still image'
 }
 export default function ScreenWall({students=[],frames={},statuses={},state='off',now=Date.now(),onSelect}){
  const sorted=useMemo(()=>[...students].sort((a,b)=>String(a.rollNumber).localeCompare(String(b.rollNumber),undefined,{numeric:true})),[students])
@@ -27,7 +27,7 @@ export default function ScreenWall({students=[],frames={},statuses={},state='off
  return <section aria-label="All participating student screens" className="space-y-4">
   <GlassCard className="flex flex-wrap items-start justify-between gap-3 border-sky-400/20 p-4">
    <div><h2 className="flex items-center gap-2 text-xl font-semibold"><LayoutGrid size={21} className="text-sky-300"/> One-page screen wall</h2>
-    <p className="mt-1 max-w-2xl text-sm text-slate-300">All students appear below. Each participating student's shared screen refreshes roughly every 9 seconds after they explicitly enable snapshots. Open a tile for individual details.</p>
+    <p className="mt-1 max-w-2xl text-sm text-slate-300">Students who enabled screen sharing before the exam appear automatically; their temporary screen stills refresh roughly every 8 seconds. Open any tile to view the selected student's already-consented webcam and screen.</p>
     <p className="mt-2 text-xs text-amber-200">These are consented images, not continuous live video. No image is recorded by the portal; interrupted or stale feeds are clearly marked.</p>
    </div>
    <div className="flex flex-wrap gap-2"><span className="chip border-sky-400/40 text-sky-200"><MonitorUp size={14}/> {shared}/{waiting} fresh feeds</span>

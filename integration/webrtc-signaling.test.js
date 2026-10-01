@@ -114,9 +114,9 @@ test('independent teacher and student sockets request webcam and screen, exchang
  const humanNote=waitFor(teacher,'exam:proctorFlag',x=>x.event?.eventType==='TEACHER_OBSERVATION');
  teacher.emit('teacher:sendWarning',{sessionId,message:'Please stay on your exam page.'});
  assert.equal((await humanNote).event.severity,'info');
- // A staff viewer must deliberately select a student; no camera traffic
- // should reach the staff before the student separately opts in.
- const waiting=waitFor(teacher,'teacher:snapshotStatus',x=>x.sessionId===sessionId&&x.status==='awaiting-consent');
+ // A staff viewer must deliberately select a student. The capture hook
+ // confirms an already-consented camera track before sending frames.
+ const waiting=waitFor(teacher,'teacher:snapshotStatus',x=>x.sessionId===sessionId&&x.status==='connecting');
  const stillRequest=waitFor(student,'teacher:snapshotRequested',x=>x.sessionId===sessionId&&x.requested===true);
  teacher.emit('teacher:snapshotSubscribe',{sessionId});
  await Promise.all([waiting,stillRequest]);
@@ -126,7 +126,7 @@ test('independent teacher and student sockets request webcam and screen, exchang
  const fakeJpeg='data:image/jpeg;base64,'+'A'.repeat(600);
  student.emit('student:snapshotFrame',{jpeg:fakeJpeg});
  await pause(120);
- assert.equal(seen,0,'A webcam frame must NEVER relay before separate opt-in');
+ assert.equal(seen,0,'A camera frame must not relay before the authenticated capture hook starts');
  const accepted=waitFor(teacher,'teacher:snapshotStatus',x=>x.sessionId===sessionId&&x.status==='sharing');
  student.emit('student:snapshotConsent',{enabled:true});
  await accepted;
@@ -144,7 +144,8 @@ test('independent teacher and student sockets request webcam and screen, exchang
  await unsub;
  teacher.off('teacher:snapshotFrame',onImage);
  // An authorized teacher can request a whole-class wall, but a screen frame
- // must never leave a student before a SECOND, visible screen-wall opt-in.
+ // must never leave a student before the capture hook starts with their
+ // already-approved browser screen track.
  const wallStatus=waitFor(teacher,'teacher:screenWallStatus',p=>p.examId===examId&&p.status==='watching');
  const wallPrompt=waitFor(student,'teacher:screenWallRequested',p=>p.requested===true);
  teacher.emit('teacher:screenWallStart',{examId});
@@ -154,7 +155,7 @@ test('independent teacher and student sockets request webcam and screen, exchang
  teacher.on('teacher:screenWallFrame',onWall);
  student.emit('student:screenWallFrame',{jpeg:fakeJpeg});
  await pause(130);
- assert.equal(leaked,0,'A screen wall MUST NOT capture before student opt-in');
+ assert.equal(leaked,0,'No screen frames may relay until the authenticated capture hook starts');
  const sharing=waitFor(teacher,'teacher:screenWallStudentStatus',p=>p.sessionId===sessionId&&p.status==='sharing');
  student.emit('student:screenWallConsent',{enabled:true});
  await sharing;

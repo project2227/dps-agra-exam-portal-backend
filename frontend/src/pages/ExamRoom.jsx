@@ -313,7 +313,6 @@ export default function ExamRoom() {
       const onEnded = () => {
         // Stopping an OPTIONAL screen capture is not a cheating incident.
         if(kind==='screen' && exam?.settings?.requireScreen!==true){
-          wallSnapshots.setAllowed(false)
           setStreams(previous=>({...previous,screen:null}))
           api.setScreenMediaConsent(false)
             .then(()=>{
@@ -330,7 +329,7 @@ export default function ExamRoom() {
       offs.push(() => track.removeEventListener('ended', onEnded))
     })
     return () => offs.forEach((f) => f())
-  }, [phase, streams, onProctorEvent, socket, exam?.settings?.requireScreen, wallSnapshots.setAllowed])
+  }, [phase, streams, onProctorEvent, socket, exam?.settings?.requireScreen])
 
   // Warn before closing the tab mid-exam
   useEffect(() => {
@@ -376,7 +375,7 @@ export default function ExamRoom() {
       if(stored)setStudentSession({...stored,monitoring:{...stored.monitoring,screen:true}})
       setStreams(previous=>({...previous,screen:capture}))
       if(socket?.connected)socket.emit('student:screenStatus',{active:true})
-      setScreenOptInMessage('Screen sharing enabled. If the teacher opened the screen wall, separately allow its snapshots below.')
+      setScreenOptInMessage('Screen sharing enabled. Your teacher can view the already-approved screen during this exam.')
     }catch(error){
       if(capture)stopStream(capture)
       setScreenOptInMessage(error?.message||'Screen sharing was not enabled.')
@@ -388,7 +387,6 @@ export default function ExamRoom() {
   const stopOptionalScreen = async () => {
     if(exam?.settings?.requireScreen===true)return
     const captured=streamsRef.current.screen
-    wallSnapshots.setAllowed(false)
     setStreams(previous=>({...previous,screen:null}))
     if(captured)stopStream(captured)
     try {
@@ -531,7 +529,7 @@ export default function ExamRoom() {
       </div>
 
       {phase !== 'consent' && (
-        <MonitoringIndicator webcamStream={streams.webcam} screenStream={streams.screen} activityMonitoring={s.tabDetection !== false} connected={connected} snapshotRequested={snapshots.requested} snapshotAllowed={snapshots.allowed} snapshotStatus={snapshots.status} onSnapshotChange={snapshots.setAllowed} screenWallRequested={wallSnapshots.requested} screenWallAllowed={wallSnapshots.allowed} screenWallStatus={wallSnapshots.status} onScreenWallChange={wallSnapshots.setAllowed} onEnableScreen={enableOptionalScreen} screenOptInBusy={screenOptInBusy} screenOptInMessage={screenOptInMessage} optionalScreen={!exam?.settings?.requireScreen} onStopScreen={stopOptionalScreen} />
+        <MonitoringIndicator webcamStream={streams.webcam} screenStream={streams.screen} activityMonitoring={s.tabDetection !== false} connected={connected} snapshotRequested={snapshots.requested} snapshotAllowed={snapshots.allowed} snapshotStatus={snapshots.status} screenWallRequested={wallSnapshots.requested} screenWallAllowed={wallSnapshots.allowed} screenWallStatus={wallSnapshots.status} onEnableScreen={enableOptionalScreen} screenOptInBusy={screenOptInBusy} screenOptInMessage={screenOptInMessage} optionalScreen={!exam?.settings?.requireScreen} onStopScreen={stopOptionalScreen} />
       )}
 
       <ProctoringConsentModal open={phase === 'consent'} exam={exam} allowOptionalScreen={session?.monitoring?.screen===true} onReady={onConsentReady} onDecline={() => navigate('/student/dashboard')} />

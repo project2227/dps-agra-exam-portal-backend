@@ -35,7 +35,7 @@ const SERVER_EVENT_TYPES = {
 export default function ExamMonitor() {
   const { examId } = useParams()
   const [params] = useSearchParams()
-  const [wallMode,setWallMode] = useState(()=>params.get('view')==='wall')
+  const [wallMode,setWallMode] = useState(()=>params.get('view')!=='cards')
   const toast = useToast()
   const [exam, setExam] = useState(null)
   const [students, setStudents] = useState({})
@@ -269,12 +269,12 @@ export default function ExamMonitor() {
               ))}
             </ol>
           )}
-          <p className="mt-3 border-t border-white/10 pt-3 text-xs text-slate-500">Students can see that they are being monitored. Open a card to watch live video and review the full timeline.</p>
+          <p className="mt-3 border-t border-white/10 pt-3 text-xs text-slate-500">Students consent before starting the exam. Open a card to watch that student's webcam and screen without another student approval.</p>
         </GlassCard>
       </div>)}
 
       {selected && (
-        <StudentDetailPanel student={selected} exam={exam} rtc={rtc} cameraStills={cameraStills} snapshot={snapshots[selected.sessionId]} onClose={() => { cameraStills.stop(selected.sessionId); setSelectedId(null) }} onWarn={warn} now={now} />
+        <StudentDetailPanel student={selected} exam={exam} rtc={rtc} cameraStills={cameraStills} snapshot={{...snapshots[selected.sessionId],screen:wall.frames[selected.sessionId]?.jpeg || snapshots[selected.sessionId]?.screen}} onClose={() => { cameraStills.stop(selected.sessionId); setSelectedId(null) }} onWarn={warn} now={now} />
       )}
     </div>
   )

@@ -1,115 +1,59 @@
-import { useEffect, useState } from 'react'
-import { Activity, Camera, ChevronDown, ChevronUp, Eye, MonitorUp, Wifi, WifiOff } from 'lucide-react'
+import {useState} from 'react'
+import {Activity,Camera,ChevronDown,ChevronUp,Eye,MonitorUp,Wifi,WifiOff} from 'lucide-react'
 import VideoTile from './VideoTile'
-import { cx } from '../../utils/format'
 
-/**
- * Always-visible indicator that tells the student exactly what is being shared.
- * Includes an optional self-view so the student can see their own camera feed.
- */
-export default function MonitoringIndicator({ webcamStream, screenStream, activityMonitoring = true, connected = true, snapshotRequested = false, snapshotAllowed = false, snapshotStatus = 'off', onSnapshotChange, screenWallRequested = false, screenWallAllowed = false, screenWallStatus = 'off', onScreenWallChange, onEnableScreen, screenOptInBusy = false, screenOptInMessage = '', optionalScreen = false, onStopScreen }) {
-  const [open, setOpen] = useState(true)
-  useEffect(()=>{if(snapshotRequested||screenWallRequested)setOpen(true)},[snapshotRequested,screenWallRequested])
-  const items = [
-    webcamStream && { icon: Camera, text: 'Webcam' },
-    screenStream && { icon: MonitorUp, text: 'Screen' },
-    activityMonitoring && { icon: Activity, text: 'Tab & activity' },
-  ].filter(Boolean)
-
-  return (
-    <aside
-      aria-label="Monitoring status"
-      className="fixed bottom-4 left-4 z-40 w-[min(300px,calc(100vw-32px))] overflow-hidden rounded-2xl border border-dps-green/40 bg-navy-900/95 shadow-glow backdrop-blur-xl"
-    >
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-white"
-      >
-        <span className="live-dot" aria-hidden="true" />
-        <Eye size={14} className="text-dps-neon" aria-hidden="true" />
-        {screenWallRequested && !screenWallAllowed ? 'Teacher requested screen wall' : screenWallAllowed ? 'Screen wall snapshots ON' : snapshotRequested && !snapshotAllowed ? 'Camera stills requested' : snapshotAllowed ? 'Camera stills ON' : 'Exam activity monitoring'}
-        <span className="ml-auto text-slate-400">{open ? <ChevronDown size={14} /> : <ChevronUp size={14} />}</span>
-      </button>
-      {open && (
-        <div className="space-y-2 border-t border-white/10 p-3">
-          <ul className="flex flex-wrap gap-1.5">
-            {items.map(({ icon: Icon, text }) => (
-              <li key={text} className="chip border-dps-green/30 px-2 py-0.5 text-[11px] text-dps-neon"><Icon size={11} aria-hidden="true" /> {text}</li>
-            ))}
-          </ul>
-          {webcamStream && <VideoTile stream={webcamStream} label="Your local camera preview" icon={Camera} mirror className="aspect-video" />}
-          {snapshotRequested && webcamStream && (
-            <section className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 p-3" aria-label="Optional camera snapshot sharing">
-              <p className="text-xs font-semibold text-emerald-200">
-                {snapshotAllowed?'You enabled webcam still images':'Teacher requested optional camera still images'}
-              </p>
-              <p className="mt-1 text-[11px] leading-relaxed text-slate-200">
-                If you allow, a compressed webcam image goes through the exam server to the authorized teacher about every 4 seconds.
-                Images are not saved by the website. This is separate from direct video, and you can stop anytime.
-              </p>
-              <p className="mt-1 text-[11px] text-emerald-200" role="status">
-                {snapshotAllowed?({sharing:'Still images are being sent.',starting:'Starting camera snapshots…',reconnecting:'Reconnecting—sharing paused.', 'image-too-large':'Snapshot too large; no image sent.','webcam-unavailable':'Camera unavailable; sharing paused.'}[snapshotStatus]||'Snapshot sharing enabled'):'Off until you explicitly allow'}
-              </p>
-              <button type="button" onClick={()=>onSnapshotChange?.(!snapshotAllowed)}
-                className={snapshotAllowed?'btn btn-ghost btn-sm mt-2 w-full':'btn btn-primary btn-sm mt-2 w-full'}>
-                {snapshotAllowed?'Stop sharing snapshots':'Allow webcam snapshots'}
-              </button>
-            </section>
-          )}
-          {!screenStream && (
-            <section className="rounded-xl border border-sky-400/40 bg-sky-500/10 p-3" aria-label="Optional screen sharing">
-              <p className="text-xs font-semibold text-sky-200">Optional screen sharing</p>
-              <p className="mt-1 text-[11px] leading-relaxed text-slate-200">
-                Only you can start sharing. If you agree, your browser will ask you to select your entire screen.
-                You may decline optional sharing.
-              </p>
-              <button type="button" className="btn btn-primary btn-sm mt-2 w-full"
-                onClick={onEnableScreen} disabled={screenOptInBusy || !connected}>
-                <MonitorUp size={13}/> {screenOptInBusy?'Waiting for your permission…':'Share my entire screen'}
-              </button>
-              {screenOptInMessage && <p className="mt-2 text-[11px] text-sky-100" role="status">{screenOptInMessage}</p>}
-            </section>
-          )}
-          {screenStream && optionalScreen && (
-            <button type="button" className="btn btn-ghost btn-sm w-full border border-sky-400/30"
-              onClick={onStopScreen}>Stop optional screen sharing</button>
-          )}
-          {screenWallRequested && (
-            <section className="rounded-xl border border-sky-400/50 bg-sky-500/10 p-3" aria-label="Optional screen wall snapshots">
-              <p className="text-xs font-semibold text-sky-200">
-                {screenWallAllowed?'You enabled screen wall images':'Teacher requested optional screen snapshots'}
-              </p>
-              <p className="mt-1 text-[11px] leading-relaxed text-slate-200">
-                With your permission, a compressed image of your currently shared screen is forwarded to
-                an authorized teacher about every 9 seconds. It may include other visible applications.
-                Images are not recorded or stored by the portal. You can stop these snapshots at any time.
-              </p>
-              <p className="mt-1 text-[11px] text-sky-200" role="status">
-                {screenWallAllowed?({
-                  sharing:'Screen wall snapshots are being sent.',starting:'Starting snapshots…',
-                  'image-too-large':'The screen image is too large to send.',
-                  'screen-unavailable':'Screen sharing is unavailable or stopped.',
-                  reconnecting:'Reconnecting; snapshots are paused.'
-                }[screenWallStatus]||'Screen snapshots enabled'):'Screen snapshots remain off until you opt in.'}
-              </p>
-              <button type="button" disabled={!screenStream && !screenWallAllowed}
-                className={screenWallAllowed?'btn btn-ghost btn-sm mt-2 w-full':'btn btn-primary btn-sm mt-2 w-full'}
-                onClick={()=>onScreenWallChange?.(!screenWallAllowed)}>
-                {screenWallAllowed?'Stop screen wall snapshots':screenStream?'Allow screen wall snapshots':'Share your screen first'}
-              </button>
-            </section>
-          )}
-          <p className="text-[11px] text-slate-400">
-            Direct video and optional server-relayed still images require separate consent. A local preview does not mean the teacher is receiving your video.
-          </p>
-          <p className={cx('flex items-center gap-1.5 text-[11px]', connected ? 'text-slate-400' : 'text-orange-300')}>
-            {connected ? <Wifi size={12} aria-hidden="true" /> : <WifiOff size={12} aria-hidden="true" />}
-            {connected ? 'Exam connection online. Webcam/screen previews connect separately when requested by an authorized teacher.' : 'Reconnecting. Your answers are saved on this computer.'}
-          </p>
-        </div>
-      )}
-    </aside>
-  )
+// The initial exam-consent screen explains both live WebRTC and low-bandwidth
+// temporary stills. This indicator NEVER initiates a second media permission.
+export default function MonitoringIndicator({
+ webcamStream,screenStream,activityMonitoring=true,connected=true,
+ snapshotRequested=false,snapshotAllowed=false,snapshotStatus='off',
+ screenWallRequested=false,screenWallAllowed=false,screenWallStatus='off',
+ onEnableScreen,screenOptInBusy=false,screenOptInMessage='',
+ optionalScreen=false,onStopScreen
+}){
+ const [open,setOpen]=useState(false)
+ const cameraLive=webcamStream?.getVideoTracks().some(t=>t.readyState==='live')
+ const screenLive=screenStream?.getVideoTracks().some(t=>t.readyState==='live')
+ const webcamStills=Boolean(snapshotRequested&&snapshotAllowed&&snapshotStatus==='sharing')
+ const screenStills=Boolean(screenWallRequested&&screenWallAllowed&&screenWallStatus==='sharing')
+ return <aside aria-label="Exam monitoring and sharing status"
+  className="fixed bottom-4 left-4 z-40 w-[min(310px,calc(100vw-32px))] overflow-hidden rounded-2xl border border-dps-green/40 bg-navy-900/95 shadow-glow backdrop-blur-xl">
+  <button type="button" className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-white"
+   onClick={()=>setOpen(o=>!o)} aria-expanded={open}>
+   <span className="live-dot" aria-hidden="true"/>
+   <Eye size={15} className="text-dps-neon"/>
+   {cameraLive||screenLive?'Sharing with exam monitoring':'Exam activity monitoring'}
+   {open?<ChevronDown size={15} className="ml-auto"/>:<ChevronUp size={15} className="ml-auto"/>}
+  </button>
+  <div className="flex flex-wrap gap-1 border-t border-white/10 px-3 py-2 text-[11px]">
+   {cameraLive&&<span className="chip border-emerald-400/30 text-emerald-200"><Camera size={11}/> Camera on</span>}
+   {screenLive&&<span className="chip border-sky-400/30 text-sky-200"><MonitorUp size={11}/> Screen on</span>}
+   {activityMonitoring&&<span className="chip"><Activity size={11}/> Exam activity</span>}
+   {!connected&&<span className="chip text-orange-300"><WifiOff size={11}/> Reconnecting</span>}
+  </div>
+  {open&&<div className="space-y-3 border-t border-white/10 p-3 text-xs">
+   <p className="leading-relaxed text-slate-300">
+    Your camera and screen were authorized before you started. The verified exam teacher can view these feeds while the exam is open; an additional approval window is not required.
+   </p>
+   {cameraLive&&<VideoTile stream={webcamStream} label="Your local camera preview" icon={Camera} mirror className="aspect-video"/>}
+   <div className="space-y-2 rounded-lg border border-white/10 p-2">
+    {cameraLive&&<p className="text-emerald-200"><Camera size={12} className="mr-1 inline"/> {webcamStills?'Temporary camera stills are being sent to the teacher.':snapshotRequested?'A camera preview was requested. '+(snapshotStatus==='webcam-unavailable'?'Your camera is unavailable.':'Connecting…'):'Camera permission is active. Live video connects when the teacher opens your details.'}</p>}
+    {screenLive&&<p className="text-sky-200"><MonitorUp size={12} className="mr-1 inline"/> {screenStills?'Temporary screen stills are appearing in the teacher’s screen wall.':screenWallRequested?'Your already-shared screen is connecting to the teacher wall…':'Screen permission is active. The teacher can open the screen wall.'}</p>}
+    <p className="text-slate-400">A local preview does not prove the teacher's connection is established. Stills are relayed only while an authorized teacher is viewing, not stored in the portal.</p>
+   </div>
+   {!screenLive&&optionalScreen&&<section className="rounded-lg border border-sky-400/30 p-2">
+    <p className="text-slate-300">Optional screen sharing isn't active. Only you can start it using your browser's screen-selection prompt.</p>
+    <button type="button" className="btn btn-ghost btn-sm mt-2 w-full" disabled={screenOptInBusy||!connected} onClick={onEnableScreen}>
+     <MonitorUp size={14}/> {screenOptInBusy?'Waiting for browser…':'Start optional screen sharing'}
+    </button>
+    {screenOptInMessage&&<p role="status" className="mt-2 text-sky-200">{screenOptInMessage}</p>}
+   </section>}
+   {screenLive&&optionalScreen&&<button type="button" className="btn btn-ghost btn-sm w-full" onClick={onStopScreen}>Stop optional screen sharing</button>}
+   <p className="flex items-center gap-1 text-slate-400">
+    {connected?<Wifi size={13}/>:<WifiOff size={13}/>}
+    {connected?'Exam connection online; video connects separately over WebRTC or still-image relay.':'Connection interrupted. Sharing will pause until reconnection.'}
+   </p>
+   <p className="text-slate-500">You can end capture with your browser's sharing controls. A required feed may need to be restored before the exam can continue.</p>
+  </div>}
+ </aside>
 }

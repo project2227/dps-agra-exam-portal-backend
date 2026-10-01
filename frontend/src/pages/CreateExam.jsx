@@ -26,7 +26,7 @@ export default function CreateExam() {
     title: '', class: 'IX', section: 'All', subject: 'Computers', type: 'Practical',
     startsAt: times.start, endsAt: times.end, durationMin: 45, passcode: generatePasscode(), instructions: '',
   })
-  const [settings, setSettings] = useState({ requireWebcam: false, requireScreen: false, tabDetection: true, copyPasteRestriction: true, codeExecution: true })
+  const [settings, setSettings] = useState({ requireWebcam: true, requireScreen: true, tabDetection: true, copyPasteRestriction: true, codeExecution: true })
   const [questions, setQuestions] = useState(() => [newQuestion('mcq', 'IX'), newQuestion('code', 'IX')])
   const [errors, setErrors] = useState({})
   const [qErrors, setQErrors] = useState({})

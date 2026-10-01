@@ -6,7 +6,7 @@ const LIMIT=12000;
 function attachSockets(io){
  attach(io);
  // Snapshot subscriptions live in memory for a single Socket.IO process.
- // A subscription is opt-in, short-lived, per selected student and per teacher.
+ // Initial exam consent and an already-permitted camera track authorize temporary forwarding only while a teacher watches.
  // No image data is written to SQL, audit logs, object storage or disk.
  const snapshotSubscribers=new Map(); // sessionId => Map(teacherSocketId,expiresAt)
  const SNAPSHOT_SUBSCRIPTION_MS=50000;
@@ -38,7 +38,7 @@ function attachSockets(io){
 
  // Screen wall: an expressly enabled, low-bandwidth screen-snapshot view.
  // The exam teacher must open their monitor; participants must consent to
- // sharing the entire screen AND individually enable screen-wall stills.
+ // sharing their entire screen at exam entry. No additional prompt is needed.
  const wallViewers=new Map(); // examId => Map(teacherSocketId,expiresAt)
  const WALL_LEASE_MS=48000,WALL_MAX_VIEWERS=2,WALL_MAX_STUDENTS=48;
  const WALL_JPEG_LIMIT=160000;
@@ -128,7 +128,7 @@ function attachSockets(io){
    WHERE id=$2`,[socket.id,s.id]);
    publish(s.exam_id,'exam:studentStatusUpdate',{sessionId:s.id,status:s.status==='flagged'?'flagged':'active',connected:true});
    socket.emit('exam:joined',{sessionId:s.id,monitoring:{webcam:s.consent_webcam,screen:s.consent_screen}});
-   // A student can only begin sending pictures after explicitly opting in.
+   // Pictures require initial student consent and an actively shared camera.
    if(subscribers(s.id,s.exam_id).length)
     socket.emit('teacher:snapshotRequested',{sessionId:s.id,requested:true});
    if(s.consent_screen&&viewers(s.exam_id).length)
@@ -226,7 +226,7 @@ function attachSockets(io){
    }
    if(!map){map=new Map();snapshotSubscribers.set(s.id,map);}
    map.set(socket.id,Date.now()+SNAPSHOT_SUBSCRIPTION_MS);
-   socket.emit('teacher:snapshotStatus',{sessionId:s.id,status:'awaiting-consent'});
+   socket.emit('teacher:snapshotStatus',{sessionId:s.id,status:'connecting'});
    privateStudent(s.id,'teacher:snapshotRequested',{sessionId:s.id,requested:true});
   }));
   socket.on('teacher:snapshotKeepalive',data=>guard(async()=>{
@@ -330,7 +330,7 @@ function attachSockets(io){
    if(!viewers(examId).length)await signalScreenWall(examId,false);
   }));
   socket.on('student:screenWallConsent',data=>guard(async()=>{
-   // Opt-out has no throttle. Opt-in requires a live authenticated exam socket.
+   // Stopping is unthrottled. Forwarding requires an authenticated session and initial DB consent.
    if(data?.enabled===true && limited('wall-consent',500))return;
    const s=await checkStudent();
    if(s.active_socket_id!==socket.id)return;

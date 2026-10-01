@@ -238,9 +238,9 @@ export default function StudentJoinPage() {
                 <div className="mt-4 space-y-3 rounded-xl border border-dps-gold/40 bg-dps-gold/5 p-4 text-sm">
                   <p className="font-semibold text-white">Explicit media consent for this exam</p>
                   <p className="text-slate-300">Your browser will separately ask permission when you start the exam. Nothing is captured on this page. You may refuse and ask your teacher for another arrangement.</p>
-                  {selected?.settings?.requireWebcam && <label className="flex gap-3"><input type="checkbox" className="accent-dps-green" checked={mediaConsent.webcam} onChange={e => setMediaConsent(v => ({...v,webcam:e.target.checked}))} /> I agree to share my webcam live with the authorized exam teacher while taking this exam.</label>}
+                  {selected?.settings?.requireWebcam && <label className="flex gap-3"><input type="checkbox" className="accent-dps-green" checked={mediaConsent.webcam} onChange={e => setMediaConsent(v => ({...v,webcam:e.target.checked}))} /> I agree to share my webcam with the authorized exam teacher while taking this exam, including temporary compressed stills if direct video cannot connect. No webcam recordings are saved by the portal.</label>}
                   <label className="flex gap-3"><input type="checkbox" className="accent-dps-green" checked={mediaConsent.screenShare} onChange={e => setMediaConsent(v => ({...v,screenShare:e.target.checked}))} />
-                    <span>{selected.settings.requireScreen?'Required for this exam:':'Optional:'} I choose to share my entire screen with the authorized teacher. My browser will ask separately before screen capture begins, and screen-wall snapshots require another opt-in.</span>
+                    <span>{selected.settings.requireScreen?'Required for this exam:':'Optional:'} I choose to share my entire screen with the authorized teacher. My browser will ask separately before screen capture begins, and may send temporary low-resolution screen stills through the exam server while the teacher watches. No additional in-app permission request.</span>
                    </label>
                   {errors.webcam && <p className="error-text" role="alert">{errors.webcam}</p>}
                   {errors.screen && <p className="error-text" role="alert">{errors.screen}</p>}

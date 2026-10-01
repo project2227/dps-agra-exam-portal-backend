@@ -83,7 +83,9 @@ export default function ProctoringConsentModal({ open, exam, allowOptionalScreen
     } finally { setBusy('') }
   }
 
-  const ready = (!needCam || webcam) && (!needScreen || screen)
+  // If a participant selected optional screen sharing on the join form,
+  // capture must actually be granted before starting; don't claim it is live based on a checkbox.
+  const ready = (!needCam || webcam) && (!canStartScreen || screen)
 
   const start = async () => {
     setBusy('start')
@@ -103,7 +105,7 @@ export default function ProctoringConsentModal({ open, exam, allowOptionalScreen
   return (
     <Modal open={open} title="Before you start: exam monitoring" size="lg" dismissible={false}>
       <p className="text-sm text-slate-300">
-        This exam can use consent-based monitoring so that participants know what is shared. Here is exactly what will be shared
+        This exam uses the webcam and screen permissions you agreed to when joining. Grant the browser permissions here once, before the exam starts. Your teacher may open these already-authorized feeds during the exam without additional prompts. Here is what will be shared
         with your teacher, <strong className="text-white">only while the exam is open</strong>. A monitoring indicator stays on screen the whole time.
       </p>
 
@@ -116,7 +118,7 @@ export default function ProctoringConsentModal({ open, exam, allowOptionalScreen
 
       <div className="mt-5 grid gap-3 md:grid-cols-2">
         <Step done={!!webcam} required={needCam} icon={Camera} title="Webcam">
-          <p className="text-xs text-slate-400">Your teacher sees a live view of your face to confirm you are the one taking the exam. No audio is recorded.</p>
+          <p className="text-xs text-slate-400">An authorized teacher may view your camera during this exam. If direct video fails, temporary compressed camera stills can be forwarded through the exam server. No audio is shared and the website does not record frames.</p>
           {needCam && (
             <>
               {webcam && <VideoTile stream={webcam} label="Preview" icon={Camera} mirror className="mt-3 aspect-video" />}
@@ -130,7 +132,7 @@ export default function ProctoringConsentModal({ open, exam, allowOptionalScreen
         </Step>
 
         <Step done={!!screen} required={needScreen} icon={MonitorUp} title="Screen share">
-          <p className="text-xs text-slate-400">Your teacher sees your entire screen to confirm no other apps or websites are open. Choose "Entire screen" when asked.</p>
+          <p className="text-xs text-slate-400">An authorized teacher may view your entire screen and low-resolution temporary screen stills during this exam. This can show other open windows. Choose "Entire screen" in the browser prompt.</p>
           {canStartScreen && (
             <>
               {screen && <VideoTile stream={screen} label="Preview" icon={MonitorUp} contain className="mt-3 aspect-video" />}
@@ -158,14 +160,14 @@ export default function ProctoringConsentModal({ open, exam, allowOptionalScreen
 
       <p className="mt-4 flex items-start gap-2 text-xs text-slate-400">
         <ShieldCheck size={14} className="mt-0.5 shrink-0 text-dps-neon" aria-hidden="true" />
-        Sharing stops automatically when you submit. Flags are reviewed by your teacher; a flag alone does not mean you cheated.
+        After you start, the teacher can view already-consented feeds without asking again; an on-screen indicator stays visible. Sharing stops when you submit or leave. Browser permissions must be granted separately, and you can stop a track using the browser's controls. A flag alone does not prove cheating.
       </p>
 
       <div className="mt-6 flex flex-wrap justify-end gap-3">
         <button type="button" className="btn btn-ghost" onClick={decline} disabled={busy === 'start'}>Go back</button>
         <button type="button" className="btn btn-primary" onClick={start} disabled={!ready || !!busy}>
           {busy === 'start' ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Maximize size={16} aria-hidden="true" />}
-          I agree, start the exam
+          Start exam with approved sharing
         </button>
       </div>
       {!ready && <p className="mt-2 text-right text-xs text-slate-500">Complete the required steps above to continue.</p>}
