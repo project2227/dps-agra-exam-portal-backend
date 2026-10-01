@@ -20,7 +20,9 @@ const modes=[
 function hasSeen(){try{return localStorage.getItem(KEY)==='1'}catch{return false}}
 export default function ExperienceLayer(){
  const nav=useNavigate(),loc=useLocation()
- const [phase,setPhase]=useState(()=>hasSeen()||loc.pathname!=='/'?'off':'welcome')
+ // The homepage now introduces the lab through an inline scroll story.
+ // Keep the original Aryan.Code intro and guided tour available on demand.
+ const [phase,setPhase]=useState('off')
  const [mode]=useState(()=>modes[Math.floor(Math.random()*modes.length)])
  const [index,setIndex]=useState(0),[box,setBox]=useState(null)
  const close=()=>{try{localStorage.setItem(KEY,'1')}catch{}setPhase('off')}

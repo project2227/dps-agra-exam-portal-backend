@@ -2,18 +2,19 @@ import { lazy, Suspense } from 'react'
 import ExperienceLayer from './components/common/ExperienceLayer'
 import PointerReactor from './components/common/PointerReactor'
 import ToolFinder from './components/common/ToolFinder'
+import RoutePresentation from './components/common/RoutePresentation'
 import { BrowserRouter, HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ToastProvider } from './components/common/Toast'
 import { StudentGuard, TeacherGuard } from './components/common/Guards'
 import { Spinner } from './components/common/Feedback'
 import TeacherLayout from './components/layout/TeacherLayout'
-import LandingPage from './pages/LandingPage'
+import LandingPage from './pages/LearningLanding'
 import StudentJoinPage from './pages/StudentJoinPage'
 import TeacherLogin from './pages/TeacherLogin'
 import NotFound from './pages/NotFound'
 import { ROUTER_MODE } from './config'
 
-const LearningHome = lazy(() => import('./pages/LearningHome'))
+const LearningHome = lazy(() => import('./pages/LearningLibrary'))
 const SelfStudyCourse = lazy(() => import('./pages/SelfStudyCourse'))
 const StudentProfile = lazy(() => import('./pages/StudentProfile'))
 const PracticeGames = lazy(() => import('./pages/PracticeGames'))
@@ -48,6 +49,7 @@ const PageLoader = () => <div className="grid min-h-[60vh] place-items-center"><
 export default function App() {
   return (
     <Router basename={basename}>
+      <RoutePresentation />
       <div className="tech-bg" aria-hidden="true" />
       <PointerReactor />
       <ExperienceLayer />

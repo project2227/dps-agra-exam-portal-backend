@@ -18,7 +18,7 @@ const LINKS = [
   { to: '/teacher/login', label: 'Teachers' },
 ]
 
-export default function Navbar() {
+export function LegacyNavbar() {
   const [open, setOpen] = useState(false)
   return (
     <nav className="sticky top-0 z-40 border-b border-white/[0.06] bg-navy-950/70 backdrop-blur-xl" aria-label="Main">
@@ -63,3 +63,6 @@ export default function Navbar() {
     </nav>
   )
 }
+
+// Preserve the original navigation implementation alongside the new public shell.
+export { default } from './LearningNavbar'

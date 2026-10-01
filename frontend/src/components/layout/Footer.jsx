@@ -2,7 +2,7 @@ import { Code2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { LOGO_SRC, SCHOOL } from '../../config'
 
-export default function Footer({ compact = false }) {
+export function LegacyFooter({ compact = false }) {
   return (
     <footer className="mt-auto border-t border-white/[0.06] bg-navy-950/40">
       <div className={`mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 text-center md:flex-row md:text-left ${compact ? 'py-4' : 'py-8'}`}>
@@ -24,3 +24,5 @@ export default function Footer({ compact = false }) {
     </footer>
   )
 }
+
+export { default } from './LearningFooter'
