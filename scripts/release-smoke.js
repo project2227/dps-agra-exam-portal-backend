@@ -3,6 +3,27 @@
 // Verifies the public HTTPS edge, actual cookies, autosave and teacher Socket.IO.
 const crypto=require('crypto'),bcrypt=require('bcryptjs'),assert=require('node:assert/strict');
 const db=require('../src/config/db'),{env}=require('../src/config/env'),{COOKIE}=require('../src/services/accountSessions');
+async function cleanupReleaseFixtures(ids){
+ await db.transaction(async c=>{
+  const teacher=(await c.query("SELECT id FROM teachers WHERE id=$1 AND name='Deployment Smoke Teacher' AND email=$2 FOR UPDATE",[ids.teacher,ids.teacher+'@example.invalid'])).rows[0];
+  if(!teacher)return;
+  const exam=(await c.query("SELECT id FROM exams WHERE id=$1 AND teacher_id=$2 AND settings->>'releaseSmoke'='true' FOR UPDATE",[ids.exam,ids.teacher])).rows[0];
+  if(exam){
+   // Existing exam foreign keys deliberately retain records; delete only this fixture's children first.
+   for(const table of ['anti_cheat_events','code_runs','answers','incident_recordings','exam_sessions','questions'])await c.query(`DELETE FROM ${table} WHERE exam_id=$1`,[ids.exam]);
+   await c.query('DELETE FROM audit_logs WHERE exam_id=$1',[ids.exam]);
+   await c.query('DELETE FROM exams WHERE id=$1 AND teacher_id=$2',[ids.exam,ids.teacher]);
+  }
+  await c.query('DELETE FROM audit_logs WHERE teacher_id=$1',[ids.teacher]);
+  const student=ids.student&&(await c.query('SELECT id FROM students WHERE id=$1 AND created_by=$2 FOR UPDATE',[ids.student,ids.teacher])).rows[0];
+  await c.query('DELETE FROM account_sessions WHERE teacher_id=$1',[ids.teacher]);
+  if(student){
+   for(const table of ['account_sessions','student_learning_progress','student_password_resets','student_deletion_requests'])await c.query(`DELETE FROM ${table} WHERE student_id=$1`,[ids.student]);
+   await c.query('DELETE FROM students WHERE id=$1 AND created_by=$2',[ids.student,ids.teacher]);
+  }
+  await c.query("DELETE FROM teachers WHERE id=$1 AND name='Deployment Smoke Teacher' AND email=$2",[ids.teacher,ids.teacher+'@example.invalid']);
+ });
+}
 async function releaseSmoke(){
  const endpoint=env.API_PUBLIC_URL;if(!endpoint||!endpoint.startsWith('https://'))throw Error('A public HTTPS API URL is required for the release smoke test.');
  const ids={teacher:crypto.randomUUID(),student:null,exam:crypto.randomUUID(),question:crypto.randomUUID()},clients=[];
@@ -27,7 +48,7 @@ async function releaseSmoke(){
   return {passed:true,checks:completed};
  } catch(error){error.releaseChecks=completed;throw error;} finally {
   clients.forEach(s=>s.disconnect());
-  await db.transaction(async c=>{await c.query('DELETE FROM audit_logs WHERE teacher_id=$1 OR exam_id=$2',[ids.teacher,ids.exam]);await c.query('DELETE FROM exams WHERE id=$1 AND teacher_id=$2',[ids.exam,ids.teacher]);await c.query('DELETE FROM account_sessions WHERE teacher_id=$1 OR student_id=$2',[ids.teacher,ids.student]);if(ids.student){await c.query('DELETE FROM student_learning_progress WHERE student_id=$1',[ids.student]);await c.query('DELETE FROM students WHERE id=$1 AND created_by=$2',[ids.student,ids.teacher]);}await c.query('DELETE FROM teachers WHERE id=$1',[ids.teacher]);});
+  await cleanupReleaseFixtures(ids);
  }
 }
-module.exports={releaseSmoke};
+module.exports={releaseSmoke,cleanupReleaseFixtures};
