@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { LogOut } from 'lucide-react'
+import { LogOut,Search } from 'lucide-react'
+import ThemeToggle from '../common/ThemeToggle'
 import DPSLogoAnimated from '../common/DPSLogoAnimated'
 import { clearStudentSession, getStudentSession } from '../../services/session'
 import { disconnectSocket } from '../../services/socket'
@@ -18,17 +19,17 @@ export default function StudentHeader({ title = 'Student dashboard' }) {
         <Link to="/" className="flex items-center gap-3 rounded-xl">
           <DPSLogoAnimated size={44} small interactive={false} label="" />
           <span className="leading-tight">
-            <span className="block font-display text-[15px] font-semibold text-white">DPS Agra Exam Portal</span>
+            <span className="block font-display text-[13px] sm:text-[15px] font-semibold text-white">DPS Agra Exam Portal</span>
             <span className="block text-xs text-slate-400">{title}</span>
           </span>
         </Link>
         {s && (
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-2"><button type="button" className="command-button" aria-label="Find a page (Control or Command K)" onClick={()=>window.dispatchEvent(new Event('dps:find-tool'))}><Search size={17}/><span className="command-label">Find a page</span><kbd className="kbd">⌘K</kbd></button><ThemeToggle/>
             <div className="hidden text-right leading-tight sm:block">
               <p className="text-sm font-medium text-white">{s.student?.name}</p>
               <p className="text-xs text-slate-400">Class {s.student?.class}-{s.student?.section}, Roll {s.student?.rollNumber}</p>
             </div>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={leave}><LogOut size={15} aria-hidden="true" /> Leave</button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={leave}><LogOut size={15} aria-hidden="true" /><span className="hidden sm:inline"> Leave session</span><span className="sr-only sm:hidden">Leave session</span></button>
           </div>
         )}
       </div>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, BellRing, CheckCircle2, Copy, Eye, EyeOff, KeyRound, LayoutGrid, Maximize, Minimize, RefreshCcw, ShieldAlert, Users, Wifi, WifiOff } from 'lucide-react'
+import MonitorAlerts from '../components/proctoring/MonitorAlerts'
 import StatusBadge from '../components/common/StatusBadge'
 import StatCard from '../components/common/StatCard'
 import GlassCard from '../components/common/GlassCard'
@@ -221,12 +222,12 @@ export default function ExamMonitor() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <span className={cx('chip', connected ? 'border-dps-green/40 text-dps-neon' : 'border-dps-orange/40 text-orange-200')}>
-            {connected ? <Wifi size={12} aria-hidden="true" /> : <WifiOff size={12} aria-hidden="true" />} {connected ? 'Live updates on' : 'Reconnecting'}
+            {connected ? <span className="live-dot" aria-hidden="true" /> : <WifiOff size={12} aria-hidden="true" />} {connected ? 'Live · Connected' : 'Reconnecting'}
           </span>
           {DEMO_MODE && <span className="chip border-dps-gold/30 text-dps-gold">Simulated students</span>}
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dps-gold/30 bg-dps-gold/5 px-3 py-2">
             <KeyRound size={16} className="text-dps-gold" aria-hidden="true" />
-            <span aria-live="polite" className="font-mono text-sm tracking-wider text-dps-gold" data-testid="exam-passcode-display">{showPass?(recoveredPass||'Unrecoverable old password'):'Exam password ••••••••'}</span>
+            <span aria-live="polite" className="text-sm tracking-wider text-dps-gold" data-testid="exam-passcode-display">{showPass?(recoveredPass||'Unrecoverable old password'):'Exam password ••••••••'}</span>
             <button disabled={passBusy} type="button" className="btn btn-ghost btn-sm" onClick={revealPasscode} aria-label={showPass?'Hide exam password':'Reveal exam password'}>
               {showPass?<EyeOff size={14}/>:<Eye size={14}/>} {showPass?'Hide':'Reveal'}
             </button>
@@ -246,13 +247,14 @@ export default function ExamMonitor() {
 
       {passNotice&&<p role="status" className="rounded-xl border border-dps-gold/30 bg-dps-gold/5 px-4 py-3 text-sm text-slate-200">{passNotice}</p>}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatCard icon={Users} label="Joined" value={counts.joined} accent="sky" hint={`${counts.waiting} in the waiting room`} />
-        <StatCard icon={Eye} label="Writing now" value={counts.active} accent="green" />
-        <StatCard icon={CheckCircle2} label="Submitted" value={counts.submitted} accent="gold" />
-        <StatCard icon={ShieldAlert} label="Students flagged" value={counts.flagged} accent="red" hint={`${counts.flags} flags in total`} />
+        <StatCard animate={false} icon={Users} label="Joined" value={counts.joined} accent="sky" hint={`${counts.waiting} in the waiting room`} />
+        <StatCard animate={false} icon={Eye} label="Writing now" value={counts.active} accent="green" />
+        <StatCard animate={false} icon={CheckCircle2} label="Submitted" value={counts.submitted} accent="gold" />
+        <StatCard animate={false} icon={ShieldAlert} label="Students flagged" value={counts.flagged} accent="red" hint={`${counts.flags} flags in total`} />
       </div>
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 p-3"><label className="min-w-[200px] flex-1"><span className="sr-only">Find student by name or roll number</span><input className="input" type="search" value={searchStudent} onChange={e=>setSearchStudent(e.target.value)} placeholder="Find a student by name or roll number…"/></label><label><span className="sr-only">Filter student status</span><select className="input" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>{[['all','All students'],['waiting','Waiting room'],['active','Writing now'],['flagged','Flagged'],['offline','Offline'],['submitted','Submitted'],['removed','Removed by teacher']].map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label><span className="text-xs text-slate-400">{filtered.length} of {list.length}</span><button type="button" className="btn btn-ghost btn-sm" onClick={load}><RefreshCcw size={14}/> Refresh</button></div>
+      {wallMode && <MonitorAlerts feed={feed} onSelect={setSelectedId} compact />}
       {wallMode ? (
         <ScreenWall students={filtered} frames={wall.frames} statuses={wall.statuses} state={wall.state} now={now}
           onSelect={s=>setSelectedId(s.sessionId)} />
@@ -260,28 +262,7 @@ export default function ExamMonitor() {
       <div className="grid gap-5 2xl:grid-cols-[1fr,320px]">
         <LiveStudentGrid students={filtered} snapshots={snapshots} selectedId={selectedId} onSelect={(s) => setSelectedId(s.sessionId)} now={now} />
 
-        <GlassCard className="h-fit p-4 2xl:sticky 2xl:top-20" aria-labelledby="feed-title">
-          <h2 id="feed-title" className="mb-3 flex items-center gap-2 text-sm font-semibold"><BellRing size={15} className="text-dps-orange" aria-hidden="true" /> Live alerts</h2>
-          {feed.length === 0 ? (
-            <p className="text-sm text-slate-500">New flags appear here as they happen.</p>
-          ) : (
-            <ol className="max-h-[60vh] space-y-2 overflow-y-auto pr-1" aria-live="polite">
-              {feed.map((e) => (
-                <li key={e.id}>
-                  <button type="button" onClick={() => setSelectedId(e.sessionId)} className="flex w-full items-start gap-2 rounded-lg border border-white/[0.06] p-2 text-left text-sm hover:border-white/20">
-                    <ShieldAlert size={14} className={cx('mt-0.5 shrink-0', PROCTOR_EVENTS[e.type]?.severity === 'high' ? 'text-red-300' : 'text-orange-300')} aria-hidden="true" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium text-white">{e.name}</span>
-                      <span className="block text-xs text-slate-400">{PROCTOR_EVENTS[e.type]?.label || e.type}</span>
-                    </span>
-                    <time className="shrink-0 font-mono text-[11px] text-slate-500" dateTime={e.ts}>{formatTime(e.ts)}</time>
-                  </button>
-                </li>
-              ))}
-            </ol>
-          )}
-          <p className="mt-3 border-t border-white/10 pt-3 text-xs text-slate-500">Students consent before starting the exam. Open a card to watch that student's webcam and screen without another student approval.</p>
-        </GlassCard>
+        <MonitorAlerts feed={feed} onSelect={setSelectedId} />
       </div>)}
 
       {selected && (

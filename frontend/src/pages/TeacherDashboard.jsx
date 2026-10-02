@@ -39,8 +39,8 @@ export default function TeacherDashboard() {
       {error && <ErrorNote message={error} onRetry={load} />}
       {data && teacher?.role==='admin' && data.activeExams.length===0 && data.upcomingExams.length===0 && Number(st.totalSubmissions||0)===0 && (
         <section className="glass motion-surface border-dps-neon/30 p-6" aria-label="Your new classroom checklist">
-          <p className="font-mono text-xs tracking-widest text-dps-neon">YOUR NEW CLASSROOM</p>
-          <h2 className="mt-3 text-2xl font-bold">Start fresh. Build something great.</h2>
+          <p className="text-sm text-dps-neon">Your new classroom</p>
+          <h2 className="mt-3 text-2xl font-bold">Set up your classroom</h2>
           <p className="mt-2 max-w-2xl text-sm text-slate-300">Your classroom is empty and ready. Create a small exam first, add study resources, then invite educators whose access you have verified.</p>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link className="btn btn-primary btn-sm" to="/teacher/exams/create"><FilePlus2 size={15}/> Create your first exam</Link>
@@ -54,7 +54,7 @@ export default function TeacherDashboard() {
         <StatCard icon={Activity} label="Active exams" value={st.activeExams} accent="green" loading={loading} hint="Live right now" />
         <StatCard icon={CalendarClock} label="Upcoming exams" value={st.upcomingExams} accent="sky" loading={loading} hint="Scheduled" />
         <StatCard icon={ClipboardCheck} label="Total submissions" value={st.totalSubmissions} accent="gold" loading={loading} hint="All exams" />
-        <StatCard icon={ShieldAlert} label="Cheating flags" value={st.cheatingFlags} accent="red" loading={loading} hint="Need review" />
+        <StatCard icon={ShieldAlert} label="Activity flags" value={st.cheatingFlags} accent="red" loading={loading} hint="Need review" />
         <StatCard icon={FileText} label="Uploaded handouts" value={st.handouts} accent="orange" loading={loading} hint="Shared with classes" />
       </section>
 
@@ -101,6 +101,7 @@ export default function TeacherDashboard() {
             <Link to="/teacher/classes" className="text-sm text-dps-neon hover:underline">Manage classes</Link>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            {data.classes.length===0 && <EmptyState icon={Users} title="No classes yet" action={<Link to="/teacher/classes" className="btn btn-ghost btn-sm">Manage classes</Link>}>Add your class and its student roster.</EmptyState>}
             {data.classes.map((c) => <ClassCard key={c.id} cls={c} />)}
           </div>
         </section>

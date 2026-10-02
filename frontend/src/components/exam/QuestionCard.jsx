@@ -49,12 +49,12 @@ export default function QuestionCard({ question: q, index, total, value, onChang
           {q.options.map((o, i) => {
             const checked = value === o.id
             return (
-              <label key={o.id} className={cx('flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition', checked ? 'border-dps-neon/60 bg-dps-green/10 ring-1 ring-dps-neon/40' : 'border-white/10 bg-white/[0.02] hover:border-white/25')}>
+              <label key={o.id} className={cx('flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition focus-within:outline focus-within:outline-[3px] focus-within:outline-dps-green focus-within:outline-offset-2', checked ? 'border-dps-neon/60 bg-dps-green/10 ring-1 ring-dps-neon/40' : 'border-white/10 bg-white/[0.02] hover:border-white/25')}>
                 <input type="radio" name={`q-${q.id}`} value={o.id} checked={checked} onChange={() => onChange(o.id)} className="sr-only" />
                 <span className={cx('grid h-7 w-7 shrink-0 place-items-center rounded-lg border text-sm font-semibold', checked ? 'border-dps-neon bg-dps-green text-white' : 'border-white/15 text-slate-300')} aria-hidden="true">
                   {String.fromCharCode(65 + i)}
                 </span>
-                <span className="font-mono text-[15px] text-slate-100">{o.text}</span>
+                <span className="font-sans text-[15px] text-slate-100">{o.text}</span>
                 {checked && <CheckCircle2 size={16} className="ml-auto text-dps-neon" aria-label="Selected" />}
               </label>
             )

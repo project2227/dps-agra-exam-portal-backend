@@ -1,4 +1,4 @@
-import { Bookmark } from 'lucide-react'
+import { Bookmark, Check, Circle } from 'lucide-react'
 import { cx } from '../../utils/format'
 
 export function isAnswered(q, value) {
@@ -22,8 +22,8 @@ export default function QuestionNav({ questions, answers, review = {}, current, 
         <span className="font-medium text-white">Questions</span>
         <span className="text-slate-400">{answered}/{questions.length} answered</span>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-white/10" aria-hidden="true">
-        <div className="h-full rounded-full bg-gradient-to-r from-dps-green to-dps-gold transition-all" style={{ width: `${(answered / Math.max(1, questions.length)) * 100}%` }} />
+      <div className="h-1.5 overflow-hidden rounded-full bg-ink/10" role="progressbar" aria-label="Questions answered" aria-valuenow={answered} aria-valuemin={0} aria-valuemax={questions.length}>
+        <div className="h-full rounded-full bg-dps-green" style={{ width: `${(answered / Math.max(1, questions.length)) * 100}%` }} />
       </div>
       <ol className="mt-4 grid grid-cols-5 gap-2">
         {questions.map((q, i) => {
@@ -37,9 +37,9 @@ export default function QuestionNav({ questions, answers, review = {}, current, 
                 className={cx(
                   'relative grid h-10 w-full place-items-center rounded-lg border text-sm font-semibold transition',
                   done ? 'border-dps-green/50 bg-dps-green/20 text-dps-neon' : 'border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/30',
-                  isCur && 'ring-2 ring-dps-gold ring-offset-2 ring-offset-navy-950',
+                  isCur && 'ring-2 ring-dps-green ring-offset-2 ring-offset-navy-950',
                 )}>
-                {i + 1}
+                {i + 1}{done && <Check size={10} className="absolute bottom-0.5 right-0.5" aria-hidden="true" />}
                 {marked && <Bookmark size={11} className="absolute -right-1 -top-1 fill-dps-gold text-dps-gold" aria-hidden="true" />}
               </button>
             </li>
@@ -47,8 +47,8 @@ export default function QuestionNav({ questions, answers, review = {}, current, 
         })}
       </ol>
       <ul className="mt-5 space-y-1.5 text-xs text-slate-400">
-        <li className="flex items-center gap-2"><span className="h-3 w-3 rounded border border-dps-green/50 bg-dps-green/20" aria-hidden="true" /> Answered</li>
-        <li className="flex items-center gap-2"><span className="h-3 w-3 rounded border border-white/15 bg-white/[0.03]" aria-hidden="true" /> Not answered</li>
+        <li className="flex items-center gap-2"><Check size={12} aria-hidden="true"/> Answered</li>
+        <li className="flex items-center gap-2"><Circle size={12} aria-hidden="true"/> Not answered</li>
         <li className="flex items-center gap-2"><Bookmark size={12} className="fill-dps-gold text-dps-gold" aria-hidden="true" /> Marked for review</li>
       </ul>
     </nav>

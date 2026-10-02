@@ -13,6 +13,7 @@ import { cx, formatDate, formatDateTime } from '../utils/format'
 
 export default function ClassManagement() {
   const [params, setParams] = useSearchParams()
+  const [loading, setLoading] = useState(true)
   const [classes, setClasses] = useState([])
   const [exams, setExams] = useState([])
   const [participants, setParticipants] = useState(null)
@@ -25,7 +26,7 @@ export default function ClassManagement() {
   useEffect(() => {
     Promise.all([api.getClasses(), api.getTeacherExams()])
       .then(([c, e]) => { setClasses(c); setExams(e) })
-      .catch((e) => setError(e.message))
+      .catch((e) => setError(e.message)).finally(() => setLoading(false))
   }, [])
 
   useEffect(() => {
@@ -44,7 +45,7 @@ export default function ClassManagement() {
   return (
     <div>
       <PageHeader title="Classes" subtitle="Manage school-issued student accounts, class details and exam participation. Students still need the exam passcode to join." />
-      {getTeacherAuth()?.teacher?.role === 'admin' && !classes.length && !error && (
+      {getTeacherAuth()?.teacher?.role === 'admin' && !loading && !classes.length && !error && (
         <div className="mb-5 rounded-xl border border-dps-gold/40 p-4">
           <p className="mb-2 text-sm">Initialize VI–XII and sections A–F before creating exams. This creates class groups only, not student enrollment.</p>
           <button className="btn btn-primary" type="button" onClick={async () => {
@@ -66,7 +67,7 @@ export default function ClassManagement() {
       </div>
 
       {cls && <StudentRoster className={active} sections={cls.sections} />}
-      {!cls ? <Spinner label="Loading classes" /> : (
+      {!cls ? loading ? <Spinner label="Loading classes" /> : !error ? <EmptyState icon={Users} title="No classes available">Ask your administrator to assign your teaching classes.</EmptyState> : null : (
         <div className="grid gap-6 xl:grid-cols-[320px,1fr]">
           <div className="space-y-4">
             <GlassCard glow className="p-5">

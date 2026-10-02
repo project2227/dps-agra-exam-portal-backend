@@ -6,8 +6,8 @@ import { Spinner } from './Feedback'
 
 export function TeacherGuard({ children }) {
   const account = useAccount()
-  if (!account.ready) return <Spinner label="Checking your session" />
   const location = useLocation()
+  if (!account.ready) return <Spinner label="Checking your session" />
   if (!getTeacherAuth()) return <Navigate to="/teacher/login" replace state={{ from: location.pathname }} />
   return children
 }

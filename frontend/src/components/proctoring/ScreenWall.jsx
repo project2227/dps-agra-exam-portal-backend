@@ -1,3 +1,4 @@
+import {compareAttention} from '../../utils/monitorAttention'
 import {useMemo} from 'react'
 import {Clock3,Eye,LayoutGrid,MonitorUp,ShieldCheck,WifiOff} from 'lucide-react'
 import GlassCard from '../common/GlassCard'
@@ -20,7 +21,7 @@ function stateOf(student,packet,connection,now){
  return "Waiting for the participant's already-granted screen stream or next still image"
 }
 export default function ScreenWall({students=[],frames={},statuses={},state='off',now=Date.now(),onSelect}){
- const sorted=useMemo(()=>[...students].sort((a,b)=>String(a.rollNumber).localeCompare(String(b.rollNumber),undefined,{numeric:true})),[students])
+ const sorted=useMemo(()=>[...students].sort(compareAttention),[students])
  const shared=sorted.filter(s=>{
   const frame=frames[s.sessionId],ts=frame?.ts?Date.parse(frame.ts):0
   return isRunningExamStatus(s.status)&&s.screen&&s.connected!==false&&
@@ -29,8 +30,8 @@ export default function ScreenWall({students=[],frames={},statuses={},state='off
  const waiting=sorted.filter(s=>isRunningExamStatus(s.status)&&s.screen&&s.connected!==false).length
  return <section aria-label="All participating student screens" className="space-y-4">
   <GlassCard className="flex flex-wrap items-start justify-between gap-3 border-sky-400/20 p-4">
-   <div><h2 className="flex items-center gap-2 text-xl font-semibold"><LayoutGrid size={21} className="text-sky-300"/> One-page screen wall</h2>
-    <p className="mt-1 max-w-2xl text-sm text-slate-300">Consented screen previews refresh about every 1.5 seconds. Open a tile for direct video, incident clips and participant controls.</p>
+   <div><h2 className="flex items-center gap-2 text-xl font-semibold"><LayoutGrid size={21} className="text-sky-300"/> Student screen wall</h2>
+    <p className="mt-1 max-w-2xl text-sm text-slate-300">Students needing attention appear first. Consented screen previews refresh about every 1.5 seconds. Open a tile for direct video, incident clips and participant controls.</p>
     <p className="mt-2 text-xs text-amber-200">Wall previews are temporary. Separately consented screen incident clips are available in student details for 7 days. Interrupted and stale feeds are marked.</p>
    </div>
    <div className="flex flex-wrap gap-2"><span className="chip border-sky-400/40 text-sky-200"><MonitorUp size={14}/> {shared}/{waiting} fresh feeds</span>
@@ -52,7 +53,7 @@ export default function ScreenWall({students=[],frames={},statuses={},state='off
     const label=stateOf(s,frame,statuses[s.sessionId],now)
     return <button key={s.sessionId} type="button" onClick={()=>onSelect?.(s)}
      aria-label={s.name+', roll '+s.rollNumber+'. '+label+'. Open student details.'}
-     className={'group overflow-hidden rounded-xl border text-left transition hover:-translate-y-0.5 hover:border-sky-300/70 '+(fresh?'border-sky-400/40':'border-white/10')}>
+     className={'group overflow-hidden rounded-xl border text-left transition hover:border-sky-300/70 '+(fresh?'border-sky-400/40':'border-white/10')}>
       <div className="relative aspect-video bg-navy-950/85">
        {fresh?<img src={frame.jpeg} alt={'Latest consented screen snapshot for '+s.name} className="h-full w-full object-contain" />:
         <div className="flex h-full flex-col items-center justify-center gap-2 px-3 text-center text-slate-400"><MonitorUp size={26}/><span className="text-xs">{label}</span></div>}

@@ -155,7 +155,7 @@ export default function ProctoringConsentModal({ open, exam, allowOptionalScreen
         </Step>
 
         <Step done required icon={Maximize} title="Fullscreen">
-          <p className="text-xs text-slate-400">The exam opens in fullscreen when you press Start. Leaving fullscreen is recorded. You can return to it at any time.</p>
+          <p className="text-xs text-slate-400">The exam opens in fullscreen when you press Start exam. Leaving fullscreen is recorded. You can return to it at any time.</p>
         </Step>
       </div>
 
@@ -168,7 +168,7 @@ export default function ProctoringConsentModal({ open, exam, allowOptionalScreen
         <button type="button" className="btn btn-ghost" onClick={decline} disabled={busy === 'start'}>Go back</button>
         <button type="button" className="btn btn-primary" onClick={start} disabled={!ready || !!busy}>
           {busy === 'start' ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Maximize size={16} aria-hidden="true" />}
-          Start exam with approved sharing
+          Start exam
         </button>
       </div>
       {!ready && <p className="mt-2 text-right text-xs text-slate-500">Complete the required steps above to continue.</p>}

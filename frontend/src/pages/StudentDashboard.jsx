@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { BookOpen, CalendarDays, CheckCircle2, Code2, FileText, Info, PlayCircle, TerminalSquare } from 'lucide-react'
+import Breadcrumbs from '../components/common/Breadcrumbs'
 import StudentHeader from '../components/layout/StudentHeader'
 import Footer from '../components/layout/Footer'
 import GlassCard from '../components/common/GlassCard'
@@ -18,7 +19,7 @@ const INSTRUCTIONS = [
   'Keep the exam in fullscreen. Do not switch tabs, windows or apps until you submit.',
   'Answers save automatically. If the internet drops, keep working; they save again when it returns.',
   'For programs, press Run to test with your own input, then Submit code to check against test cases.',
-  'Press Submit exam only when you have finished. You cannot reopen the exam afterwards.',
+  'Review your answers, then press Submit answers when you have finished. You cannot reopen the exam afterwards.',
   'If something goes wrong, raise your hand. Do not close the browser.',
 ]
 
@@ -43,7 +44,7 @@ export default function StudentDashboard() {
     <div className="flex min-h-screen flex-col">
       <StudentHeader title="Student dashboard" />
       <main className="mx-auto w-full max-w-7xl flex-1 space-y-6 px-4 py-8 sm:px-6">
-        <GlassCard glow className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center">
+        <Breadcrumbs/><GlassCard glow className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center">
           <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-dps-green to-dps-orange font-display text-2xl font-bold text-white" aria-hidden="true">
             {initials(student?.name)}
           </span>
@@ -109,7 +110,7 @@ export default function StudentDashboard() {
             <div className="space-y-6">
               <GlassCard className="p-5">
                 <h2 className="section-title mb-1 flex items-center gap-2"><TerminalSquare size={18} className="text-dps-neon" aria-hidden="true" /> Practice IDEs</h2>
-                <p className="mb-4 text-sm text-slate-400">Languages for Class {student?.class}. Practice work is saved on this computer only.</p>
+                <p className="mb-4 text-sm text-slate-400">Languages for Class {student?.class}. Your IDE drafts stay on this computer. Course and practice-test progress syncs when you sign in.</p>
                 <div className="grid gap-2">
                   {ides.map((l) => (
                     <Link key={l} to={`/student/practice/${l}`} className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-3 transition hover:border-dps-green/40 hover:bg-dps-green/[0.06]">

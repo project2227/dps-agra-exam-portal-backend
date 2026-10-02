@@ -2,6 +2,9 @@ import { useAccount } from '../components/common/AccountBootstrap'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { AlertTriangle, Ban, Camera, Eye, KeyRound, Loader2, LogIn, MonitorX, RefreshCw, ShieldCheck, Users } from 'lucide-react'
+import Breadcrumbs from '../components/common/Breadcrumbs'
+import CheckInCountdown from '../components/student/CheckInCountdown'
+import { Maximize } from 'lucide-react'
 import Navbar from '../components/layout/Navbar'
 import Footer from '../components/layout/Footer'
 import GlassCard from '../components/common/GlassCard'
@@ -16,11 +19,12 @@ import { DEMO_PASSCODE } from '../services/mockData'
 import { formatDateTime } from '../utils/format'
 
 const RULES = [
+  { icon: Maximize, text: 'The exam starts in fullscreen. Leaving fullscreen is recorded.' },
   { icon: Ban, text: 'Do not switch tabs or minimise the exam window.' },
   { icon: MonitorX, text: 'Do not open another browser, window or app.' },
   { icon: Camera, text: 'Webcam and screen sharing may be required for this exam.' },
   { icon: Eye, text: 'Your teacher can view your live progress during the exam.' },
-  { icon: ShieldCheck, text: 'Cheating flags are recorded and reviewed by your teacher.' },
+  { icon: ShieldCheck, text: 'Activity flags are recorded and reviewed by your teacher.' },
 ]
 
 export default function StudentJoinPage() {
@@ -142,7 +146,7 @@ export default function StudentJoinPage() {
       <Navbar />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-10 sm:px-6">
         <div className="mb-8 max-w-2xl animate-fade-up">
-          <h1 className="font-display text-3xl font-semibold sm:text-4xl">Join an exam</h1>
+          <Breadcrumbs /><h1 className="font-display text-3xl font-semibold sm:text-4xl">Join an exam</h1>
           <p className="mt-2 text-slate-400">{studentAccount ? 'Your school details are filled in. Choose your class exam and enter the exam password.' : 'Sign in with your school account, or use guest entry if your teacher allows it.'}</p>
           <p className="mt-3 text-sm"><Link className="text-dps-green hover:underline" to={studentAccount?'/student/profile':'/student/login'}>{studentAccount?'View my profile':'Student sign in'}</Link></p>
           {sessionNotice&&<p role="status" className="mt-3 rounded-lg border border-dps-gold/40 bg-dps-gold/10 p-3 text-sm text-slate-200">{sessionNotice}</p>}
@@ -150,6 +154,35 @@ export default function StudentJoinPage() {
 
         <form onSubmit={submit} noValidate className="grid gap-6 lg:grid-cols-[1.15fr,0.85fr]">
           <div className="space-y-6">
+            <GlassCard className="p-6">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="section-title">Select your exam</h2>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={load} disabled={loading}><RefreshCw size={13} className={loading ? 'animate-spin' : ''} aria-hidden="true" /> Refresh</button>
+              </div>
+              {loading ? <Spinner label="Loading exams" /> : loadError ? <ErrorNote message={loadError} onRetry={load} /> : (
+                <>
+                  {live.length === 0 ? (
+                    <EmptyState icon={Users} title={form.class ? `No live exam for Class ${form.class} right now` : 'No exam is open for check-in'}>
+                      Check-in opens 30 minutes before the scheduled start. Your teacher will share the exam password.
+                    </EmptyState>
+                  ) : (
+                    <div className="grid gap-3" role="list">
+                      {live.map((e) => <div role="listitem" key={e.id}><ExamCard exam={e} selected={examId === e.id} onSelect={selectExam} /></div>)}
+                    </div>
+                  )}
+                  {errors.examId && <p className="error-text" role="alert">{errors.examId}</p>}
+                  {upcoming.length > 0 && (
+                    <div className="mt-5 border-t border-white/10 pt-4">
+                      <p className="mb-2 text-sm font-medium text-slate-300">Check in early</p><p className="text-sm text-slate-400">Select an upcoming exam above to enter its waiting room. Questions unlock automatically at the scheduled start.</p>
+                      <ul className="space-y-1.5 text-sm text-slate-400">
+                        {upcoming.slice(0, 4).map((e) => <li key={e.id}>Class {e.class}: {e.title} <span className="text-slate-500">({formatDateTime(e.startsAt)})</span></li>)}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              )}
+            </GlassCard>
+
             <GlassCard className="p-6">
               <h2 className="section-title mb-4">Your details</h2>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -181,39 +214,13 @@ export default function StudentJoinPage() {
               {studentAccount && <p className="mt-4 text-sm text-slate-400">Ask your teacher to change your school details.</p>}
             </GlassCard>
 
-            <GlassCard className="p-6">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="section-title">Select your exam</h2>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={load} disabled={loading}><RefreshCw size={13} className={loading ? 'animate-spin' : ''} aria-hidden="true" /> Refresh</button>
-              </div>
-              {loading ? <Spinner label="Loading exams" /> : loadError ? <ErrorNote message={loadError} onRetry={load} /> : (
-                <>
-                  {live.length === 0 ? (
-                    <EmptyState icon={Users} title={form.class ? `No live exam for Class ${form.class} right now` : 'No exam is open for check-in'}>
-                      Check-in opens 30 minutes before the scheduled start. Your teacher will share the exam password.
-                    </EmptyState>
-                  ) : (
-                    <div className="grid gap-3" role="list">
-                      {live.map((e) => <div role="listitem" key={e.id}><ExamCard exam={e} selected={examId === e.id} onSelect={selectExam} /></div>)}
-                    </div>
-                  )}
-                  {errors.examId && <p className="error-text" role="alert">{errors.examId}</p>}
-                  {upcoming.length > 0 && (
-                    <div className="mt-5 border-t border-white/10 pt-4">
-                      <p className="mb-2 text-sm font-medium text-slate-300">Check in early</p><p className="text-sm text-slate-400">Select an upcoming exam above to enter its waiting room. Questions unlock automatically at the scheduled start.</p>
-                      <ul className="space-y-1.5 text-sm text-slate-400">
-                        {upcoming.slice(0, 4).map((e) => <li key={e.id}>Class {e.class}: {e.title} <span className="text-slate-500">({formatDateTime(e.startsAt)})</span></li>)}
-                      </ul>
-                    </div>
-                  )}
-                </>
-              )}
-            </GlassCard>
+
           </div>
 
           <div className="space-y-6">
+            {selected && <GlassCard className="p-5"><p className="mb-2 font-semibold">{selected.title}</p><CheckInCountdown startsAt={selected.startsAt} /></GlassCard>}
             <GlassCard className="p-6">
-              <h2 className="section-title mb-4">Exam rules</h2>
+              <h2 className="section-title mb-4">Before you start</h2>
               <ul className="space-y-3">
                 {RULES.map(({ icon: Icon, text }) => (
                   <li key={text} className="flex gap-3 text-sm text-slate-300"><Icon size={17} className="mt-0.5 shrink-0 text-dps-orange" aria-hidden="true" /> {text}</li>
@@ -222,17 +229,17 @@ export default function StudentJoinPage() {
             </GlassCard>
 
             <GlassCard glow className="p-6">
-              <Field label="Exam password" required error={errors.passcode} hint={DEMO_MODE ? `Demo mode: use ${DEMO_PASSCODE}` : 'Given by your teacher at the start of the exam.'}>
+              <Field label="Exam passcode" required error={errors.passcode} hint={DEMO_MODE ? `Demo mode: use ${DEMO_PASSCODE}` : 'Ask your teacher for the passcode for this exam.'}>
                 {(p) => (
                   <div className="relative">
                     <KeyRound size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
-                    <input {...p} className="input pl-9 font-mono uppercase tracking-wider" value={form.passcode} onChange={set('passcode')} autoComplete="off" spellCheck={false} placeholder="DPS-XXXX-XXXX" />
+                    <input {...p} className="input pl-9 uppercase tracking-wider" value={form.passcode} onChange={set('passcode')} autoComplete="off" spellCheck={false} placeholder="DPS-XXXX-XXXX" />
                   </div>
                 )}
               </Field>
               {selected ? <p className="mt-3 text-sm text-slate-300" role="note">
-                Enter the new password for <strong className="text-white">{selected.title}</strong> (Class {selected.class}{selected.section!=='All'?`-${selected.section}`:''}).
-                Codes ignore letter case, spaces and hyphens. Every exam has a separate password.
+                Enter the passcode for <strong className="text-white">{selected.title}</strong> (Class {selected.class}{selected.section!=='All'?`-${selected.section}`:''}).
+                Codes ignore letter case, spaces and hyphens. Each exam has its own passcode.
               </p> : <p className="mt-3 text-sm text-slate-400">Select the exact exam title first. An old session on one device does not make its password valid on another.</p>}
 
               <label className="mt-5 flex cursor-pointer gap-3 rounded-xl border border-white/10 bg-white/[0.02] p-4 text-sm text-slate-200">
@@ -262,7 +269,7 @@ export default function StudentJoinPage() {
 
               <button type="submit" className="btn btn-primary btn-lg mt-5 w-full" disabled={submitting}>
                 {submitting ? <Loader2 size={18} className="animate-spin" aria-hidden="true" /> : <LogIn size={18} aria-hidden="true" />}
-                {submitting ? 'Checking password' : 'Join exam'}
+                {submitting ? 'Checking your passcode…' : 'Check in to exam'}
               </button>
               <p className="mt-3 text-center text-xs text-slate-500">
                 Teacher? <Link to="/teacher/login" className="text-dps-neon hover:underline">Sign in here</Link>

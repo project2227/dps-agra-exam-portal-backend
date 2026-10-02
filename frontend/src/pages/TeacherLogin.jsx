@@ -51,9 +51,9 @@ export default function TeacherLogin() {
       <main className="grid flex-1 place-items-center px-4 py-12">
         <div className="grid w-full max-w-5xl items-center gap-10 lg:grid-cols-2">
           <div className="hidden flex-col items-center text-center lg:flex">
-            <DPSLogoAnimated size={260} />
-            <h2 className="mt-6 font-display text-2xl font-semibold">Teacher console</h2>
-            <p className="mt-2 max-w-sm text-slate-400">Host exams, watch the lab live, review programs and share handouts for your classes.</p>
+            <DPSLogoAnimated size={120} />
+            <h2 className="mt-6 font-display text-2xl font-semibold">Teacher workspace</h2>
+            <p className="mt-2 max-w-sm text-slate-400">Create an exam, follow class progress, and review submitted work.</p>
           </div>
 
           <form onSubmit={submit} noValidate className="gradient-border rounded-2xl">
@@ -63,14 +63,14 @@ export default function TeacherLogin() {
                 <span className="font-display font-semibold">{SCHOOL.portal}</span>
               </div>
               <h1 className="font-display text-2xl font-semibold">Teacher sign in</h1>
-              <p className="mt-1 text-sm text-slate-400">Sign in using a verified staff account issued by the administrator of this independent student-built learning platform.</p>
+              <p className="mt-1 text-sm text-slate-400">Use your authorised teacher account. Need access? Send a request below.</p>
 
               <div className="mt-6 space-y-4">
                 <Field label="Registered email" required error={fieldErrors.email}>
                   {(p) => (
                     <div className="relative">
                       <Mail size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
-                      <input {...p} className="input pl-9" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="name@dpsagra.edu.in" />
+                      <input {...p} className="input pl-9" type="email" inputMode="email" autoComplete="email" autoCapitalize="none" spellCheck={false} value={form.email} onChange={(e) => { setForm({ ...form, email: e.target.value }); setFieldErrors(x => ({...x,email:''})) }} onBlur={() => { if (form.email && !isValidTeacherEmail(form.email.trim())) setFieldErrors(x => ({...x,email:'Enter a valid email address with an @ symbol.'})) }} placeholder="name@dpsagra.edu.in" />
                     </div>
                   )}
                 </Field>
@@ -78,7 +78,7 @@ export default function TeacherLogin() {
                   {(p) => (
                     <div className="relative">
                       <LockKeyhole size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" aria-hidden="true" />
-                      <input {...p} className="input px-9" type={show ? 'text' : 'password'} autoComplete="current-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+                      <input {...p} className="input px-9" type={show ? 'text' : 'password'} autoComplete="current-password" value={form.password} onChange={(e) => { setForm({ ...form, password: e.target.value }); setFieldErrors(x => ({...x,password:''})) }} />
                       <button type="button" onClick={() => setShow((s) => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:text-white" aria-label={show ? 'Hide password' : 'Show password'}>
                         {show ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>

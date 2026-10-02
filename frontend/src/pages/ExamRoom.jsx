@@ -76,7 +76,7 @@ export default function ExamRoom() {
   const [answers, setAnswers] = useState({})
   const [review, setReview] = useState({})
   const [current, setCurrent] = useState(0)
-  const [navOpen, setNavOpen] = useState(true)
+  const [navOpen, setNavOpen] = useState(() => window.innerWidth >= 768)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [warning, setWarning] = useState(null)
@@ -488,7 +488,7 @@ export default function ExamRoom() {
   if (phase === 'waiting') {
     return (
       <CenterCard icon={Clock} tone="gold" title="The exam has not started yet" actions={<Link to="/student/dashboard" className="btn btn-ghost">Go to dashboard</Link>}>
-        <p>{exam?.title} opens at <strong className="text-white">{formatTime(exam?.startsAt)}</strong>. Questions open automatically at the scheduled start. Your exam time starts then.</p><p className="mt-5 font-mono text-4xl text-dps-neon" aria-live="off">{Math.floor(lobbySeconds/60).toString().padStart(2,'0')}:{(lobbySeconds%60).toString().padStart(2,'0')}</p><p className="mt-3 text-sm">{connected?'Checked in · Waiting for the scheduled start':'Reconnecting to the exam server…'}</p>
+        <p>{exam?.title} opens at <strong className="text-white">{formatTime(exam?.startsAt)}</strong>. Questions open automatically at the scheduled start. Your exam time starts then.</p><p className="mt-5 text-4xl tabular-nums text-dps-neon" aria-live="off">{Math.floor(lobbySeconds/60).toString().padStart(2,'0')}:{(lobbySeconds%60).toString().padStart(2,'0')}</p><p className="mt-3 text-sm">{connected?'Checked in · Waiting for the scheduled start':'Reconnecting to the exam server…'}</p>
       </CenterCard>
     )
   }
@@ -507,7 +507,7 @@ export default function ExamRoom() {
   const s = exam?.settings || {}
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-navy-950/40">
+    <div className="exam-room flex h-[100dvh] flex-col overflow-hidden bg-paper">
       {/* top bar */}
       <header className="z-30 flex flex-wrap items-center gap-3 border-b border-white/[0.06] bg-navy-950/85 px-3 py-2 backdrop-blur-xl sm:px-5">
         <DPSLogoAnimated size={40} small interactive={false} label="" />
@@ -519,7 +519,7 @@ export default function ExamRoom() {
         <span className="hidden md:inline-flex"><AutoSaveIndicator status={saveStatus} lastSavedAt={lastSavedAt} /></span>
         {phase !== 'consent' && <Timer formatted={timer.formatted} isWarning={timer.isWarning} isCritical={timer.isCritical} />}
         <button type="button" className="btn btn-accent btn-sm" onClick={() => { saveNow(); setConfirmOpen(true) }} disabled={phase !== 'active'}>
-          <Send size={14} aria-hidden="true" /> Submit exam
+          <Send size={14} aria-hidden="true" /> Review answers
         </button>
       </header>
 
@@ -532,12 +532,13 @@ export default function ExamRoom() {
         </div>
       )}
 
-      <div className="flex min-h-0 flex-1">
+      <div className="exam-main-row flex min-h-0 flex-1">
         {/* question nav */}
-        <aside className={cx('shrink-0 overflow-y-auto border-r border-white/[0.06] bg-navy-950/50 p-4 transition-all', navOpen ? 'w-64' : 'w-0 overflow-hidden p-0')} aria-hidden={!navOpen}>
+        <aside className={cx('exam-question-sidebar shrink-0 overflow-y-auto border-r border-white/[0.06] bg-navy-950/50 p-4 transition-all', navOpen ? 'w-64' : 'w-0 overflow-hidden p-0')} aria-hidden={!navOpen}>
           {navOpen && (
             <>
-              <QuestionNav questions={questions} answers={answers} review={review} current={current} onJump={setCurrent} />
+              <button type="button" className="btn btn-ghost btn-sm mb-4 w-full md:hidden" onClick={() => setNavOpen(false)}>Close question list</button>
+              <QuestionNav questions={questions} answers={answers} review={review} current={current} onJump={index => { setCurrent(index); if (window.innerWidth < 768) setNavOpen(false) }} />
               <div className="mt-6 space-y-2 rounded-xl border border-white/10 p-3 text-xs text-slate-400">
                 <p className="font-medium text-slate-300">This exam</p>
                 <p>{exam?.type} | {exam?.durationMin} min | {questions.reduce((a, x) => a + (x.marks || 0), 0)} marks</p>
@@ -549,8 +550,8 @@ export default function ExamRoom() {
         </aside>
 
         <main className="min-w-0 flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-5xl px-4 py-5 pb-40 sm:px-6">
-            <div className="mb-4 flex items-center gap-2">
+          <div className="question-workspace mx-auto max-w-5xl px-4 py-5 pb-40 sm:px-6">
+            <div className="question-toolbar mb-4 flex items-center gap-2">
               <button type="button" className="btn btn-ghost btn-sm" onClick={() => setNavOpen((o) => !o)} aria-expanded={navOpen} aria-label={navOpen ? 'Hide question list' : 'Show question list'}>
                 {navOpen ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />}
               </button>
@@ -569,7 +570,7 @@ export default function ExamRoom() {
 
             <div className="mt-6 flex items-center justify-between gap-3">
               <button type="button" className="btn btn-ghost" onClick={() => setCurrent((c) => Math.max(0, c - 1))} disabled={current === 0}><ChevronLeft size={16} aria-hidden="true" /> Previous</button>
-              <span className="text-sm text-slate-500">{current + 1} / {questions.length}</span>
+              <span className="text-sm text-slate-500">Question {current + 1} of {questions.length}</span>
               {current < questions.length - 1 ? (
                 <button type="button" className="btn btn-primary" onClick={() => setCurrent((c) => Math.min(questions.length - 1, c + 1))}>Next <ChevronRight size={16} aria-hidden="true" /></button>
               ) : (
@@ -621,10 +622,10 @@ export default function ExamRoom() {
         </div>
       )}
 
-      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} title="Submit your exam?" size="sm"
+      <Modal open={confirmOpen} onClose={() => setConfirmOpen(false)} title="Review your answers" size="lg"
         footer={<>
           <button type="button" className="btn btn-ghost" onClick={() => setConfirmOpen(false)}>Keep working</button>
-          <button type="button" className="btn btn-accent" onClick={() => submit('student')}><Send size={16} aria-hidden="true" /> Submit now</button>
+          <button type="button" className="btn btn-accent" onClick={() => submit('student')}><Send size={16} aria-hidden="true" /> Submit answers</button>
         </>}>
         <dl className="grid grid-cols-3 gap-2 text-center">
           {[['Answered', answeredCount, 'text-dps-neon'], ['Unanswered', unanswered, unanswered ? 'text-orange-300' : 'text-slate-300'], ['For review', reviewCount, reviewCount ? 'text-dps-gold' : 'text-slate-300']].map(([k, v, c]) => (
@@ -634,6 +635,7 @@ export default function ExamRoom() {
             </div>
           ))}
         </dl>
+        <ol className="mt-5 max-h-[35dvh] space-y-2 overflow-y-auto" aria-label="Review each question">{questions.map((question,index) => <li key={question.id}><button type="button" className="flex w-full items-center justify-between gap-4 rounded-xl border border-line p-3 text-left text-sm" onClick={() => { setCurrent(index); setConfirmOpen(false) }}><span className="min-w-0"><strong>Question {index+1}</strong><span className="ml-2 text-muted">{question.title || question.prompt?.slice(0,75)}</span></span><span className="shrink-0 text-xs text-muted">{review[question.id] ? 'For review' : isAnswered(question,answers[question.id]) ? 'Answered' : 'Not answered'}</span></button></li>)}</ol>
         {unanswered > 0 && <p className="mt-4 text-sm text-orange-200">You have {unanswered} unanswered question{unanswered === 1 ? '' : 's'}.</p>}
         <p className="mt-3 text-sm text-slate-400">After submitting you cannot change your answers. Time left: {timer.formatted}.</p>
       </Modal>

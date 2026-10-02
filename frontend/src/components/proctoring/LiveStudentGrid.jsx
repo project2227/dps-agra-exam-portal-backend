@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { LayoutGrid, Rows3, Search, Users } from 'lucide-react'
 import StudentMonitorCard, { flagTotal } from './StudentMonitorCard'
 import { EmptyState } from '../common/Feedback'
+import { compareAttention } from '../../utils/monitorAttention'
 import { cx } from '../../utils/format'
 
 const FILTERS = [
@@ -12,7 +13,8 @@ const FILTERS = [
   ['disconnected', 'Offline'],
 ]
 const SORTS = {
-  roll: { label: 'Roll number', fn: (a, b) => a.rollNumber.localeCompare(b.rollNumber, undefined, { numeric: true }) },
+  attention: { label: 'Attention needed', fn: compareAttention },
+  roll: { label: 'Roll number', fn: (a, b) => String(a.rollNumber).localeCompare(String(b.rollNumber), undefined, { numeric: true }) },
   flags: { label: 'Most flags', fn: (a, b) => flagTotal(b.flags) - flagTotal(a.flags) },
   name: { label: 'Name', fn: (a, b) => a.name.localeCompare(b.name) },
   saved: { label: 'Least recently saved', fn: (a, b) => new Date(a.lastSavedAt) - new Date(b.lastSavedAt) },
@@ -21,7 +23,7 @@ const SORTS = {
 export default function LiveStudentGrid({ students = [], snapshots = {}, selectedId, onSelect, now }) {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('all')
-  const [sort, setSort] = useState('roll')
+  const [sort, setSort] = useState('attention')
   const [compact, setCompact] = useState(false)
 
   const counts = useMemo(() => ({
@@ -75,7 +77,7 @@ export default function LiveStudentGrid({ students = [], snapshots = {}, selecte
           {students.length ? 'Try another filter or search.' : 'Students appear here as soon as they join with the exam password.'}
         </EmptyState>
       ) : (
-        <div className={cx('grid gap-3', compact ? 'grid-cols-2 md:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6' : 'sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 min-[1900px]:grid-cols-5')}>
+        <div className={cx('grid gap-3', compact ? 'grid-cols-1 min-[420px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6' : 'sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 min-[1900px]:grid-cols-5')}>
           {visible.map((s) => (
             <StudentMonitorCard key={s.sessionId} student={s} snapshot={snapshots[s.sessionId]} selected={selectedId === s.sessionId} onOpen={onSelect} compact={compact} now={now} />
           ))}

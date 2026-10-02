@@ -1,4 +1,5 @@
 import { Camera, Clock, Code2, MonitorUp, ShieldCheck } from 'lucide-react'
+import CheckInCountdown from './CheckInCountdown'
 import StatusBadge from '../common/StatusBadge'
 import { cx, examStatus, formatDateTime, formatTime } from '../../utils/format'
 
@@ -29,6 +30,7 @@ export default function ExamCard({ exam, selected, onSelect, actions, className 
         <Clock size={14} className="text-slate-500" aria-hidden="true" />
         {formatDateTime(exam.startsAt)} to {formatTime(exam.endsAt)} ({exam.durationMin} min)
       </p>
+      {status === 'upcoming' && <CheckInCountdown startsAt={exam.startsAt} className="mt-3" />}
       <div className="mt-3 flex flex-wrap gap-1.5">
         {s.requireWebcam && <span className="chip"><Camera size={12} aria-hidden="true" /> Webcam</span>}
         {s.requireScreen && <span className="chip"><MonitorUp size={12} aria-hidden="true" /> Screen share</span>}

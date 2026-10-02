@@ -1,17 +1,18 @@
 import AccountBootstrap, { LearningSessionGate } from './components/common/AccountBootstrap'
 import { lazy, Suspense } from 'react'
 import ExperienceLayer from './components/common/ExperienceLayer'
-import PointerReactor from './components/common/PointerReactor'
+import MotionProvider from './components/common/Motion'
+import PageTransition from './components/common/PageTransition'
+import Loader from './components/common/Loader'
 import ToolFinder from './components/common/ToolFinder'
 import RoutePresentation from './components/common/RoutePresentation'
 import { BrowserRouter, HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ToastProvider } from './components/common/Toast'
 import { StudentGuard, TeacherGuard, StudentAccountGuard } from './components/common/Guards'
-import { Spinner } from './components/common/Feedback'
-import TeacherLayout from './components/layout/TeacherLayout'
+const TeacherLayout = lazy(() => import('./components/layout/TeacherLayout'))
 import LandingPage from './pages/ExamLanding'
-import StudentJoinPage from './pages/StudentJoinPage'
-import TeacherLogin from './pages/TeacherLogin'
+const StudentJoinPage = lazy(() => import('./pages/StudentJoinPage'))
+const TeacherLogin = lazy(() => import('./pages/TeacherLogin'))
 import NotFound from './pages/NotFound'
 import { ROUTER_MODE } from './config'
 
@@ -48,20 +49,19 @@ const ExamDates = lazy(() => import('./pages/ExamDates'))
 const Router = ROUTER_MODE === 'hash' ? HashRouter : BrowserRouter
 const basename = ROUTER_MODE === 'hash' ? undefined : import.meta.env.BASE_URL.replace(/\/$/, '') || undefined
 
-const PageLoader = () => <div className="grid min-h-[60vh] place-items-center"><Spinner label="Loading" /></div>
+const PageLoader = () => <div className="grid min-h-[60vh] place-items-center"><Loader /></div>
 
 export default function App() {
   return (
-    <Router basename={basename}>
+    <MotionProvider><Router basename={basename}>
       <AccountBootstrap />
       <RoutePresentation />
       <div className="tech-bg" aria-hidden="true" />
-      <PointerReactor />
       <ExperienceLayer />
       <ToolFinder />
       <a href="#main" onClick={event => { event.preventDefault(); const content = document.querySelector('#main main') || document.getElementById('main'); content?.setAttribute('tabindex', '-1'); content?.focus() }} className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-lg focus:bg-dps-green focus:px-4 focus:py-2 focus:text-white">Skip to content</a>
       <ToastProvider>
-        <div id="main">
+        <div id="main"><PageTransition>
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<LandingPage />} />
@@ -114,8 +114,8 @@ export default function App() {
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
-        </div>
+        </PageTransition></div>
       </ToastProvider>
-    </Router>
+    </Router></MotionProvider>
   )
 }

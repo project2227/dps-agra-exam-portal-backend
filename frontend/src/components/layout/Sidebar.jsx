@@ -7,7 +7,7 @@ export const TEACHER_NAV = [
   { to: '/teacher/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/teacher/classes', label: 'Classes', icon: School },
   { to: '/teacher/exams/create', label: 'Create exam', icon: FilePlus2 },
-  { to: '/teacher/exams/manage', label: 'Manage hosted exams', icon: Archive },
+  { to: '/teacher/exams/manage', label: 'Manage exams', icon: Archive },
   { to: '/teacher/submissions', label: 'Submissions', icon: ClipboardCheck },
   { to: '/teacher/handouts', label: 'Handouts', icon: FileText },
   { to: '/teacher/exam-dates', label: 'Exam dates', icon: CalendarDays },
@@ -21,8 +21,8 @@ export const TEACHER_NAV = [
 
 export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile, liveExams = [] }) {
   const content = (isMobile) => (
-    <div className="flex h-full flex-col gap-1 p-3">
-      <button type="button" className="btn btn-ghost btn-sm mb-2" onClick={()=>{window.dispatchEvent(new Event('dps:find-tool'));if(isMobile)onCloseMobile()}} title="Find a tool (Ctrl/Cmd + K)">⌕ <span className={cx(collapsed&&!isMobile&&'sr-only')}>Find a tool <kbd className="ml-2 text-xs text-slate-500">⌘ K</kbd></span></button>
+    <div className="flex h-full flex-col gap-1 overflow-y-auto p-3">
+      <button type="button" className="btn btn-ghost btn-sm mb-2" onClick={()=>{window.dispatchEvent(new Event('dps:find-tool'));if(isMobile)onCloseMobile()}} title="Find a page (Ctrl/Cmd + K)">⌕ <span className={cx(collapsed&&!isMobile&&'sr-only')}>Find a page <kbd className="ml-2 text-xs text-slate-500">⌘ K</kbd></span></button>
       {isMobile && (
         <div className="mb-2 flex justify-end">
           <button type="button" className="btn btn-ghost btn-sm" onClick={onCloseMobile} aria-label="Close menu"><X size={16} /></button>
@@ -64,7 +64,7 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
 
   return (
     <>
-      <aside className={cx('sticky top-16 hidden h-[calc(100vh-4rem)] shrink-0 border-r border-white/[0.06] bg-navy-950/40 backdrop-blur-xl transition-[width] lg:block', collapsed ? 'w-[72px]' : 'w-64')} aria-label="Teacher navigation">
+      <aside className={cx('sticky top-16 hidden h-[calc(100vh-4rem)] shrink-0 border-r border-white/[0.06] bg-navy-950/40 backdrop-blur-xl transition-opacity lg:block', collapsed ? 'w-[72px]' : 'w-64')} aria-label="Teacher navigation">
         {content(false)}
       </aside>
       {mobileOpen && (
