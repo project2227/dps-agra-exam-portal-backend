@@ -25,7 +25,7 @@ async function releaseSmoke(){
   assert.equal((await request('/api/student/exams/'+ids.exam+'/submit',null,'POST',{},token)).status,200);assert.equal((await db.query('SELECT answer_text,student_id FROM answers WHERE session_id=$1',[joined.data.session.id])).rows[0].student_id,ids.student);completed++;
   const guest=await request('/api/exams/'+ids.exam+'/join',null,'POST',{name:'Deployment Smoke Guest',rollNumber:roll+'g',className:'IX',section:'A',passcode});assert.equal(guest.status,201);assert.equal((await request('/api/student/exams/'+ids.exam+'/submit',null,'POST',{},guest.data.token)).status,200);assert.equal((await request('/api/accounts/logout',student,'POST',{})).status,200);assert.equal((await request('/api/accounts/student/profile',student)).status,401);completed++;
   return {passed:true,checks:completed};
- } finally {
+ } catch(error){error.releaseChecks=completed;throw error;} finally {
   clients.forEach(s=>s.disconnect());
   await db.transaction(async c=>{await c.query('DELETE FROM audit_logs WHERE teacher_id=$1 OR exam_id=$2',[ids.teacher,ids.exam]);await c.query('DELETE FROM exams WHERE id=$1 AND teacher_id=$2',[ids.exam,ids.teacher]);await c.query('DELETE FROM account_sessions WHERE teacher_id=$1 OR student_id=$2',[ids.teacher,ids.student]);if(ids.student){await c.query('DELETE FROM student_learning_progress WHERE student_id=$1',[ids.student]);await c.query('DELETE FROM students WHERE id=$1 AND created_by=$2',[ids.student,ids.teacher]);}await c.query('DELETE FROM teachers WHERE id=$1',[ids.teacher]);});
  }

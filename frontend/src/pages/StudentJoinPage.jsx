@@ -97,8 +97,8 @@ export default function StudentJoinPage() {
 
   const validate = () => {
     const e = {}
-    if (form.name.trim().length < 3) e.name = 'Enter your full name as in school records.'
-    if (!/^[A-Za-z0-9-]{1,12}$/.test(form.rollNumber.trim())) e.rollNumber = 'Enter your roll number (letters and numbers only).'
+    if (!studentAccount && form.name.trim().length < 3) e.name = 'Enter your full name as in school records.'
+    if (!studentAccount && !/^[A-Za-z0-9-]{1,12}$/.test(form.rollNumber.trim())) e.rollNumber = 'Enter your roll number (letters and numbers only).'
     if (!form.class) e.class = 'Choose your class.'
     if (!form.section) e.section = 'Choose your section.'
     if (!form.passcode.trim()) e.passcode = 'Enter the exam password your teacher gave you.'
