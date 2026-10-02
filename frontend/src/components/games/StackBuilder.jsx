@@ -1,3 +1,4 @@
+import { saveArcadeScore } from '../../services/accountApi'
 import {useState} from 'react'
 import {ArrowDown,ArrowRight,ArrowUp,Code2} from 'lucide-react'
 const tasks=[
@@ -16,7 +17,7 @@ export default function StackBuilder({onBack}){
   if(state==='pass'){
    const n=level+1;setLevel(n);setState('')
    if(n<tasks.length)setSequence(tasks[n].lines.map((_,i)=>i))
-   try{localStorage.setItem('dps.arcade.stack',String(n))}catch{}
+   saveArcadeScore('stack',n)
    return
   }
   setState(sequence.every((x,i)=>x===task.correct[i])?'pass':'retry')

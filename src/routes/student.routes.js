@@ -7,18 +7,20 @@ const {normalizeExamPasscode}=require('../utils/examPasscode');
 const {publish}=require('../services/events');const {event}=require('../services/proctor');
 const {canJoinExam,sessionStart}=require('../services/examLifecycle');
 const router=express.Router();
+const {accountOptional,checkCsrf}=require('../services/accountSessions');
 // Many pupils can share a school NAT. Combine a generous network cap with per-exam-roll throttling.
 const joinNetworkLimit=rateLimit({windowMs:15*60*1000,limit:300,standardHeaders:'draft-7',legacyHeaders:false});
 const joinIdentifierLimit=rateLimit({windowMs:15*60*1000,limit:8,standardHeaders:'draft-7',legacyHeaders:false,
  keyGenerator:req=>crypto.createHash('sha256').update(String(req.params.examId)+'|'+String(req.body?.rollNumber||'').trim().toLowerCase()+'|'+req.ip).digest('hex')});
 const cleanQ=q=>({id:q.id,type:q.type,title:q.title,description:q.description,options:q.options,
  marks:q.marks,language:q.language,starterCode:q.starter_code,visibleTestCases:q.visible_tests,order:q.sort_order});
-router.get('/exams/active',asyncWrap(async(req,res)=>{
+router.get('/exams/active',accountOptional,asyncWrap(async(req,res)=>{
  const filters=z.object({className:z.string().max(40).optional(),section:z.string().max(12).optional()}).parse(req.query);
+ if(req.accountSession?.student_id){const s=await db.query('SELECT class_name,section FROM students WHERE id=$1',[req.accountSession.student_id]);filters.className=s.rows[0].class_name;filters.section=s.rows[0].section;res.set('Cache-Control','no-store');}
  const q=await db.query(`SELECT id,title,subject,class_name,section,exam_type,start_time,end_time,duration_minutes,
  CASE WHEN now()<start_time THEN 'scheduled' ELSE 'active' END AS status,
  settings->>'requireWebcam' AS webcam_required,settings->>'requireScreenShare' AS screen_required
- FROM exams WHERE archived_at IS NULL AND status IN('active','scheduled') AND now() BETWEEN start_time-interval '30 minutes' AND end_time
+ FROM exams WHERE archived_at IS NULL AND status IN('active','scheduled') AND now() BETWEEN start_time-interval '30 minutes' AND end_time AND (settings->>'releaseSmoke') IS DISTINCT FROM 'true'
  AND ($1::text IS NULL OR lower(class_name)=lower($1))
  AND ($2::text IS NULL OR lower(section)='all' OR lower(section)=lower($2)) ORDER BY end_time LIMIT 100`,
  [filters.className||null,filters.section||null]);res.json({exams:q.rows});
@@ -29,9 +31,12 @@ const joinShape=z.object({name:z.string().trim().min(2).max(120),rollNumber:z.st
  browser:z.string().max(90).optional(),os:z.string().max(90).optional(),screenSize:z.string().max(30).optional(),
  timezone:z.string().max(80).optional(),fingerprint:z.string().max(256).optional()}).default({}),
  consent:z.object({webcam:z.boolean().default(false),screenShare:z.boolean().default(false),stills:z.boolean().default(false),recording:z.boolean().default(false)}).default({})});
-router.post('/exams/:examId/join',joinNetworkLimit,joinIdentifierLimit,asyncWrap(async(req,res)=>{
- const v=joinShape.parse(req.body);const eq=await db.query('SELECT * FROM exams WHERE id=$1',[req.params.examId]);
+router.post('/exams/:examId/join',joinNetworkLimit,joinIdentifierLimit,accountOptional,asyncWrap(async(req,res)=>{
+ let studentAccount=null;
+ if(req.accountSession?.student_id){checkCsrf(req,req.accountSession);const s=await db.query('SELECT * FROM students WHERE id=$1 AND active=true',[req.accountSession.student_id]);studentAccount=s.rows[0];must(studentAccount&&!studentAccount.must_change_password,403,'Set your new password before joining an exam.');}
+ const v=joinShape.parse(studentAccount?{...req.body,name:studentAccount.name,rollNumber:studentAccount.roll_number,className:studentAccount.class_name,section:studentAccount.section}:req.body);const eq=await db.query('SELECT * FROM exams WHERE id=$1',[req.params.examId]);
  const e=eq.rows[0];must(e&&canJoinExam(e),403,'This exam is not available. Check-in opens 30 minutes before the scheduled start.');
+ must(studentAccount||e.settings?.allowGuestJoin!==false,403,'Sign in with your student account to join this exam.');
  must(v.className.toLowerCase()===e.class_name.toLowerCase() &&
   (e.section.toLowerCase()==='all'||v.section.toLowerCase()===e.section.toLowerCase()),403,'Exam is not available to this class and section.');
  if(e.settings?.allowLateJoin===false)must(Date.now()<=new Date(e.start_time).getTime()+10*60000,403,'Late joining is closed.');
@@ -59,14 +64,14 @@ router.post('/exams/:examId/join',joinNetworkLimit,joinIdentifierLimit,asyncWrap
   must(remaining>120,403,'The exam has ended.');
   const token=studentToken({id,exam_id:e.id},remaining);
   const s=await c.query(`INSERT INTO exam_sessions(id,exam_id,student_name,roll_number,class_name,section,token_hash,
-   fingerprint_hash,user_agent,browser,os,screen_size,timezone,ip_address,consent_webcam,consent_screen,consent_stills,consent_recording,status)
-   VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING id,joined_at,status`,
+   fingerprint_hash,user_agent,browser,os,screen_size,timezone,ip_address,consent_webcam,consent_screen,consent_stills,consent_recording,status,student_id)
+   VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING id,joined_at,status`,
    [id,e.id,v.name,v.rollNumber,v.className,v.section,hash(token),fingerprintHash,
    v.browserMetadata.userAgent||null,v.browserMetadata.browser||null,v.browserMetadata.os||null,
    v.browserMetadata.screenSize||null,v.browserMetadata.timezone||null,
    env.STORE_IP==='true'?req.ip:null,v.consent.webcam,v.consent.screenShare,
    v.consent.stills===true&&(v.consent.webcam||v.consent.screenShare),v.consent.recording===true&&v.consent.screenShare,
-   Date.now()<new Date(e.start_time).getTime()?'joined':'active']);
+   Date.now()<new Date(e.start_time).getTime()?'joined':'active',studentAccount?.id||null]);
   return {session:s.rows[0],token};
  });
  if(result.duplicate){

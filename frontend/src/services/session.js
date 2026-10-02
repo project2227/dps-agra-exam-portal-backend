@@ -1,20 +1,18 @@
-// Teacher auth lives in localStorage (stays signed in on the staff laptop).
-// Student exam sessions live in sessionStorage so they vanish when the lab tab closes.
-const TEACHER_KEY = 'dps.teacher.auth'
+// Account credentials stay in httpOnly cookies; this module holds display data only.
 const STUDENT_KEY = 'dps.student.session'
-
-const read = (store, key) => {
-  try { return JSON.parse(store.getItem(key)) } catch { return null }
-}
-const write = (store, key, value) => {
-  try { value == null ? store.removeItem(key) : store.setItem(key, JSON.stringify(value)) } catch { /* storage blocked */ }
-}
-
-export const getTeacherAuth = () => read(localStorage, TEACHER_KEY)
-export const setTeacherAuth = (auth) => write(localStorage, TEACHER_KEY, auth)
-export const clearTeacherAuth = () => write(localStorage, TEACHER_KEY, null)
-export const getTeacherToken = () => getTeacherAuth()?.token || null
-
-export const getStudentSession = () => read(sessionStorage, STUDENT_KEY)
-export const setStudentSession = (session) => write(sessionStorage, STUDENT_KEY, session)
-export const clearStudentSession = () => write(sessionStorage, STUDENT_KEY, null)
+let account = { ready: false, student: null, teacher: null, csrfToken: null, progress: { courses: {}, games: {}, mocks: [], customTests: [] }, syncError: '' }
+const listeners = new Set()
+export const getAccountState = () => account
+export const subscribeAccounts = fn => { listeners.add(fn); return () => listeners.delete(fn) }
+export function updateAccount(patch) { account = { ...account, ...patch }; listeners.forEach(fn => fn()); window.dispatchEvent(new Event('account-auth-change')) }
+export const getStudentAccount = () => account.student
+export const getCsrfToken = () => account.csrfToken
+export const getTeacherAuth = () => account.teacher ? { teacher: account.teacher } : null
+export const setTeacherAuth = auth => updateAccount({ teacher: auth.teacher, student: null, csrfToken: auth.csrfToken, ready: true })
+export const clearTeacherAuth = () => updateAccount({ teacher: null, csrfToken: null })
+// Kept as a compatibility export for old presentation code; no teacher token is issued.
+export const getTeacherToken = () => null
+export const getStudentSession = () => { try { return JSON.parse(sessionStorage.getItem(STUDENT_KEY)) } catch { return null } }
+export const setStudentSession = value => { try { sessionStorage.setItem(STUDENT_KEY, JSON.stringify(value)) } catch { /* storage blocked */ } }
+export const clearStudentSession = () => { try { sessionStorage.removeItem(STUDENT_KEY) } catch { /* storage blocked */ } }
+export function clearLegacyTeacherToken() { try { localStorage.removeItem('dps.teacher.auth') } catch { /* storage blocked */ } }

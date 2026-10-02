@@ -1,11 +1,13 @@
+import { syncLearning } from '../services/accountApi'
+import { getAccountState } from '../services/session'
 import {useEffect,useMemo,useState} from 'react'
 import {Link} from 'react-router-dom'
 import {ArrowLeft,ArrowRight,BookOpen,CheckCircle,Clock3,Download,Flag,RefreshCcw,SlidersHorizontal,Sparkles,Trophy,Zap} from 'lucide-react'
 import Navbar from '../components/layout/Navbar'
 import Footer from '../components/layout/Footer'
 import {TOPICS,generatePracticeTest,QUESTION_BANK} from '../services/practiceTestGenerator'
-const readHistory=()=>{try{return JSON.parse(localStorage.getItem('dps.test.custom.v1')||'[]')}catch{return[]}}
-const store=result=>{try{localStorage.setItem('dps.test.custom.v1',JSON.stringify([result,...readHistory()].slice(0,15)))}catch{}}
+const readHistory=()=>{if(getAccountState().student)return getAccountState().progress.customTests;try{return JSON.parse(localStorage.getItem('dps.test.custom.v1')||'[]')}catch{return[]}}
+const store=result=>{if(syncLearning({customTests:[{id:result.id,date:result.date,score:result.score}]}))return;try{localStorage.setItem('dps.test.custom.v1',JSON.stringify([result,...readHistory()].slice(0,15)))}catch{}}
 export default function CustomPracticeTest(){
  const [topic,setTopic]=useState('mixed'),[difficulty,setDifficulty]=useState(0)
  const [requested,setRequested]=useState(10),[duration,setDuration]=useState(10)

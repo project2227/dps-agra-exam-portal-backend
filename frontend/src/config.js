@@ -1,11 +1,12 @@
 // Central configuration. Values come from Vite env variables (see .env.example).
-const env = import.meta.env
+const env = import.meta.env || {}
 
-export const API_BASE_URL = (env.VITE_API_BASE_URL || '').replace(/\/+$/, '')
-export const SOCKET_URL = (env.VITE_SOCKET_URL || API_BASE_URL).replace(/\/+$/, '')
+const selfHosted = typeof document !== 'undefined' && !!document.querySelector('meta[name="dps-self-hosted"]')
+export const API_BASE_URL = (selfHosted ? '' : env.VITE_API_BASE_URL || '').replace(/\/+$/, '')
+export const SOCKET_URL = (selfHosted ? '' : env.VITE_SOCKET_URL || API_BASE_URL).replace(/\/+$/, '')
 export const SOCKET_PATH = env.VITE_SOCKET_PATH || '/socket.io'
-export const DEMO_MODE = env.VITE_DEMO_MODE ? env.VITE_DEMO_MODE === 'true' : !API_BASE_URL
-export const ROUTER_MODE = env.VITE_ROUTER_MODE === 'hash' ? 'hash' : 'browser'
+export const DEMO_MODE = selfHosted ? false : env.VITE_DEMO_MODE ? env.VITE_DEMO_MODE === 'true' : !API_BASE_URL
+export const ROUTER_MODE = selfHosted ? 'hash' : env.VITE_ROUTER_MODE === 'hash' ? 'hash' : 'browser'
 export const SNAPSHOT_INTERVAL_MS = Number(env.VITE_SNAPSHOT_INTERVAL_MS || 10000)
 export const LOGO_SRC = `${env.BASE_URL}dps-logo.png`
 

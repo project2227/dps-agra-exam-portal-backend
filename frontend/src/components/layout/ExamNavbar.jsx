@@ -1,3 +1,4 @@
+import { useAccount } from '../common/AccountBootstrap'
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { ArrowUpRight, ChevronDown, Compass, Menu, Search, X } from 'lucide-react'
@@ -8,9 +9,10 @@ const resources = [
   ['/learn/mock-exam', 'Mock exam'], ['/learn/custom-test', 'Build a practice test'],
   ['/learn', 'Study guides & courses'], ['/student/practice', 'Practical preparation'],
   ['/learn/games', 'Revision quizzes'], ['/learn/arcade', 'Logic Arcade'],
-  ['/learn/profile', 'Learning profile'], ['/about', 'About & privacy'],
+  ['/student/profile', 'Student profile'], ['/learn/profile', 'Practice profile'], ['/about', 'About & privacy'],
 ]
 export default function ExamNavbar() {
+  const account = useAccount()
   const [open, setOpen] = useState(false)
   const { pathname } = useLocation()
   const more = useRef(null)
@@ -32,7 +34,7 @@ export default function ExamNavbar() {
     <Link to="/" className="exam-brand" aria-label="DPS Agra Exam Portal home" data-tour="home"><ExamCrest size={44} decorative /><span>DPS Agra<small>EXAM PORTAL</small></span></Link>
     <div className="lab-desktop-links exam-desktop-links">
       <NavLink to="/" end>Home</NavLink>
-      <NavLink to="/student/join" data-tour="join">Student access</NavLink>
+      <NavLink to={account.student?"/student/profile":"/student/login"} data-tour="join">{account.student?"My profile":"Student sign in"}</NavLink>
       <Link to="/" state={{ section: 'portal-functions' }} onClick={functions}>Portal functions</Link>
       <NavLink to="/teacher/login" data-tour="teachers">Teacher access</NavLink>
       <details className="lab-more" ref={more}><summary>Resources <ChevronDown size={12} /></summary><div className="lab-more-menu">{resources.map(([to, label]) => <Link to={to} key={to}>{label}<ArrowUpRight size={13} /></Link>)}<button type="button" onClick={tour}><Compass size={14} /> Original intro & guided tour</button></div></details>

@@ -13,6 +13,9 @@ const profilePublic=p=>({id:p.id,handle:p.handle,className:p.class_name,createdA
 const tokenFor=p=>jwt.sign({kind:'practice',sub:p.id},env.JWT_SECRET,{issuer:'dps-practice',expiresIn:'7d'});
 const passHash=v=>crypto.createHmac('sha256',env.FINGERPRINT_PEPPER).update(String(v).trim().toUpperCase()).digest('hex');
 const practice=asyncWrap(async(req,res,next)=>{
+ const {resolveSession,checkCsrf}=require('../services/accountSessions');
+ const account=await resolveSession(req.headers);
+ if(account?.student_id){must(!account.must_change_password,403,'Set your new password first.');checkCsrf(req,account);const q=await db.query(`INSERT INTO practice_users(handle,password_hash,class_name,student_id) SELECT 's-'||left(replace(id::text,'-',''),30),'!school-account-only',class_name,id FROM students WHERE id=$1 ON CONFLICT(student_id) DO UPDATE SET class_name=excluded.class_name RETURNING id,handle,class_name,created_at`,[account.student_id]);req.practice=q.rows[0];req.studentAccountId=account.student_id;res.set('Cache-Control','no-store');return next();}
  const raw=String(req.headers.authorization||'').match(/^Bearer (.+)$/i)?.[1];must(raw,401,'Practice profile sign-in required.');
  let t;try{t=jwt.verify(raw,env.JWT_SECRET,{issuer:'dps-practice'});}catch{must(false,401,'Practice session expired.');}
  must(t.kind==='practice',403,'Incorrect token type.');

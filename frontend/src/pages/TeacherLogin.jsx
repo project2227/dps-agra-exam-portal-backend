@@ -1,3 +1,4 @@
+import { disconnectSocket } from '../services/socket'
 import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AlertTriangle, Eye, EyeOff, Loader2, LockKeyhole, LogIn, Mail } from 'lucide-react'
@@ -6,8 +7,8 @@ import Footer from '../components/layout/Footer'
 import DPSLogoAnimated from '../components/common/DPSLogoAnimated'
 import { Field } from '../components/common/Field'
 import api from '../services/api'
-import { getTeacherToken, setTeacherAuth } from '../services/session'
-import { DEMO_MODE, SCHOOL } from '../config'
+import { getTeacherAuth, setTeacherAuth } from '../services/session'
+import { API_BASE_URL, DEMO_MODE, SCHOOL } from '../config'
 import { DEMO_TEACHER } from '../services/mockData'
 import { isValidTeacherEmail } from '../utils/teacherEmail'
 
@@ -16,12 +17,12 @@ export default function TeacherLogin() {
   const location = useLocation()
   const [form, setForm] = useState({ email: '', password: '' })
   const [show, setShow] = useState(false)
-  const [remember, setRemember] = useState(true)
+  const [remember, setRemember] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
 
-  if (getTeacherToken()) return <Navigate to="/teacher/dashboard" replace />
+  if (getTeacherAuth()) return <Navigate to="/teacher/dashboard" replace />
 
   const submit = async (e) => {
     e.preventDefault()
@@ -35,7 +36,8 @@ export default function TeacherLogin() {
     setBusy(true); setError('')
     try {
       const res = await api.teacherLogin({ email, password: form.password, remember })
-      setTeacherAuth({ token: res.token, teacher: res.teacher, at: new Date().toISOString() })
+      disconnectSocket()
+      setTeacherAuth(res)
       navigate(location.state?.from || '/teacher/dashboard', { replace: true })
     } catch (err) {
       setError(err.message)
@@ -108,6 +110,7 @@ export default function TeacherLogin() {
                   <button type="button" className="mt-2 text-dps-neon hover:underline" onClick={() => setForm({ ...DEMO_TEACHER })}>Fill demo credentials</button>
                 </div>
               )}
+              {API_BASE_URL && <a className="mt-4 block text-sm text-dps-green hover:underline" href={API_BASE_URL+'/#/teacher/login'}>Open secure sign-in directly</a>}
               <div className="mt-5 space-y-3 border-t border-white/10 pt-5 text-center text-sm">
                 <p>Teacher or invited staff tester? <Link to="/teacher/request-access" className="font-semibold text-dps-neon hover:underline">Request teacher access</Link></p>
                 <p className="text-xs text-slate-400">Requests are manually reviewed; they do not provide instant staff access.</p>

@@ -1,3 +1,4 @@
+import { signOutAccount } from '../../services/accountApi'
 import { useEffect, useState } from 'react'
 import { Link, Outlet, useNavigate } from 'react-router-dom'
 import { FlaskConical, LogOut, Menu } from 'lucide-react'
@@ -28,7 +29,8 @@ export default function TeacherLayout() {
       return !c
     })
   }
-  const logout = () => {
+  const logout = async () => {
+    try { await signOutAccount() } catch { return }
     clearTeacherAuth()
     disconnectSocket()
     navigate('/teacher/login')

@@ -14,6 +14,8 @@ const schema = z.object({
   BOOTSTRAP_ADMIN_NAME:z.string().default('School Administrator'),
   STORE_IP:z.enum(['true','false']).default('false'),
   FINGERPRINT_PEPPER:z.string().min(16),
+  SMTP_URL:z.string().default(''), MAIL_FROM:z.string().default(''),
+  ACCOUNT_APP_URL:z.string().url().or(z.literal('')).default(''),
   UPLOAD_PROVIDER:z.enum(['s3','postgres','disabled']).default('disabled'),
   API_PUBLIC_URL:z.string().url().or(z.literal('')).default(''),
   S3_BUCKET:z.string().default(''), S3_REGION:z.string().default('ap-south-1'),
@@ -26,4 +28,4 @@ const schema = z.object({
 });
 const env = schema.parse(process.env);
 if (env.NODE_ENV === 'production' && /replace-with/i.test(env.JWT_SECRET+env.STUDENT_SESSION_SECRET)) throw new Error('Replace example authentication secrets.');
-module.exports = {env, origins:env.FRONTEND_URL.split(',').map(s=>s.trim().replace(/\/$/,'')).filter(Boolean)};
+module.exports = {env, origins:[...new Set([...env.FRONTEND_URL.split(','),env.API_PUBLIC_URL].map(s=>s.trim().replace(/\/$/,'')).filter(Boolean))]};

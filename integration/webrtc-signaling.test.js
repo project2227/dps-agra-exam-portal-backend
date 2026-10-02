@@ -10,7 +10,8 @@ const crypto=require('node:crypto');
 const {Server}=require('socket.io');
 const {io:connect}=require('socket.io-client');
 const {pool}=require('../src/config/db');
-const {teacherToken,studentToken,hash}=require('../src/middleware/auth');
+const {studentToken,hash}=require('../src/middleware/auth');
+const {createSession,COOKIE}=require('../src/services/accountSessions');
 const {attachSockets}=require('../src/sockets/exam.socket');
 
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -58,7 +59,8 @@ test('independent teacher and student sockets request webcam and screen, exchang
   assert.equal((await response.json()).screenShare,value);
  };
  const opts={transports:['websocket'],forceNew:true,reconnection:false};
- const teacher=connect(url,{...opts,auth:{token:teacherToken({id:teacherId,role:'teacher'})}});
+ let teacherCookie;await createSession({headers:{}},{cookie:(n,v)=>{teacherCookie=COOKIE+'='+v},set:()=>{}},{teacherId});
+ const teacher=connect(url,{...opts,extraHeaders:{Cookie:teacherCookie}});
  const student=connect(url,{...opts,auth:{token:studentJwt}});
  t.after(async()=>{
   teacher.disconnect();student.disconnect();

@@ -3,10 +3,10 @@
 // only; a backend /api/rtc/ice route mints time-limited TURN credentials.
 const cache=new WeakMap()
 export async function requestIceServers(socket,apiUrl,fallback){
- if(!socket?.auth?.token||!apiUrl)return fallback
+ if(!socket)return fallback
  if(cache.has(socket))return cache.get(socket)
  const next=fetch(apiUrl+'/api/rtc/ice',{
-  headers:{Authorization:'Bearer '+socket.auth.token},cache:'no-store',
+  credentials:'include',headers:socket.auth?.token?{Authorization:'Bearer '+socket.auth.token}:{},cache:'no-store',
   signal:AbortSignal.timeout(8500)
  }).then(async res=>{
   if(!res.ok)throw Error('TURN unavailable')

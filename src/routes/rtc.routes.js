@@ -6,6 +6,7 @@ const rateLimit=require('express-rate-limit');
 const {env}=require('../config/env');
 const {teacher,student}=require('../middleware/auth');
 const {asyncWrap}=require('../utils/http');
+const {resolveSession}=require('../services/accountSessions');
 const router=express.Router();
 const standby=[{urls:['stun:stun.cloudflare.com:3478','stun:stun.l.google.com:19302']}];
 // Each authenticated user receives short-lived TURN credentials, never the
@@ -13,17 +14,14 @@ const standby=[{urls:['stun:stun.cloudflare.com:3478','stun:stun.l.google.com:19
 const limit=rateLimit({
  windowMs:30*60*1000,limit:18,standardHeaders:'draft-7',legacyHeaders:false,
  keyGenerator:req=>{
-  const bearer=String(req.headers.authorization||'');
+  const bearer=String(req.headers.cookie||req.headers.authorization||'');
   return bearer.startsWith('Bearer ')?crypto.createHash('sha256').update(bearer).digest('hex'):'unauthenticated';
  }
 });
 async function auth(req,res,next){
+ const account=await resolveSession(req.headers);if(account?.teacher_id){req.accountSession=account;return teacher(req,res,next);}
  const bearer=String(req.headers.authorization||'').match(/^Bearer (.+)$/i)?.[1];
  if(!bearer)return res.status(401).json({error:'Exam or teacher authentication required.'});
- try {
-  const t=jwt.verify(bearer,env.JWT_SECRET,{issuer:'dps-exam'});
-  if(t.kind==='teacher')return teacher(req,res,next);
- }catch{}
  return student(req,res,next);
 }
 router.get('/ice',limit,auth,asyncWrap(async(req,res)=>{

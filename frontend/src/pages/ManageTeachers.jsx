@@ -20,7 +20,7 @@ export default function ManageTeachers(){
  const [form,setForm]=useState(blank),[error,setError]=useState(''),[notice,setNotice]=useState('')
  const [busy,setBusy]=useState(''),[issued,setIssued]=useState(null)
  const authorized=auth?.teacher?.role==='admin'
- const staff=(method,path,data)=>http({method,url:`/api/staff-access${path}`,data,headers:{Authorization:`Bearer ${auth.token}`}}).then(r=>r.data)
+ const staff=(method,path,data)=>http({method,url:`/api/staff-access${path}`,data,}).then(r=>r.data)
  const reload=async()=>{
   try {
    const [staffList,pending]=await Promise.all([
@@ -39,7 +39,7 @@ export default function ManageTeachers(){
    const pass=form.password||securePassword()
    const response=await http.post('/api/auth/teacher/register',{
     ...form, password:pass,role:'teacher'
-   },{headers:{Authorization:`Bearer ${auth.token}`}})
+   },{})
    setIssued({name:response.data.teacher.name,email:response.data.teacher.email,password:pass})
    setNotice('Teacher enrolled. Credentials appear once below; share them securely and ask the teacher to change the temporary password immediately.')
    setForm(blank());await reload()

@@ -1,3 +1,4 @@
+import { saveArcadeScore } from '../../services/accountApi'
 import {useEffect,useState} from 'react'
 import {BrainCircuit,RefreshCcw} from 'lucide-react'
 const make=n=>Array.from({length:n},()=>Math.floor(Math.random()*9))
@@ -18,7 +19,7 @@ export default function MemoryMatrix({onBack}){
   if(show||mistake)return
   if(pattern[position]!==tile){setMistake(true);return}
   if(position===pattern.length-1){
-   try{localStorage.setItem('dps.arcade.memory',String(level))}catch{}
+   saveArcadeScore('memory',level)
    setLevel(n=>n+1);setPattern(make(Math.min(3+level,7)));setPosition(0);setShow(true);setMistake(false)
   }else setPosition(n=>n+1)
  }

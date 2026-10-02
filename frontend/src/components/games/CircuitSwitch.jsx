@@ -1,3 +1,4 @@
+import { saveArcadeScore } from '../../services/accountApi'
 import {useState} from 'react'
 import {ArrowRight,RefreshCcw,Zap} from 'lucide-react'
 const rounds=[['AND',1],['OR',1],['XOR',0],['AND',0],['XOR',1],['OR',0]]
@@ -8,7 +9,7 @@ export default function CircuitSwitch({onBack}){
  const finished=round>=rounds.length,task=rounds[Math.min(round,rounds.length-1)]
  function advance(){if(result==='correct'){setRound(r=>r+1);setInputs([0,0]);setResult(null);return}
   const ok=gate(task[0],...inputs)===task[1];setResult(ok?'correct':'try again')
-  if(ok){setWins(s=>s+1);try{localStorage.setItem('dps.arcade.circuit',String(wins+1))}catch{}}
+  if(ok){setWins(s=>s+1);saveArcadeScore('circuit',wins+1)}
  }
  if(finished)return <div className="glass p-12 text-center"><Zap className="mx-auto text-dps-gold" size={50}/><h2 className="mt-5 text-3xl font-bold">Circuit champion!</h2><p className="mt-3">You solved all {wins} logic challenges.</p><button className="btn btn-primary mt-6" onClick={onBack}>Back to arcade</button></div>
  const output=gate(task[0],...inputs)

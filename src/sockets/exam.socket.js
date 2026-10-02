@@ -3,6 +3,7 @@ const jwt=require('jsonwebtoken');const db=require('../config/db');const {env}=r
 const {hash}=require('../middleware/auth');const {event,EVENT_SEVERITY}=require('../services/proctor');
 const {attach,teacherRoom,studentRoom,publish,privateStudent}=require('../services/events');const {audit}=require('../services/audit');
 const {sessionStart}=require('../services/examLifecycle');
+const {resolveSession}=require('../services/accountSessions');const {origins}=require('../config/env');
 const LIMIT=12000;
 function attachSockets(io){
  attach(io);
@@ -71,14 +72,11 @@ function attachSockets(io){
 
  io.use(async(socket,next)=>{
   const token=socket.handshake.auth?.token;
-  if(typeof token!=='string')return next(new Error('Authentication required.'));
   try {
-   try {const t=jwt.verify(token,env.JWT_SECRET,{issuer:'dps-exam'});
-    if(t.kind==='teacher'){
-     const q=await db.query('SELECT id,role FROM teachers WHERE id=$1 AND active=true',[t.sub]);
-     if(q.rowCount){socket.data.identity={kind:'teacher',id:t.sub};return next();}
-    }
-   }catch{}
+   const origin=socket.handshake.headers.origin;if(origin&&!origins.includes(origin))throw new Error('Untrusted origin.');
+   const account=await resolveSession(socket.handshake.headers);
+   if(account?.teacher_id){socket.data.identity={kind:'teacher',id:account.teacher_id,accountSessionId:account.id};return next();}
+   if(typeof token!=='string')throw new Error('Authentication required.');
    const t=jwt.verify(token,env.STUDENT_SESSION_SECRET,{issuer:'dps-exam'});
    if(t.kind!=='student')throw new Error('Wrong role.');
    const q=await db.query(`SELECT id,exam_id,token_hash,status,consent_webcam,consent_screen
@@ -95,7 +93,10 @@ function attachSockets(io){
   socket.data.snapshotOptIn=false;
   socket.data.screenWallOptIn=false;
   const limited=(event,minMs=250)=>{const now=Date.now();if(now-(throttle.get(event)||0)<minMs)return true;throttle.set(event,now);return false;};
-  const guard=async(fn)=>{try{await fn();}catch(err){socket.emit('exam:error',{message:err.status?err.message:'Operation rejected.'});}};
+  const teacherSessionActive=async()=>{if(ident.kind!=='teacher')return;const a=await resolveSession(socket.handshake.headers);if(a?.id!==ident.accountSessionId){socket.disconnect(true);throw Object.assign(new Error('Teacher session expired.'),{status:401});}};
+  const guard=async(fn)=>{try{await teacherSessionActive();await fn();}catch(err){socket.emit('exam:error',{message:err.status?err.message:'Operation rejected.'});}};
+  const sessionTimer=ident.kind==='teacher'?setInterval(()=>teacherSessionActive().catch(()=>{}),15000):null;
+  sessionTimer?.unref();
   const checkStudent=async(allowLobby=false)=>{
    if(ident.kind!=='student')throw Object.assign(new Error('Student session required.'),{status:403});
    const q=await db.query(`SELECT s.*,e.status AS exam_status,e.start_time,e.end_time,e.duration_minutes
@@ -420,6 +421,7 @@ function attachSockets(io){
   for(const e of ['webrtc:offer','webrtc:answer','webrtc:iceCandidate','webrtc:endStream'])
    socket.on(e,data=>guard(()=>webrtcRelay(e,data)));
   socket.on('disconnect',()=>{
+   if(sessionTimer)clearInterval(sessionTimer);
    if(ident.kind==='teacher'){
     detachTeacher(socket.id);
     dropWallViewer(socket.id);

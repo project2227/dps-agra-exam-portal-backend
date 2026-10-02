@@ -1,3 +1,4 @@
+import { releaseRequest } from '../services/releaseApi'
 import {useEffect,useMemo,useState} from 'react'
 import {Link} from 'react-router-dom'
 import {Archive,ArrowLeft,ClipboardList,MonitorPlay,RotateCcw,Search,ShieldAlert,Trash2} from 'lucide-react'
@@ -61,6 +62,8 @@ export default function ManageHostedExams(){
      </div>
      <div className="flex flex-wrap gap-2">
       {tab==='current'&&<><Link className="btn btn-ghost btn-sm" to={'/teacher/exams/'+exam.id+'/monitor'}><MonitorPlay size={16}/> Monitor / review</Link>
+       <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={exam.settings.allowGuestJoin!==false} onChange={async e=>{try{await releaseRequest('/teacher/exams/'+exam.id+'/guest-join',{method:'POST',body:{allow:e.target.checked}});await load(tab)}catch(e){setError(e.message)}}}/> Allow guest join</label>
+       {(exam.status==='ended'||Date.now()>Date.parse(exam.endsAt))&&<button className="btn btn-ghost btn-sm" type="button" onClick={async()=>{try{await releaseRequest('/teacher/exams/'+exam.id+'/release-results',{method:'POST',body:{release:!exam.results_released_at}});await load(tab)}catch(e){setError(e.message)}}}>{exam.results_released_at?'Withhold results':'Release results to students'}</button>}
        <button className="btn btn-danger btn-sm" type="button" onClick={()=>{setPending(exam);setTyped('');setError('')}}><Trash2 size={16}/> Remove</button></>}
       {tab==='removed'&&<button type="button" disabled={busy} onClick={()=>restore(exam)} className="btn btn-primary btn-sm"><RotateCcw size={16}/> Restore</button>}
      </div>

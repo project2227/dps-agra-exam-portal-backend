@@ -1,3 +1,4 @@
+import { getCsrfToken } from './session'
 import { io } from 'socket.io-client'
 import { DEMO_MODE, SOCKET_PATH, SOCKET_URL } from '../config'
 import { demoMonitorTick } from './mockData'
@@ -40,16 +41,18 @@ let socketRole = null
 let socketToken = null
 
 export function getSocket({ role, token }) {
+  const identityKey = role === 'teacher' ? getCsrfToken() : token
   // Rejoining another exam or signing in again changes the token. Reusing a
   // socket authenticated with the old session leaves both media feeds blank.
-  if (socket && socketRole === role && socketToken === token) return socket
+  if (socket && socketRole === role && socketToken === identityKey) return socket
   disconnectSocket()
   socketRole = role
-  socketToken = token
+  socketToken = identityKey
   socket = DEMO_MODE
     ? createDemoSocket(role)
     : io(SOCKET_URL, {
         path: SOCKET_PATH,
+        withCredentials: true,
         transports: ['websocket', 'polling'],
         auth: { token, role },
         reconnection: true,

@@ -1,7 +1,7 @@
 import { createLiveApi } from './liveApi'
 import axios from 'axios'
 import { API_BASE_URL, DEMO_MODE } from '../config'
-import { getStudentSession, getTeacherToken } from './session'
+import { getStudentSession, getTeacherToken, getCsrfToken } from './session'
 import { examStatus, uid } from '../utils/format'
 import * as mock from './mockData'
 
@@ -10,10 +10,11 @@ import * as mock from './mockData'
  * Teacher calls send the teacher JWT; student calls send the exam
  * session token issued by POST /api/exams/join.
  * ------------------------------------------------------------------ */
-export const http = axios.create({ baseURL: API_BASE_URL, timeout: 25000 })
+export const http = axios.create({ baseURL: API_BASE_URL, timeout: 25000, withCredentials: true })
 
 http.interceptors.request.use((cfg) => {
-  const teacherToken = getTeacherToken()
+  const teacherToken = null
+  if (getCsrfToken()) cfg.headers['X-CSRF-Token'] = getCsrfToken()
   const student = getStudentSession()
   const url = cfg.url || ''
   const teacherRoute = url.startsWith('/api/teacher') || url.startsWith('/api/auth') || url.startsWith('/api/staff-access/admin')

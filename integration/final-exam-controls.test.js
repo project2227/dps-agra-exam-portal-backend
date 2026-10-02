@@ -3,7 +3,7 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');
 const crypto=require('node:crypto'),http=require('node:http'),bcrypt=require('bcryptjs');
 const {Server}=require('socket.io');const {io:connect}=require('socket.io-client');
-const {pool}=require('../src/config/db');const {teacherToken}=require('../src/middleware/auth');
+const {pool}=require('../src/config/db');const {createSession,COOKIE}=require('../src/services/accountSessions');
 const {attachSockets}=require('../src/sockets/exam.socket');
 const wait=(socket,event)=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Missing '+event)),8000);socket.once(event,p=>{clearTimeout(timer);resolve(p)})});
 test('waiting rooms, incident ownership, kick/readmit and permanent cleanup work through real authenticated HTTP and sockets',{timeout:60000},async t=>{
@@ -16,12 +16,14 @@ test('waiting rooms, incident ownership, kick/readmit and permanent cleanup work
  t.after(async()=>{clients.forEach(s=>s.disconnect());await new Promise(r=>io.close(r));await new Promise(r=>server.close(r));await pool.end()});
  for(const role of ['host','admin','other'])await pool.query(`INSERT INTO teachers(id,name,email,password_hash,role,assigned_classes)
  VALUES($1,$2,$3,'synthetic-test-hash',$4,'["IX"]')`,[ids[role],'Synthetic '+role,ids[role]+'@example.invalid',role==='admin'?'admin':'teacher']);
- const host=teacherToken({id:ids.host,role:'teacher'}),admin=teacherToken({id:ids.admin,role:'admin'}),other=teacherToken({id:ids.other,role:'teacher'});
+ const auths=new Map();
+ async function teacherCookie(id){let token;const session=await createSession({headers:{}},{cookie:(n,v)=>{token=v},set:()=>{}},{teacherId:id});auths.set(token,session.csrfToken);return token}
+ const host=await teacherCookie(ids.host),admin=await teacherCookie(ids.admin),other=await teacherCookie(ids.other);
  const password='DPS-TEST-8888',passcodeHash=await bcrypt.hash('DPSTEST8888',4);
  for(const exam of ['exam','protectedExam'])await pool.query(`INSERT INTO exams(id,title,class_name,section,teacher_id,exam_type,start_time,end_time,duration_minutes,status,passcode_hash)
  VALUES($1,$2,'IX','A',$3,'quiz',now()+interval '10 minutes',now()+interval '45 minutes',5,'scheduled',$4)`,[ids[exam],'Synthetic '+exam,ids.host,passcodeHash]);
  await pool.query(`INSERT INTO questions(id,exam_id,type,title,correct_answer,marks) VALUES($1,$2,'short','Private question','"Private answer"',5)`,[ids.question,ids.exam]);
- const request=async(path,token,method='GET',body)=>{const r=await fetch(base+path,{method,headers:{...(token?{Authorization:'Bearer '+token}:{}),...(body&&!(body instanceof FormData)?{'content-type':'application/json'}:{})},...(body?{body:body instanceof FormData?body:JSON.stringify(body)}:{})});const data=r.headers.get('content-type')?.includes('json')?await r.json():Buffer.from(await r.arrayBuffer());return {status:r.status,data}};
+ const request=async(path,token,method='GET',body)=>{const r=await fetch(base+path,{method,headers:{...(token?(auths.has(token)?{Cookie:COOKIE+'='+token,'X-CSRF-Token':auths.get(token)}:{Authorization:'Bearer '+token}):{}),...(body&&!(body instanceof FormData)?{'content-type':'application/json'}:{})},...(body?{body:body instanceof FormData?body:JSON.stringify(body)}:{})});const data=r.headers.get('content-type')?.includes('json')?await r.json():Buffer.from(await r.arrayBuffer());return {status:r.status,data}};
  const join=async(roll,recording=false)=>request('/api/exams/'+ids.exam+'/join',null,'POST',{name:'Synthetic Student '+roll,rollNumber:roll,className:'IX',section:'A',passcode:password,consent:{screenShare:true,recording,stills:true}});
  let first,second,recording;
  await t.test('students can check in before start while questions, answers and submissions stay locked',async()=>{
@@ -30,7 +32,7 @@ test('waiting rooms, incident ownership, kick/readmit and permanent cleanup work
   const entry=await request('/api/student/exams/'+ids.exam+'/entry',first.data.token);assert.equal(entry.status,200);assert.equal(entry.data.waiting,true);assert.equal('questions' in entry.data,false);assert.equal('passcode_hash' in entry.data.exam,false);
   for(const suffix of ['questions','answers'])assert.equal((await request('/api/student/exams/'+ids.exam+'/'+suffix,first.data.token)).status,403);
   assert.equal((await request('/api/student/exams/'+ids.exam+'/submit',first.data.token,'POST',{})).status,403);
-  const observer=connect(base,{transports:['websocket'],auth:{token:host}});const pupil=connect(base,{transports:['websocket'],auth:{token:first.data.token}});clients.push(observer,pupil);
+  const observer=connect(base,{transports:['websocket'],extraHeaders:{Cookie:COOKIE+'='+host}});const pupil=connect(base,{transports:['websocket'],auth:{token:first.data.token}});clients.push(observer,pupil);
   await Promise.all([wait(observer,'connect'),wait(pupil,'connect')]);const joined=wait(observer,'teacher:monitorJoined');observer.emit('teacher:joinMonitorRoom',{examId:ids.exam});await joined;
   const update=wait(observer,'exam:studentStatusUpdate');const ready=wait(pupil,'exam:joined');pupil.emit('student:joinExamRoom');assert.equal((await update).status,'joined');await ready;
  });

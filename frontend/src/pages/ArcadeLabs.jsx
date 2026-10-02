@@ -1,3 +1,4 @@
+import { getGameBest } from '../services/accountApi'
 import {useState} from 'react'
 import {Link} from 'react-router-dom'
 import {ArrowLeft,ArrowRight,BrainCircuit,Code2,Gamepad2,Grid2X2,Sparkles,Zap} from 'lucide-react'
@@ -11,7 +12,7 @@ const missions=[
  {id:'memory',name:'Memory Matrix',icon:Grid2X2,tag:'VISUAL MEMORY',description:'Watch the pattern, then reproduce longer sequences as you level up.',total:5},
  {id:'stack',name:'Stack Builder',icon:Code2,tag:'PROGRAM ARCHITECT',description:'Reorder actual Python, HTML, SQL and JavaScript blocks into runnable programs.',total:5}
 ]
-const best=id=>{try{return Number(localStorage.getItem('dps.arcade.'+id)||0)}catch{return 0}}
+const best=getGameBest
 export default function ArcadeLabs(){
  const [active,setActive]=useState(null)
  const back=()=>setActive(null)

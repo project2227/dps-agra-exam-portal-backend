@@ -1,3 +1,5 @@
+import { syncLearning } from '../services/accountApi'
+import { getAccountState } from '../services/session'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Bug, BrainCircuit, Clock3, Flame, Gamepad2, RotateCcw, Trophy } from 'lucide-react'
@@ -8,12 +10,12 @@ import { getLearningAuth, learningApi } from '../services/learningApi'
 const ICONS={'bug-hunt':Bug,'output-detective':BrainCircuit,'syntax-sprint':Flame}
 export default function PracticeGames(){
  const [mode,setMode]=useState(null),[index,setIndex]=useState(0),[answers,setAnswers]=useState([]),[remaining,setRemaining]=useState(0),[finished,setFinished]=useState(false),[saved,setSaved]=useState('')
- const [best,setBest]=useState(()=>{try{return JSON.parse(localStorage.getItem('dps.game.bests')||'{}')}catch{return{}}}),finishedRef=useRef(false)
+ const [best,setBest]=useState(()=>{if(getAccountState().student)return getAccountState().progress.games;try{return JSON.parse(localStorage.getItem('dps.game.bests')||'{}')}catch{return{}}}),finishedRef=useRef(false)
  const selected=mode?GAME_BANK[mode]:null
  function finish(){if(finishedRef.current)return;finishedRef.current=true;setFinished(true)}
  useEffect(()=>{if(!mode||finished)return;const tick=setInterval(()=>setRemaining(s=>{if(s<=1){setTimeout(()=>finish(),0);return 0}return s-1}),1000);return()=>clearInterval(tick)},[mode,finished])
  const percent=selected?Math.round(selected.questions.reduce((sum,q,i)=>sum+(answers[i]===q.correct?1:0),0)/selected.questions.length*100):0
- useEffect(()=>{if(!finished||!mode)return;const next={...best,[mode]:Math.max(best[mode]||0,percent)};setBest(next);localStorage.setItem('dps.game.bests',JSON.stringify(next));if(getLearningAuth())learningApi('/games',{method:'POST',body:{gameId:mode,score:percent}}).then(()=>setSaved('Your informal practice score was saved to your profile.')).catch(()=>setSaved('The score is saved on this device; sign in later to save new runs.'))},[finished])
+ useEffect(()=>{if(!finished||!mode)return;const next={...best,[mode]:Math.max(best[mode]||0,percent)};setBest(next);if(!syncLearning({games:next}))localStorage.setItem('dps.game.bests',JSON.stringify(next));if(getLearningAuth())learningApi('/games',{method:'POST',body:{gameId:mode,score:percent}}).then(()=>setSaved('Your informal practice score was saved to your profile.')).catch(()=>setSaved('The score is saved on this device; sign in later to save new runs.'))},[finished])
  function start(id){setMode(id);setIndex(0);setAnswers([]);setRemaining(GAME_BANK[id].duration);setFinished(false);setSaved('');finishedRef.current=false}
  function select(i){if(answers[index]!=null||finished)return;const next=[...answers];next[index]=i;setAnswers(next)}
  function next(){if(index===selected.questions.length-1)finish();else setIndex(i=>i+1)}

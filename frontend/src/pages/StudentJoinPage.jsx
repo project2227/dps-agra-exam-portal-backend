@@ -1,3 +1,4 @@
+import { useAccount } from '../components/common/AccountBootstrap'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { AlertTriangle, Ban, Camera, Eye, KeyRound, Loader2, LogIn, MonitorX, RefreshCw, ShieldCheck, Users } from 'lucide-react'
@@ -23,6 +24,8 @@ const RULES = [
 ]
 
 export default function StudentJoinPage() {
+  const account = useAccount()
+  const studentAccount = account.student
   const navigate = useNavigate()
   const [search] = useSearchParams()
   const examFromLink=search.get('exam')
@@ -46,7 +49,8 @@ export default function StudentJoinPage() {
       .catch((e) => setLoadError(e.message))
       .finally(() => setLoading(false))
   }
-  useEffect(load, [])
+  useEffect(load, [studentAccount?.id])
+  useEffect(() => { if(studentAccount) setForm(f=>({...f,name:studentAccount.name,rollNumber:studentAccount.rollNumber,class:studentAccount.className,section:studentAccount.section})) }, [studentAccount])
   // Local tokens can outlive a deleted/reset exam on this device. Never treat
   // a saved token as proof that the exam password still works elsewhere.
   useEffect(()=>{
@@ -139,7 +143,8 @@ export default function StudentJoinPage() {
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-10 sm:px-6">
         <div className="mb-8 max-w-2xl animate-fade-up">
           <h1 className="font-display text-3xl font-semibold sm:text-4xl">Join an exam</h1>
-          <p className="mt-2 text-slate-400">No account needed. Fill in your details, choose today&apos;s exam and enter the password your teacher announces in the lab.</p>
+          <p className="mt-2 text-slate-400">{studentAccount ? 'Your school details are filled in. Choose your class exam and enter the exam password.' : 'Sign in with your school account, or use guest entry if your teacher allows it.'}</p>
+          <p className="mt-3 text-sm"><Link className="text-dps-green hover:underline" to={studentAccount?'/student/profile':'/student/login'}>{studentAccount?'View my profile':'Student sign in'}</Link></p>
           {sessionNotice&&<p role="status" className="mt-3 rounded-lg border border-dps-gold/40 bg-dps-gold/10 p-3 text-sm text-slate-200">{sessionNotice}</p>}
         </div>
 
@@ -149,15 +154,15 @@ export default function StudentJoinPage() {
               <h2 className="section-title mb-4">Your details</h2>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Full name" required error={errors.name} className="sm:col-span-2">
-                  {(p) => <input {...p} className="input" value={form.name} onChange={set('name')} autoComplete="name" placeholder="e.g. Ananya Gupta" />}
+                  {(p) => <input {...p} className="input" readOnly={!!studentAccount} value={form.name} onChange={set('name')} autoComplete="name" placeholder="e.g. Ananya Gupta" />}
                 </Field>
                 <Field label="Roll number" required error={errors.rollNumber}>
-                  {(p) => <input {...p} className="input" value={form.rollNumber} onChange={set('rollNumber')} inputMode="numeric" placeholder="e.g. 14" />}
+                  {(p) => <input {...p} className="input" readOnly={!!studentAccount} value={form.rollNumber} onChange={set('rollNumber')} inputMode="numeric" placeholder="e.g. 14" />}
                 </Field>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Class" required error={errors.class}>
                     {(p) => (
-                      <select {...p} className="input" value={form.class} onChange={(e) => { set('class')(e); if (selected && selected.class !== e.target.value) setExamId('') }}>
+                      <select {...p} className="input" disabled={!!studentAccount} value={form.class} onChange={(e) => { set('class')(e); if (selected && selected.class !== e.target.value) setExamId('') }}>
                         <option value="">Select</option>
                         {CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
                       </select>
@@ -165,7 +170,7 @@ export default function StudentJoinPage() {
                   </Field>
                   <Field label="Section" required error={errors.section}>
                     {(p) => (
-                      <select {...p} className="input" value={form.section} onChange={set('section')}>
+                      <select {...p} className="input" disabled={!!studentAccount} value={form.section} onChange={set('section')}>
                         <option value="">Select</option>
                         {SECTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
                       </select>
@@ -173,6 +178,7 @@ export default function StudentJoinPage() {
                   </Field>
                 </div>
               </div>
+              {studentAccount && <p className="mt-4 text-sm text-slate-400">Ask your teacher to change your school details.</p>}
             </GlassCard>
 
             <GlassCard className="p-6">

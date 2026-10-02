@@ -6,11 +6,11 @@ const hash=token=>crypto.createHash('sha256').update(token).digest('hex');
 const teacherToken=t=>jwt.sign({kind:'teacher',sub:t.id,role:t.role},env.JWT_SECRET,{issuer:'dps-exam',expiresIn:'8h'});
 const studentToken=(s,seconds)=>jwt.sign({kind:'student',sub:s.id,examId:s.exam_id},env.STUDENT_SESSION_SECRET,{issuer:'dps-exam',expiresIn:Math.max(120,Math.min(seconds,8*3600))});
 const teacher=asyncWrap(async(req,res,next)=>{
- const bearer=String(req.headers.authorization||'').match(/^Bearer (.+)$/i)?.[1];must(bearer,401,'Teacher login required.');
- let token;try{token=jwt.verify(bearer,env.JWT_SECRET,{issuer:'dps-exam'});}catch{must(false,401,'Teacher session expired.');}
- must(token.kind==='teacher',403,'Teacher token required.');
- const q=await db.query('SELECT id,name,email,role,active,assigned_classes FROM teachers WHERE id=$1',[token.sub]);
- must(q.rows[0]?.active,401,'Account not active.');req.teacher=q.rows[0];next();
+ const {resolveSession,checkCsrf}=require('../services/accountSessions');
+ if(req.accountSession===undefined)req.accountSession=await resolveSession(req.headers);
+ const session=req.accountSession;must(session?.teacher_id,401,'Teacher sign in required.');checkCsrf(req,session);
+ const q=await db.query('SELECT id,name,email,role,active,assigned_classes FROM teachers WHERE id=$1',[session.teacher_id]);
+ must(q.rows[0]?.active,401,'Account not active.');res.set('Cache-Control','no-store');req.teacher=q.rows[0];next();
 });
 const admin=(req,res,next)=>req.teacher?.role==='admin'?next():next(Object.assign(new Error('Administrator required.'),{status:403}));
 const student=asyncWrap(async(req,res,next)=>{

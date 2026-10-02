@@ -10,7 +10,7 @@ const router=express.Router();router.use(teacher);
 const settingsSchema=z.object({requireWebcam:z.boolean().default(false),requireScreenShare:z.boolean().default(false),
  enableTabSwitchDetection:z.boolean().default(true),enableCopyPasteDetection:z.boolean().default(true),
  enableFullscreenMode:z.boolean().default(false),enableCodeRunner:z.boolean().default(false),
- allowLateJoin:z.boolean().default(true),monitorAnswerText:z.boolean().default(false)}).strict();
+ allowLateJoin:z.boolean().default(true),monitorAnswerText:z.boolean().default(false),allowGuestJoin:z.boolean().default(true)}).strict();
 const examShape=z.object({title:z.string().trim().min(3).max(180),subject:z.string().max(90).default('Computers'),
  className:z.string().trim().min(1).max(40),section:z.string().max(12).default('All'),
  examType:z.enum(['quiz','practical','mixed']),startTime:z.coerce.date(),endTime:z.coerce.date(),
@@ -33,6 +33,8 @@ router.get('/exams',asyncWrap(async(req,res)=>{
  res.json({exams:q.rows.map(scrub)});
 }));
 router.get('/exams/:examId',asyncWrap(async(req,res)=>res.json({exam:scrub(await ownExam(req.params.examId,req.teacher.id))})));
+router.post('/exams/:examId/guest-join',asyncWrap(async(req,res)=>{const e=await ownExam(req.params.examId,req.teacher.id);const d=z.object({allow:z.boolean()}).parse(req.body);await db.query(`UPDATE exams SET settings=jsonb_set(settings,'{allowGuestJoin}',$2::jsonb),updated_at=now() WHERE id=$1`,[e.id,JSON.stringify(d.allow)]);res.json({allowGuestJoin:d.allow});}));
+router.post('/exams/:examId/release-results',asyncWrap(async(req,res)=>{const e=await ownExam(req.params.examId,req.teacher.id);const d=z.object({release:z.boolean()}).parse(req.body);must(!d.release||e.status==='closed'||Date.now()>new Date(e.end_time).getTime(),409,'Wait until the exam is over before releasing results.');await db.query('UPDATE exams SET results_released_at=CASE WHEN $2 THEN now() ELSE NULL END WHERE id=$1',[e.id,d.release]);await audit({teacherId:req.teacher.id,examId:e.id,action:d.release?'exam:results-released':'exam:results-withheld'});res.json({released:d.release});}));
 router.put('/exams/:examId',asyncWrap(async(req,res)=>{
  const v=examShape.parse(req.body);await assertAssignedClass(req.teacher,v.className,v.section);const current=await ownExam(req.params.examId,req.teacher.id);
  must(current.status==='draft'||current.status==='scheduled',409,'Active or closed exams cannot be edited.');

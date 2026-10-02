@@ -1,3 +1,4 @@
+import AccountBootstrap, { LearningSessionGate } from './components/common/AccountBootstrap'
 import { lazy, Suspense } from 'react'
 import ExperienceLayer from './components/common/ExperienceLayer'
 import PointerReactor from './components/common/PointerReactor'
@@ -5,7 +6,7 @@ import ToolFinder from './components/common/ToolFinder'
 import RoutePresentation from './components/common/RoutePresentation'
 import { BrowserRouter, HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ToastProvider } from './components/common/Toast'
-import { StudentGuard, TeacherGuard } from './components/common/Guards'
+import { StudentGuard, TeacherGuard, StudentAccountGuard } from './components/common/Guards'
 import { Spinner } from './components/common/Feedback'
 import TeacherLayout from './components/layout/TeacherLayout'
 import LandingPage from './pages/ExamLanding'
@@ -28,6 +29,9 @@ const TeacherAccessRequest = lazy(() => import('./pages/TeacherAccessRequest'))
 const GradeAnalysis = lazy(() => import('./pages/GradeAnalysis'))
 const TeacherAccount = lazy(() => import('./pages/TeacherAccount'))
 const AboutPortal = lazy(() => import('./pages/ExamAboutPortal'))
+const StudentAccountLogin = lazy(() => import('./pages/StudentAccountLogin'))
+const StudentAccountProfile = lazy(() => import('./pages/StudentAccountProfile'))
+const TeacherStudentDetail = lazy(() => import('./pages/TeacherStudentDetail'))
 const StudentDashboard = lazy(() => import('./pages/StudentDashboard'))
 const PracticeIDE = lazy(() => import('./pages/PracticeIDE'))
 const ExamRoom = lazy(() => import('./pages/ExamRoom'))
@@ -49,6 +53,7 @@ const PageLoader = () => <div className="grid min-h-[60vh] place-items-center"><
 export default function App() {
   return (
     <Router basename={basename}>
+      <AccountBootstrap />
       <RoutePresentation />
       <div className="tech-bg" aria-hidden="true" />
       <PointerReactor />
@@ -61,18 +66,23 @@ export default function App() {
             <Routes>
               <Route path="/" element={<LandingPage />} />
 
-              <Route path="/learn" element={<LearningHome />} />
-              <Route path="/learn/profile" element={<StudentProfile />} />
-              <Route path="/learn/games" element={<PracticeGames />} />
-              <Route path="/learn/mock-exam" element={<MockExam />} />
-              <Route path="/learn/custom-test" element={<CustomPracticeTest />} />
-              <Route path="/learn/arcade" element={<ArcadeLabs />} />
-              <Route path="/learn/course/:lang" element={<SelfStudyCourse />} />
-              <Route path="/learn/teacher-course/:id" element={<SelfStudyCourse teacherCourse />} />
+              <Route path="/learn" element={<LearningSessionGate><LearningHome /></LearningSessionGate>} />
+              <Route path="/learn/profile" element={<LearningSessionGate><StudentProfile /></LearningSessionGate>} />
+              <Route path="/learn/games" element={<LearningSessionGate><PracticeGames /></LearningSessionGate>} />
+              <Route path="/learn/mock-exam" element={<LearningSessionGate><MockExam /></LearningSessionGate>} />
+              <Route path="/learn/custom-test" element={<LearningSessionGate><CustomPracticeTest /></LearningSessionGate>} />
+              <Route path="/learn/arcade" element={<LearningSessionGate><ArcadeLabs /></LearningSessionGate>} />
+              <Route path="/learn/course/:lang" element={<LearningSessionGate><SelfStudyCourse /></LearningSessionGate>} />
+              <Route path="/learn/teacher-course/:id" element={<LearningSessionGate><SelfStudyCourse teacherCourse /></LearningSessionGate>} />
               <Route path="/about" element={<AboutPortal />} />
 
               {/* Student */}
               <Route path="/student" element={<Navigate to="/student/join" replace />} />
+              <Route path="/student/login" element={<StudentAccountLogin />} />
+              <Route path="/student/set-password" element={<StudentAccountGuard><StudentAccountLogin mode="set" /></StudentAccountGuard>} />
+              <Route path="/student/forgot-password" element={<StudentAccountLogin mode="forgot" />} />
+              <Route path="/student/reset-password" element={<StudentAccountLogin mode="reset" />} />
+              <Route path="/student/profile" element={<StudentAccountGuard><StudentAccountProfile /></StudentAccountGuard>} />
               <Route path="/student/join" element={<StudentJoinPage />} />
               <Route path="/student/practice" element={<PracticeIDE />} />
               <Route path="/student/practice/:lang" element={<PracticeIDE />} />
@@ -86,6 +96,7 @@ export default function App() {
                 <Route index element={<Navigate to="/teacher/dashboard" replace />} />
                 <Route path="dashboard" element={<TeacherDashboard />} />
                 <Route path="classes" element={<ClassManagement />} />
+                <Route path="students/:id" element={<TeacherStudentDetail />} />
                 <Route path="exams/create" element={<CreateExam />} />
                 <Route path="exams/manage" element={<ManageHostedExams />} />
                 <Route path="exams/:examId/monitor" element={<ExamMonitor />} />

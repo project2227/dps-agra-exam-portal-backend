@@ -1,3 +1,4 @@
+import StudentRoster from '../components/teacher/StudentRoster'
 import { getTeacherAuth } from '../services/session'
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -42,7 +43,7 @@ export default function ClassManagement() {
 
   return (
     <div>
-      <PageHeader title="Classes" subtitle="Each class has one computer teacher. Students are not enrolled in advance: they appear here once they join an exam with their name, roll number, class, section and the exam password." />
+      <PageHeader title="Classes" subtitle="Manage school-issued student accounts, class details and exam participation. Students still need the exam passcode to join." />
       {getTeacherAuth()?.teacher?.role === 'admin' && !classes.length && !error && (
         <div className="mb-5 rounded-xl border border-dps-gold/40 p-4">
           <p className="mb-2 text-sm">Initialize VI–XII and sections A–F before creating exams. This creates class groups only, not student enrollment.</p>
@@ -64,6 +65,7 @@ export default function ClassManagement() {
         ))}
       </div>
 
+      {cls && <StudentRoster className={active} sections={cls.sections} />}
       {!cls ? <Spinner label="Loading classes" /> : (
         <div className="grid gap-6 xl:grid-cols-[320px,1fr]">
           <div className="space-y-4">

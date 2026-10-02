@@ -1,13 +1,13 @@
 // Production adapter for the independent Render/Neon exam backend.
 // Only the Render API handles database credentials. No database SDK runs in a browser.
-import { getStudentSession, getTeacherToken } from './session'
+import { getStudentSession, getTeacherAuth } from './session'
 
 const unwrap = (request) => request.then((response) => response.data)
 const teacher = (http) => ({
-  get: (path, options) => unwrap(http.get(path, { ...options, headers: { ...options?.headers, Authorization: `Bearer ${getTeacherToken()}` } })),
-  post: (path, payload) => unwrap(http.post(path, payload, { headers: { Authorization: `Bearer ${getTeacherToken()}` } })),
-  put: (path, payload) => unwrap(http.put(path, payload, { headers: { Authorization: `Bearer ${getTeacherToken()}` } })),
-  delete: (path,payload) => unwrap(http.delete(path, { data:payload, headers: { Authorization: `Bearer ${getTeacherToken()}` } })),
+  get: (path, options) => unwrap(http.get(path, { ...options, headers: { ...options?.headers,  } })),
+  post: (path, payload) => unwrap(http.post(path, payload, { headers: {  } })),
+  put: (path, payload) => unwrap(http.put(path, payload, { headers: {  } })),
+  delete: (path,payload) => unwrap(http.delete(path, { data:payload, headers: {  } })),
 })
 const studentHeaders = () => ({ Authorization: `Bearer ${getStudentSession()?.token || ''}` })
 const student = (http) => ({
@@ -104,6 +104,7 @@ function toBackendExam(p) {
       enableCodeRunner: Boolean(s.codeExecution),
       allowLateJoin: true,
       monitorAnswerText: false,
+      allowGuestJoin: s.allowGuestJoin ?? true,
     },
   }
 }
@@ -342,12 +343,12 @@ export function createLiveApi(http) {
     },
     getHandouts: async (p = {}) => {
       const studentSession = getStudentSession()
-      const path = getTeacherToken() ? '/api/teacher/handouts' : '/api/handouts'
-      const response = getTeacherToken() ? await t.get(path) : await s.get(path, { params:{ className:p.class || studentSession?.student?.class || '', section:p.section || studentSession?.student?.section || '' } })
+      const path = getTeacherAuth() ? '/api/teacher/handouts' : '/api/handouts'
+      const response = getTeacherAuth() ? await t.get(path) : await s.get(path, { params:{ className:p.class || studentSession?.student?.class || '', section:p.section || studentSession?.student?.section || '' } })
       return response.handouts.map(normalizeHandout)
     },
     downloadHandout: async id => {
-      const response = getTeacherToken()
+      const response = getTeacherAuth()
         ? await t.get(`/api/teacher/handouts/${id}/download`)
         : await s.get(`/api/student/handouts/${id}/download`)
       return response.url
@@ -357,13 +358,13 @@ export function createLiveApi(http) {
       const form = new FormData()
       form.append('file',file);form.append('title',title);form.append('description',description || '')
       form.append('className',cls);form.append('section',(sections || [])[0] || 'All')
-      const response = await unwrap(http.post('/api/teacher/handouts/upload',form,{headers:{Authorization:`Bearer ${getTeacherToken()}`},onUploadProgress:e=>onProgress?.(e.total?Math.round(e.loaded/e.total*100):0)}))
+      const response = await unwrap(http.post('/api/teacher/handouts/upload',form,{headers:{},onUploadProgress:e=>onProgress?.(e.total?Math.round(e.loaded/e.total*100):0)}))
       return normalizeHandout(response.handout)
     },
     deleteHandout: id => t.delete(`/api/teacher/handouts/${id}`),
     getExamDates: async (p = {}) => {
       const sess = getStudentSession()
-      const response = getTeacherToken() ? await t.get('/api/teacher/exam-dates') : await s.get('/api/exam-dates',{params:{className:p.class || sess?.student?.class || '',section:p.section || sess?.student?.section || ''}})
+      const response = getTeacherAuth() ? await t.get('/api/teacher/exam-dates') : await s.get('/api/exam-dates',{params:{className:p.class || sess?.student?.class || '',section:p.section || sess?.student?.section || ''}})
       return response.examDates.map(normalizeDate)
     },
     createExamDate: async p => normalizeDate((await t.post('/api/teacher/exam-dates',{title:p.title,className:p.class,section:p.section,date:p.date,description:p.notes || ''})).examDate),

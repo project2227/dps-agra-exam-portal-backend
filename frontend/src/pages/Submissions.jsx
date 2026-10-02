@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, ClipboardCheck, Code2, Download, EyeOff, FileDown, Loader2, Printer, Search, ShieldAlert, XCircle } from 'lucide-react'
 import PageHeader from '../components/common/PageHeader'
@@ -53,10 +54,11 @@ function AnswerReview({ a, index, awarded, onAward }) {
 }
 
 export default function Submissions() {
+  const [search] = useSearchParams()
   const toast = useToast()
   const [exams, setExams] = useState([])
-  const [filters, setFilters] = useState({ class: '', section: '', examId: '', roll: '' })
-  const [rollInput, setRollInput] = useState('')
+  const [filters, setFilters] = useState({ class: '', section: '', examId: search.get('examId')||'', roll: search.get('roll')||'' })
+  const [rollInput, setRollInput] = useState(search.get('roll')||'')
   const [rows, setRows] = useState(null)
   const [error, setError] = useState('')
   const [open, setOpen] = useState(null)

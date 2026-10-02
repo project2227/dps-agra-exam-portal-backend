@@ -1,3 +1,5 @@
+import { getAccountState } from './session.js'
+import { syncLearning } from './accountApi.js'
 // Authored micro-lessons: original educational content, not school curricula.
 // Built-in progress lives on the current device; teacher scores only come from joined teacher courses.
 export const BOOKS = {
@@ -32,8 +34,9 @@ export const STARTER_QUIZZES = {
  blocks: [{prompt:'Which block repeats a finite number of times?',options:['repeat','forever','wait','broadcast'],answerIndex:0},{prompt:'What stores a changing score?',options:['Sprite','Backdrop','Variable','Costume'],answerIndex:2}],
 }
 export const progressKey = 'dps.selfstudy.progress.v2'
-export const readProgress = () => { try { return JSON.parse(localStorage.getItem(progressKey)) || {} } catch { return {} } }
+export const readProgress = () => { if (getAccountState().student) return Object.fromEntries(Object.entries(getAccountState().progress.courses).map(([id,p])=>[id,{...p,bestScore:p.score}])); try { return JSON.parse(localStorage.getItem(progressKey)) || {} } catch { return {} } }
 export function saveProgress(id, progress) {
+  if (syncLearning({ courses: { [id]: { ...progress, ...(progress.bestScore!=null?{score:progress.bestScore}:{}), completed:progress.completed||[] } } })) { window.dispatchEvent(new Event('selfstudy-progress')); return }
   const all = readProgress(); all[id] = { ...(all[id] || {}), ...progress }
   localStorage.setItem(progressKey, JSON.stringify(all))
   window.dispatchEvent(new Event('selfstudy-progress'))

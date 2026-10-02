@@ -1,8 +1,8 @@
+import './styles/student-accounts.css'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
-import { applyCleanSlate } from './utils/cleanSlate'
-applyCleanSlate()
+// Existing practice progress is preserved for the account import choice.
 try { document.documentElement.dataset.theme = localStorage.getItem('dps.ui.theme') || 'light' } catch { document.documentElement.dataset.theme = 'light' }
 import './styles/globals.css'
 import './styles/animations.css'
