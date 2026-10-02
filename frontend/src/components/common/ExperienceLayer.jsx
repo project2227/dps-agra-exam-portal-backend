@@ -90,7 +90,7 @@ export default function ExperienceLayer(){
   <button type="button" className="experience-skip" onClick={close}><X size={15}/> Skip tour</button>
   <div className="tour-pointer" aria-hidden="true" style={box?{top:box.top+box.height+4,left:box.left+14}:undefined}><MousePointer2 size={22}/></div>
   <section key={index} className="tour-dialog" style={{left,top}}>
-   <p className="font-mono text-xs tracking-[.22em] text-dps-neon">DISCOVERY {index+1} / {tours.length}</p>
+   <p className="text-xs text-dps-neon">Portal guide · {index+1} of {tours.length}</p>
    <h3 className="mt-3 text-2xl font-bold">{entry[1]}</h3><p className="mt-3 text-sm leading-relaxed text-slate-300">{entry[2]}</p>
    <div className="mt-5 flex gap-1.5">{tours.map((s,i)=><button key={s[0]} type="button" aria-label={'Step '+(i+1)} className={'tour-dot '+(i===index?'selected':'')} onClick={()=>setIndex(i)}/>)}</div>
    <div className="mt-6 flex flex-wrap gap-2">

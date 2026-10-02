@@ -198,7 +198,7 @@ export default function StudentDetailPanel({ student: s, exam, rtc, cameraStills
                     const meta = PROCTOR_EVENTS[e.type] || { label: e.type, severity: 'low' }
                     return (
                       <li key={`${e.ts}-${i}`} className="flex items-start gap-3 text-sm">
-                        <time className="w-16 shrink-0 font-mono text-xs text-slate-500" dateTime={e.ts}>{formatTime(e.ts)}</time>
+                        <time className="w-16 shrink-0 tabular-nums text-xs text-slate-500" dateTime={e.ts}>{formatTime(e.ts)}</time>
                         <span className="min-w-0 flex-1 text-slate-200">
                           {meta.label}
                           {e.details?.message && <span className="block text-xs text-slate-400">"{e.details.message}"</span>}

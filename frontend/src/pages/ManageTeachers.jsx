@@ -80,7 +80,7 @@ export default function ManageTeachers(){
   {issued&&<section className="glass border border-amber-400/40 p-5" aria-label="One-time staff credentials">
    <h2 className="text-lg font-bold">One-time teacher credentials</h2>
    <p className="mt-2 text-sm text-amber-100">This password will disappear when you dismiss this panel or leave the page. Do not send it through a public chat.</p>
-   <dl className="mt-4 space-y-2 text-sm"><div><dt>Name</dt><dd className="font-semibold">{issued.name}</dd></div><div><dt>Email</dt><dd className="font-semibold">{issued.email}</dd></div><div><dt>Temporary password</dt><dd className="break-all rounded-lg border border-white/10 p-3 font-mono select-all">{issued.password}</dd></div></dl>
+   <dl className="mt-4 space-y-2 text-sm"><div><dt>Name</dt><dd className="font-semibold">{issued.name}</dd></div><div><dt>Email</dt><dd className="font-semibold">{issued.email}</dd></div><div><dt>Temporary password</dt><dd className="break-all rounded-lg border border-white/10 p-3 font-sans select-all">{issued.password}</dd></div></dl>
    <div className="mt-4 flex flex-wrap gap-3"><button type="button" className="btn btn-primary" onClick={copyIssued}><ClipboardCopy size={16}/> Copy credentials</button><button type="button" className="btn btn-ghost" onClick={()=>setIssued(null)}>Dismiss credentials</button></div>
   </section>}
   <section className="glass space-y-4 p-6">

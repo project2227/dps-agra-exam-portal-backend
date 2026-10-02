@@ -5,6 +5,8 @@ import {fileURLToPath,pathToFileURL} from 'node:url'
 import path from 'node:path'
 import {JSDOM} from 'jsdom'
 import {build} from 'esbuild'
+// Render builds with NODE_ENV=production; interaction tests require React's act helper.
+process.env.NODE_ENV='test'
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..')
 const dom=new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>',{url:'https://example.test',pretendToBeVisual:true})
 for(const key of ['window','document','HTMLElement','SVGElement','Element','Node','MutationObserver','localStorage','sessionStorage','getComputedStyle'])globalThis[key]=key==='getComputedStyle'?dom.window.getComputedStyle.bind(dom.window):dom.window[key]

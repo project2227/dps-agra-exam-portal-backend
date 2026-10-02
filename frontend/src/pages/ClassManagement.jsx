@@ -142,7 +142,7 @@ export default function ClassManagement() {
                       const f = flagTotal(p.flags)
                       return (
                         <tr key={p.sessionId}>
-                          <td className="font-mono">{p.rollNumber}</td>
+                          <td className="font-sans">{p.rollNumber}</td>
                           <td className="font-medium text-white">{p.name}</td>
                           <td>{p.class}-{p.section}</td>
                           <td className="max-w-[220px] truncate" title={p.examTitle}>{p.examTitle}</td>

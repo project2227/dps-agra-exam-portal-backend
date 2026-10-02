@@ -23,7 +23,7 @@ export default function ArcadeLabs(){
    <h1 className="mt-4 text-4xl font-extrabold sm:text-6xl">Play to <span className="text-gradient">understand.</span></h1><p className="mt-4 max-w-3xl text-lg text-slate-300">Leave endless multiple-choice tapping behind. Flip logic gates, reconstruct program flow and train your memory with hands-on mini games.</p>
    <div className="mt-9 grid gap-5 md:grid-cols-3">{missions.map((g,i)=>{const Icon=g.icon;return <article key={g.id} className="glass motion-surface group flex min-h-80 flex-col p-7 transition duration-300 hover:-translate-y-2 hover:border-dps-neon/40" style={{animationDelay:i*.09+'s'}}>
     <div className="mb-7 grid h-16 w-16 place-items-center rounded-2xl border border-dps-neon/30 bg-gradient-to-br from-dps-green/15 to-dps-orange/15 text-dps-neon"><Icon size={32}/></div>
-    <p className="font-mono text-xs tracking-[.19em] text-dps-gold">{g.tag}</p><h2 className="mt-3 text-2xl font-bold">{g.name}</h2><p className="mt-3 flex-1 text-sm leading-relaxed text-slate-400">{g.description}</p>
+    <p className="font-sans text-xs tracking-[.19em] text-dps-gold">{g.tag}</p><h2 className="mt-3 text-2xl font-bold">{g.name}</h2><p className="mt-3 flex-1 text-sm leading-relaxed text-slate-400">{g.description}</p>
     <div className="my-5 flex items-center justify-between text-xs text-slate-400"><span>{g.total} levels</span><span>Completed on this device: {best(g.id)}/{g.total}</span></div>
     <button onClick={()=>setActive(g.id)} className="btn btn-primary">Start mission <ArrowRight size={16}/></button>
    </article>})}</div>

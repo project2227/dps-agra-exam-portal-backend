@@ -28,7 +28,7 @@ export default function AdminDataManagement() {
   <Modal open={!!preview} title="Permanently delete test data" onClose={()=>!busy&&setPreview(null)} dismissible={!busy} size="md" footer={<><button type="button" className="btn btn-ghost" disabled={busy} onClick={()=>setPreview(null)}>Keep data</button><button type="button" className="btn btn-danger" disabled={busy||typed!==preview?.confirmation} onClick={purge}>{busy?'Deleting…':'Delete permanently'}</button></>}>
    <p className="text-sm text-slate-300">This permanently deletes the selected tests and their questions, sessions, answers, code runs, flags and incident clips. They cannot be restored from the app and will not appear in Recently removed. Teacher accounts, courses and handouts stay available.</p>
    <div className="mt-4 grid grid-cols-2 gap-2">{Object.entries(preview?.counts||{}).map(([k,n])=><div key={k} className="rounded-lg border border-white/10 p-3 text-sm"><strong>{n}</strong> {k}</div>)}</div>
-   <label className="mt-5 block text-sm">Type <strong className="font-mono text-red-200">{preview?.confirmation}</strong><input autoComplete="off" className="input mt-2 font-mono" value={typed} onChange={e=>setTyped(e.target.value)}/></label>
+   <label className="mt-5 block text-sm">Type <strong className="font-sans text-red-200">{preview?.confirmation}</strong><input autoComplete="off" className="input mt-2 font-sans" value={typed} onChange={e=>setTyped(e.target.value)}/></label>
   </Modal>
  </div>
 }
