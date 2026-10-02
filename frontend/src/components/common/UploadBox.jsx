@@ -38,7 +38,7 @@ export default function UploadBox({ accept, maxSizeMB = 25, multiple = false, fi
           Browse files
         </button>
         <span id={`${id}-hint`} className="sr-only">Accepted: {accept || 'any file'}. Max {maxSizeMB} MB.</span>
-        <input ref={input} type="file" className="sr-only" accept={accept} multiple={multiple} onChange={(e) => { handle(e.target.files); e.target.value = '' }} tabIndex={-1} />
+        <input ref={input} type="file" aria-label="Browse files" className="sr-only" accept={accept} multiple={multiple} onChange={(e) => { handle(e.target.files); e.target.value = '' }} tabIndex={-1} />
       </div>
       {error && <p className="error-text" role="alert">{error}</p>}
       {files.length > 0 && (

@@ -12,20 +12,20 @@ import api from '../services/api'
 import { formatDateTime } from '../utils/format'
 const features = {
   student: [
-    { icon: KeyRound, name: 'Join an exam', tag: 'START HERE', text: 'Choose your assessment, enter your class details and use the passcode from your teacher. Read the rules before checking in.', to: '/student/join', action: 'Open student check-in' },
-    { icon: Clock3, name: 'Take the assessment', tag: 'THE EXAM ROOM', text: 'Move between questions, mark answers for review and watch the remaining time. Your answers save as you work.', to: '/student/join', action: 'Join to enter the exam room' },
-    { icon: LayoutDashboard, name: 'Your student dashboard', tag: 'YOUR CLASS, TOGETHER', text: 'See your current exam, upcoming assessments and the resources your teacher has shared with your class.', to: '/student/dashboard', action: 'Open your dashboard' },
-    { icon: FileText, name: 'Class handouts', tag: 'KNOW WHAT TO PREPARE', text: 'Find teacher-shared notes, practical formats and instructions in your exam session’s student dashboard.', to: '/student/dashboard', action: 'View class resources' },
-    { icon: ClipboardCheck, name: 'Try a mock exam', tag: 'BEFORE EXAM DAY', text: 'Get familiar with a timed Class IX practice assessment. Use it to check your preparation before the real exam.', to: '/learn/mock-exam', action: 'Start a mock exam' },
-    { icon: BookOpen, name: 'Revise at your pace', tag: 'SUPPORTING YOUR PREPARATION', text: 'Use the study guides and practice tests to revisit a topic. Practical preparation stays available when you need it.', to: '/learn', action: 'Browse study resources' },
+    { icon: KeyRound, name: 'Join an exam', text: 'Choose your assessment, enter your class details and use the passcode from your teacher. Read the rules before checking in.', to: '/student/join', action: 'Open student check-in' },
+    { icon: Clock3, name: 'Take the assessment', text: 'Move between questions, mark answers for review and watch the remaining time. Your answers save as you work.', to: '/student/join', action: 'Join to enter the exam room' },
+    { icon: LayoutDashboard, name: 'Your student dashboard', text: 'See your current exam, upcoming assessments and the resources your teacher has shared with your class.', to: '/student/dashboard', action: 'Open your dashboard' },
+    { icon: FileText, name: 'Class handouts', text: 'Find teacher-shared notes, practical formats and instructions in your exam session’s student dashboard.', to: '/student/dashboard', action: 'View class resources' },
+    { icon: ClipboardCheck, name: 'Try a mock exam', text: 'Get familiar with a timed Class IX practice assessment. Use it to check your preparation before the real exam.', to: '/learn/mock-exam', action: 'Start a mock exam' },
+    { icon: BookOpen, name: 'Revise at your pace', text: 'Use the study guides and practice tests to revisit a topic. Practical preparation stays available when you need it.', to: '/learn', action: 'Browse study resources' },
   ],
   teacher: [
-    { icon: FilePlus2, name: 'Create & schedule', tag: 'PLAN THE ASSESSMENT', text: 'Set the class, questions, marks, timing and monitoring rules. Save a draft or publish an exam with a student passcode.', to: '/teacher/exams/create', action: 'Create an exam' },
-    { icon: CalendarDays, name: 'Manage hosted exams', tag: 'KEEP EVERYTHING ORGANISED', text: 'Find your published exams, check their schedule and manage the assessment lifecycle from your teacher workspace.', to: '/teacher/exams/manage', action: 'Manage your exams' },
-    { icon: Monitor, name: 'Monitor progress', tag: 'DURING THE EXAM', text: 'Open an exam’s live monitor to follow student progress and review activity signals. Media sharing follows that exam’s consent settings.', to: '/teacher/dashboard', action: 'Open the teacher dashboard' },
-    { icon: ClipboardCheck, name: 'Review submissions', tag: 'AFTER THE EXAM', text: 'Read submitted answers, review practical work and provide grades and feedback. Keep the assessment decision with the teacher.', to: '/teacher/submissions', action: 'Review submitted work' },
-    { icon: BarChart3, name: 'Analyse draft grades', tag: 'UNDERSTAND THE RESULTS', text: 'See class averages, identify ungraded work and print draft marksheets. Teacher approval comes before official use.', to: '/teacher/grades', action: 'Open grade analysis' },
-    { icon: Users, name: 'Classes & handouts', tag: 'PREPARE YOUR CLASS', text: 'Organise classes, share handouts and keep exam dates in one place, so students know what to prepare and when.', to: '/teacher/classes', action: 'Manage your classes' },
+    { icon: FilePlus2, name: 'Create & schedule', text: 'Set the class, questions, marks, timing and monitoring rules. Save a draft or publish an exam with a student passcode.', to: '/teacher/exams/create', action: 'Create an exam' },
+    { icon: CalendarDays, name: 'Manage hosted exams', text: 'Find your published exams, check their schedule and manage the assessment lifecycle from your teacher workspace.', to: '/teacher/exams/manage', action: 'Manage your exams' },
+    { icon: Monitor, name: 'Monitor progress', text: 'Open an exam’s live monitor to follow student progress and review activity signals. Media sharing follows that exam’s consent settings.', to: '/teacher/dashboard', action: 'Open the teacher dashboard' },
+    { icon: ClipboardCheck, name: 'Review submissions', text: 'Read submitted answers, review practical work and provide grades and feedback. Keep the assessment decision with the teacher.', to: '/teacher/submissions', action: 'Review submitted work' },
+    { icon: BarChart3, name: 'Analyse draft grades', text: 'See class averages, identify ungraded work and print draft marksheets. Teacher approval comes before official use.', to: '/teacher/grades', action: 'Open grade analysis' },
+    { icon: Users, name: 'Classes & handouts', text: 'Organise classes, share handouts and keep exam dates in one place, so students know what to prepare and when.', to: '/teacher/classes', action: 'Manage your classes' },
   ],
 }
 

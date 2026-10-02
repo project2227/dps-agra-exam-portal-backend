@@ -2,6 +2,7 @@
 const token = name => `rgb(var(--${name}) / <alpha-value>)`
 const shades = name => Object.fromEntries([50,100,200,300,400,500,600,700,800,900,950].map(n => [n, token(name)]))
 export default {
+  safelist: ['badge-success','badge-warning','badge-danger','badge-info'],
   content: ['./index.html', './src/**/*.{js,jsx}', '!./src/visual/**', '!./src/pages/LandingPage.jsx', '!./src/pages/LearningHome.jsx', '!./src/pages/LearningLanding.jsx', '!./src/pages/AboutPortal.jsx'],
   theme: {
     colors: {

@@ -156,7 +156,7 @@ export default function Submissions() {
               <tbody>
                 {sorted.map((s) => (
                   <tr key={s.id}>
-                    <td className="font-mono">{s.student.rollNumber}</td>
+                    <td className="tabular-nums">{s.student.rollNumber}</td>
                     <td className="font-medium text-white">{s.student.name}</td>
                     <td>{s.student.class}-{s.student.section}</td>
                     <td className="max-w-[240px] truncate" title={s.examTitle}>{s.examTitle}</td>
@@ -196,7 +196,7 @@ export default function Submissions() {
               {open.flags?.length ? (
                 <ul className="grid gap-1.5 text-sm sm:grid-cols-2">
                   {open.flags.map((f, i) => (
-                    <li key={i} className="flex items-center gap-2"><span className="w-16 font-mono text-xs text-slate-500">{formatTime(f.ts)}</span> {PROCTOR_EVENTS[f.type]?.label || f.type}</li>
+                    <li key={i} className="flex items-center gap-2"><span className="w-16 tabular-nums text-xs text-slate-500">{formatTime(f.ts)}</span> {PROCTOR_EVENTS[f.type]?.label || f.type}</li>
                   ))}
                 </ul>
               ) : <p className="text-sm text-slate-400">No flags recorded.</p>}

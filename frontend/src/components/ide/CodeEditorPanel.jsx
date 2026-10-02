@@ -192,7 +192,7 @@ export default function CodeEditorPanel({
               <div className="flex border-b border-white/[0.06] bg-navy-950/40 text-xs" role="tablist" aria-label="Files">
                 {WEB_FILES.map((f) => (
                   <button key={f.key} type="button" role="tab" aria-selected={webFile === f.key} onClick={() => setWebFile(f.key)}
-                    className={cx('border-r border-white/[0.06] px-3 py-2 font-mono transition', webFile === f.key ? 'bg-[#071224] text-white' : 'text-slate-500 hover:text-slate-200')}>
+                    className={cx('border-r border-white/[0.06] px-3 py-2 font-mono transition', webFile === f.key ? 'bg-surface text-ink' : 'text-slate-500 hover:text-slate-200')}>
                     {f.label}
                   </button>
                 ))}
@@ -239,7 +239,7 @@ export default function CodeEditorPanel({
           <div className="flex gap-1 bg-navy-950/60 px-2 pt-1.5" role="tablist" aria-label="Output panels">
             {bottomTabs.map((t) => (
               <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)}
-                className={cx('rounded-t-lg px-3 py-1.5 text-xs font-medium', tab === t.key ? 'bg-[#050d1a] text-white' : 'text-slate-400 hover:text-white')}>
+                className={cx('rounded-t-lg px-3 py-1.5 text-xs font-medium', tab === t.key ? 'bg-surface text-ink' : 'text-slate-400 hover:text-white')}>
                 {t.label}
               </button>
             ))}

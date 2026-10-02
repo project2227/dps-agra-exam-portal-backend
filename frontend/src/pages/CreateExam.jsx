@@ -163,7 +163,7 @@ export default function CreateExam() {
             <Field error={errors.passcode} hint="Announce this in the lab when the exam starts.">
               {(p) => (
                 <div className="flex gap-2">
-                  <input {...p} aria-label="Exam password" className="input font-mono text-lg uppercase tracking-wider" value={form.passcode} onChange={set('passcode')} spellCheck={false} />
+                  <input {...p} aria-label="Exam password" className="input font-sans text-lg uppercase tracking-wider" value={form.passcode} onChange={set('passcode')} spellCheck={false} />
                   <button type="button" className="btn btn-ghost" onClick={() => copy(form.passcode)} aria-label="Copy password"><Copy size={16} /></button>
                 </div>
               )}
@@ -204,7 +204,7 @@ export default function CreateExam() {
         <p className="flex items-center gap-2 text-sm text-dps-neon"><CheckCircle2 size={16} aria-hidden="true" /> {published?.title} is scheduled for Class {published?.class}.</p>
         <p className="mt-4 text-xs text-slate-400">Exam password</p>
         <div className="mt-1 flex items-center gap-2">
-          <span className="rounded-xl border border-dps-gold/40 bg-dps-gold/10 px-4 py-2 font-mono text-2xl font-semibold tracking-wider text-dps-gold">{published?.passcode}</span>
+          <span className="rounded-xl border border-dps-gold/40 bg-dps-gold/10 px-4 py-2 font-sans text-2xl font-semibold tracking-wider text-dps-gold">{published?.passcode}</span>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => copy(published?.passcode)} aria-label="Copy password"><Copy size={14} /></button>
         </div>
         <p className="mt-4 text-sm text-slate-400">Students can join from {published && formatDateTime(published.startsAt)} using this password.</p>

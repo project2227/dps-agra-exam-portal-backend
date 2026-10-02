@@ -5,6 +5,6 @@ const Input = forwardRef(function Input({ label, hint, error, required, classNam
   const generated = useId()
   const id = suppliedId || generated
   if (!label) return <input ref={ref} id={id} required={required} className={cx('input', className)} {...props} />
-  return <Field label={label} hint={hint} error={error} required={required}>{a => <input {...a} ref={ref} required={required} className={cx('input', className)} {...props} />}</Field>
+  return <Field id={id} label={label} hint={hint} error={error} required={required}>{a => <input {...a} ref={ref} required={required} className={cx('input', className)} {...props} />}</Field>
 })
 export default Input

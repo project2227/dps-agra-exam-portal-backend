@@ -45,7 +45,7 @@ export default function StudentDashboard() {
       <StudentHeader title="Student dashboard" />
       <main className="mx-auto w-full max-w-7xl flex-1 space-y-6 px-4 py-8 sm:px-6">
         <Breadcrumbs/><GlassCard glow className="flex flex-col gap-5 p-6 sm:flex-row sm:items-center">
-          <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-dps-green to-dps-orange font-display text-2xl font-bold text-white" aria-hidden="true">
+          <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-dps-green font-display text-2xl font-bold text-white" aria-hidden="true">
             {initials(student?.name)}
           </span>
           <div className="min-w-0 flex-1">

@@ -1,3 +1,4 @@
+import {Spinner} from '../components/common/Feedback'
 import { useEffect, useState } from 'react'
 import { ShieldCheck, UserPlus, UserX, Users, ClipboardCopy, CheckCircle, RefreshCcw } from 'lucide-react'
 import { getTeacherAuth } from '../services/session'
@@ -16,19 +17,21 @@ const securePassword=()=>{
 }
 export default function ManageTeachers(){
  const auth=getTeacherAuth()
+ const [loading,setLoading]=useState(true)
  const [teachers,setTeachers]=useState([]),[requests,setRequests]=useState([])
  const [form,setForm]=useState(blank),[error,setError]=useState(''),[notice,setNotice]=useState('')
  const [busy,setBusy]=useState(''),[issued,setIssued]=useState(null)
  const authorized=auth?.teacher?.role==='admin'
  const staff=(method,path,data)=>http({method,url:`/api/staff-access${path}`,data,}).then(r=>r.data)
  const reload=async()=>{
+  setLoading(true);setError('')
   try {
    const [staffList,pending]=await Promise.all([
     learningApi('/teacher/admin/teachers',{teacher:true}),
     staff('GET','/admin/requests')
    ])
    setTeachers(staffList.teachers||[]);setRequests(pending.requests||[])
-  }catch(e){setError(problem(e))}
+  }catch(e){setError(problem(e))}finally{setLoading(false)}
  }
  useEffect(()=>{if(authorized)reload()},[authorized])
  if(!authorized)return <div className="glass rounded-xl p-8 text-red-300" role="alert">Administrator-only. Request teacher access from the public login page; student and ordinary teacher accounts cannot enroll staff.</div>
@@ -85,7 +88,7 @@ export default function ManageTeachers(){
   </section>}
   <section className="glass space-y-4 p-6">
    <div className="flex items-center justify-between gap-3"><div><h2 className="flex items-center gap-2 text-xl font-semibold"><UserPlus size={20}/> Awaiting verification <span className="chip">{requests.length}</span></h2><p className="mt-1 text-sm text-slate-400">Email addresses on this list are self-declared, not verified. Confirm identity independently.</p></div><button type="button" className="btn btn-ghost btn-sm" onClick={reload}><RefreshCcw size={16}/> Refresh</button></div>
-   {!requests.length?<p className="rounded-lg border border-white/10 p-4 text-sm text-slate-400">No pending requests. Share the public Teacher Login → Request access link with legitimate staff.</p>:requests.map(q=><div key={q.id} className="rounded-xl border border-white/10 p-4">
+   {loading?<Spinner label="Loading staff requests…"/>:!requests.length?<p className="rounded-lg border border-white/10 p-4 text-sm text-slate-400">No pending requests. Share the public Teacher Login → Request access link with legitimate staff.</p>:requests.map(q=><div key={q.id} className="rounded-xl border border-white/10 p-4">
     <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-semibold">{q.name}</p><p className="text-sm text-slate-400">{q.email} · {q.subject}</p><p className="mt-1 text-xs text-slate-400">Requested classes: {(q.requested_classes||[]).join(', ')||'None'} · {formatDateTime(q.created_at)}</p>{q.message&&<p className="mt-2 text-sm text-slate-300">{q.message}</p>}</div><div className="flex gap-2"><button disabled={!!busy} type="button" className="btn btn-primary btn-sm" onClick={()=>review(q,true)}><CheckCircle size={14}/> Verify & approve</button><button disabled={!!busy} type="button" className="btn btn-ghost btn-sm" onClick={()=>review(q,false)}>Decline</button></div></div>
    </div>)}
   </section>
@@ -101,7 +104,7 @@ export default function ManageTeachers(){
     <button disabled={!!busy} className="btn btn-primary w-full">{busy?'Please wait...':'Create verified teacher account'}</button>
    </form>
    <section className="glass p-6"><h2 className="flex gap-2 text-xl font-semibold"><Users size={20}/> Existing staff</h2><p className="mt-1 text-sm text-slate-400">{teachers.length} enrolled accounts. Your own admin account cannot be disabled.</p>
-    {teachers.length===0?<p className="mt-5 text-sm text-slate-400">No teacher accounts yet.</p>:teachers.map(t=><div key={t.id} className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-white/10 p-4"><div><b>{t.name}</b><p className="text-xs text-slate-400">{t.email} · {t.role}</p><p className="mt-1 text-xs text-slate-400">{t.assigned_classes?.join(', ')||'No assigned classes'}</p></div><button disabled={!!busy||t.id===auth.teacher.id} type="button" className="btn btn-ghost btn-sm" onClick={()=>toggle(t)}>{t.active?<><UserX size={14}/> Disable</>:'Reactivate'}</button></div>)}
+    {loading?<Spinner label="Loading teacher accounts…"/>:teachers.length===0?<p className="mt-5 text-sm text-slate-400">No teacher accounts yet.</p>:teachers.map(t=><div key={t.id} className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-white/10 p-4"><div><b>{t.name}</b><p className="text-xs text-slate-400">{t.email} · {t.role}</p><p className="mt-1 text-xs text-slate-400">{t.assigned_classes?.join(', ')||'No assigned classes'}</p></div><button disabled={!!busy||t.id===auth.teacher.id} type="button" className="btn btn-ghost btn-sm" onClick={()=>toggle(t)}>{t.active?<><UserX size={14}/> Disable</>:'Reactivate'}</button></div>)}
    </section>
   </div>
  </div>

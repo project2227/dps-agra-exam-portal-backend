@@ -32,7 +32,7 @@ export function installFixtures(params){
   getTeacherOverview:read({stats:{activeExams:1,upcomingExams:1,totalSubmissions:3,cheatingFlags:2,handouts:6},activeExams:list([live]),upcomingExams:list([upcoming]),classes:list(classes)}),
   getStudentDashboard:read({student:{...student,class:'IX'},currentExam:live,upcomingExams:list([upcoming]),handouts:list(mock.db.handouts.slice(0,2)),examDates:list(mock.db.examDates)}),
   getExamQuestions:read({exam:live,questions,savedAnswers:{'visual-q1':'b'},review:{},serverTime:iso(now),secondsRemaining:2400}),getMonitor:read({exam:live,students:list(participants)}),saveAnswers:async()=>({savedAt:iso(Date.now())}),submitExam:async()=>({submitted:true}),
-  getSubmissions:read(list([{id:'visual-submission',sessionId:'visual-session-c',examId:live.id,examTitle:live.title,name:'Preview Student C',rollNumber:'3',class:'IX',section:'A',status:'submitted',reviewStatus:'reviewed',score:8,totalMarks:10,submittedAt:iso(now-60000),flags:{},answers:[]}]))
+  getSubmissions:read(list([{id:'visual-submission',sessionId:'visual-session-c',examId:live.id,examTitle:live.title,name:'Preview Student C',rollNumber:'3',class:'IX',section:'A',student:{name:'Preview Student C',rollNumber:'3',class:'IX',section:'A'},status:'submitted',reviewStatus:'reviewed',score:8,totalMarks:10,submittedAt:iso(now-60000),flags:{},answers:[]}]))
  })
  const history=list([{submission_id:'visual-submission',exam_id:live.id,title:'Previous computer science quiz',date:iso(now-86400000),review_status:'reviewed',score:8,total_marks:10,results_released_at:iso(now)}])
  const reply=path=>{
@@ -44,7 +44,7 @@ export function installFixtures(params){
   if(path.includes('/teacher/students?'))return {students:list([student])}
   if(path.endsWith('/teacher/admin/teachers'))return {teachers:list([teacher]),requests:[]}
   if(path.includes('grade-summary'))return {exam:{title:live.title,className:'IX',section:'A',subject:'Computer science'},summary:{students:3,graded:2,pending:1,averagePercentage:80},students:list([{sessionId:'visual-session-c',rollNumber:'3',name:'Preview Student C',marks:8,maxMarks:10,percentage:80,gradingPending:false,reviewRequired:false}])}
-  if(path.includes('/teacher/data'))return {tests:[],teachers:[],summary:{exams:0,sessions:0,answers:0}}
+  if(path.includes('/admin/data/tests'))return {tests:list([{id:'visual-ended',title:'Completed revision test',class_name:'IX',section:'A',teacher_name:teacher.name,end_time:iso(now-86400000),sessions:3,status:'closed',deletable:true}])}
   if(path.includes('/teacher/account'))return {teacher,sessions:[],pendingRequests:[]}
   if(path.includes('/teacher/community'))return {messages:list([{id:'message-1',author:'Preview Teacher',body:'The revision handout is ready for Class IX.',created_at:iso(now)}])}
   if(path.includes('/courses/my'))return {courses:list(courses)}

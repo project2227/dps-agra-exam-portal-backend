@@ -13,9 +13,9 @@ const tours=[
  ['teachers','Tools for real educators','Authorized teachers manage courses, exams and results.','/teacher/login']
 ]
 const modes=[
- ['THE FUTURE IS BOOTING','Learn. Create. Level up.','</>','terminal'],
- ['CURIOSITY UNLOCKED','Build something extraordinary.','✧','constellation'],
- ['IDEAS IN ORBIT','Your next discovery awaits.','◇','orbit']
+ ['Welcome to the portal','Ready for exam day.','</>','terminal'],
+ ['A guide to the portal','Find what you need.','✧','constellation'],
+ ['Your school workspace','Exams and practice, together.','◇','orbit']
 ]
 function hasSeen(){try{return localStorage.getItem(KEY)==='1'}catch{return false}}
 export default function ExperienceLayer(){
@@ -65,7 +65,7 @@ export default function ExperienceLayer(){
   return()=>{window.removeEventListener('keydown',trap);previous?.focus?.()}
  },[phase])
  if(phase==='off')return null
- if(phase==='welcome')return <div role="dialog" aria-modal="true" aria-label="Welcome to the learning hub" className={"experience-entry experience-brand experience-"+mode[3]}>
+ if(phase==='welcome')return <div role="dialog" aria-modal="true" aria-label="Welcome to the exam portal" className={"experience-entry experience-brand experience-"+mode[3]}>
   <div className="experience-backdrop" aria-hidden="true"><div className="experience-grid"/></div>
   <button type="button" className="experience-skip" onClick={close}>Skip intro <X size={15}/></button>
   <div className="experience-center">
@@ -73,7 +73,7 @@ export default function ExperienceLayer(){
    <div className="experience-symbol sr-only" aria-hidden="true"><span>{mode[2]}</span><i/><i/></div>
    <p className="experience-eyebrow">{mode[0]}</p>
    <h2 className="experience-title">{mode[1]}</h2>
-   <p className="experience-tagline">DPS Lab · Learn with curiosity. Build with confidence.</p>
+   <p className="experience-tagline">DPS Agra · Check in, prepare and review.</p>
    <div className="mt-6 flex flex-wrap justify-center gap-3">
     <button className="btn btn-primary btn-lg" type="button" onClick={()=>{nav('/');setPhase('tour')}}><Compass size={18}/> Show me around <ArrowRight size={17}/></button>
     <button className="btn btn-ghost btn-lg" type="button" onClick={close}>Explore independently <ArrowUpRight size={16}/></button>

@@ -16,10 +16,10 @@ export default function StudentHeader({ title = 'Student dashboard' }) {
   return (
     <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-navy-950/75 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6">
-        <Link to="/" className="flex items-center gap-3 rounded-xl">
+        <Link to="/" className="flex min-w-0 flex-1 items-center gap-3 rounded-xl">
           <DPSLogoAnimated size={44} small interactive={false} label="" />
-          <span className="leading-tight">
-            <span className="block font-display text-[13px] sm:text-[15px] font-semibold text-white">DPS Agra Exam Portal</span>
+          <span className="min-w-0 leading-tight">
+            <span className="block truncate font-display text-[13px] sm:text-[15px] font-semibold text-white">DPS Agra Exam Portal</span>
             <span className="block text-xs text-slate-400">{title}</span>
           </span>
         </Link>

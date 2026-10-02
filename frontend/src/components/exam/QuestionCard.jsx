@@ -1,3 +1,5 @@
+import * as m from 'motion/react-m'
+import {useQuietMotion,motionTokens} from '../common/Motion'
 import { useState } from 'react'
 import { CheckCircle2, Loader2 } from 'lucide-react'
 import CodeEditorPanel from '../ide/CodeEditorPanel'
@@ -8,6 +10,7 @@ import { cx, formatBytes } from '../../utils/format'
 const TYPE_LABEL = { mcq: 'Multiple choice', short: 'Short answer', long: 'Long answer', code: 'Coding', upload: 'File upload' }
 
 export default function QuestionCard({ question: q, index, total, value, onChange, exam, saveStatus, lastSavedAt }) {
+  const quiet=useQuietMotion()
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [uploadError, setUploadError] = useState('')
@@ -30,7 +33,7 @@ export default function QuestionCard({ question: q, index, total, value, onChang
   }
 
   return (
-    <article aria-labelledby={`q-${q.id}-title`} className="space-y-4">
+    <m.article initial={quiet?false:{opacity:.65}} animate={{opacity:1}} transition={{duration:motionTokens.fast}} aria-labelledby={`q-${q.id}-title`} className="space-y-4">
       <header className="flex flex-wrap items-center gap-2 text-sm">
         <span id={`q-${q.id}-title`} className="font-display text-lg font-semibold text-white">Question {index + 1} <span className="text-slate-500">of {total}</span></span>
         <span className="chip">{TYPE_LABEL[q.type]}</span>
@@ -110,6 +113,6 @@ export default function QuestionCard({ question: q, index, total, value, onChang
           {uploadError && <p className="error-text" role="alert">{uploadError}</p>}
         </div>
       )}
-    </article>
+    </m.article>
   )
 }

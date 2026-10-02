@@ -101,7 +101,7 @@ export default function Handouts() {
             </fieldset>
             {progress !== null && (
               <div aria-live="polite">
-                <div className="h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-dps-green to-dps-gold transition-all" style={{ width: `${progress}%` }} /></div>
+                <div className="h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-dps-green" style={{ width: `${progress}%` }} /></div>
                 <p className="mt-1 text-xs text-slate-400">Uploading {progress}%</p>
               </div>
             )}

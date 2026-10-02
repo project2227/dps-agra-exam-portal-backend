@@ -53,3 +53,7 @@
 .lab-code-panel textarea[aria-label='Program input']::placeholder { color: #adbea8; }
 @media(max-width:1000px) { .library-course-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }.library-toolbar { align-items: flex-start; flex-direction: column; }.library-emblem { width: 120px; height: 120px; } }
 @media(max-width:640px) { .library-main { padding-block: 32px 40px; }.library-emblem { display: none; }.library-course-grid,.teacher-course-grid { grid-template-columns: 1fr; }.library-search { width: 100%; }.library-search input { width: 100%; }.library-heading h1 { font-size: 36px; }.library-next,.teacher-course-heading { flex-direction: column; align-items: flex-start; }.library-next { padding: 24px; }.teacher-course-empty { padding: 24px; } }
+
+.block-stage { background: #182e23; color: #edf4e5; }
+.block-stage .text-slate-400 { color: #adbea8; }
+.block-stage svg.bg-navy-950 { background: #182e23; }

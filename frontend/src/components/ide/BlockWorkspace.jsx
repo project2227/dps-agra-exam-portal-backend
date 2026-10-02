@@ -121,7 +121,7 @@ export default function BlockWorkspace({ value = [], onChange, readOnly = false 
         </ol>
       </div>
 
-      <div className="rounded-xl border border-white/10 bg-[#050d1a] p-2">
+      <div className="block-stage rounded-xl border border-line p-2">
         <p className="px-1 pb-1 text-xs text-slate-400">Stage</p>
         <svg viewBox="0 0 300 300" className="aspect-square w-full rounded-lg bg-navy-950" role="img" aria-label={`Drawing with ${result.segs.length} lines`}>
           <defs><pattern id="stage-grid" width="30" height="30" patternUnits="userSpaceOnUse"><path d="M30 0H0V30" fill="none" stroke="rgba(148,163,184,.08)" /></pattern></defs>

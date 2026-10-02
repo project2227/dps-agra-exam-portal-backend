@@ -95,4 +95,4 @@ Before staging/production, check the live exam list and exam-date schedule for t
 
 ### Production performance baseline
 
-Measured before the redesign with PageSpeed Insights on 2 October 2026: mobile Lighthouse performance 85, accessibility 95, FCP 3.0 seconds, LCP 3.2 seconds, TBT 0 milliseconds and CLS 0. The release must meet or exceed this performance score. Report: https://pagespeed.web.dev/analysis/https-dpslab-onrender-com/krp16j9r08?form_factor=mobile
+Measured before the redesign with PageSpeed Insights on 2 October 2026: mobile Lighthouse performance 85, desktop performance 99, accessibility 95, FCP 3.0 seconds, LCP 3.2 seconds, TBT 0 milliseconds and CLS 0. The release must meet or exceed this performance score. Report: https://pagespeed.web.dev/analysis/https-dpslab-onrender-com/krp16j9r08?form_factor=mobile

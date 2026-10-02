@@ -8,7 +8,7 @@ import '../styles/animations.css'
 import '../styles/learning-remake.css'
 import '../styles/exam-portal.css'
 import '../styles/student-accounts.css'
-const routes=['/','/about','/student','/student/login','/student/set-password','/student/forgot-password','/student/reset-password','/student/profile','/student/join','/student/dashboard','/student/exam/visual-exam','/student/practice','/student/practice/python','/student/practice/java','/student/practice/cpp','/student/practice/sql','/student/practice/web','/student/practice/blocks','/learn','/learn/profile','/learn/games','/learn/mock-exam','/learn/custom-test','/learn/arcade','/learn/course/python','/learn/course/java','/learn/course/cpp','/learn/course/sql','/learn/course/web','/learn/course/blocks','/learn/teacher-course/visual-course','/teacher/login','/teacher/request-access','/teacher','/teacher/dashboard','/teacher/classes','/teacher/students/visual-student','/teacher/exams/create','/teacher/exams/manage','/teacher/exams/visual-exam/monitor','/teacher/exams/visual-exam/monitor?view=cards','/teacher/submissions','/teacher/grades','/teacher/handouts','/teacher/exam-dates','/teacher/courses','/teacher/community','/teacher/manage-teachers','/teacher/test-data','/teacher/account','/page-not-found']
+const routes=['/','/about','/student','/student/login','/student/set-password','/student/forgot-password','/student/reset-password','/student/profile','/student/join','/student/dashboard','/student/exam/visual-exam','/student/practice','/student/practice/python','/student/practice/java','/student/practice/cpp','/student/practice/c','/student/practice/sql','/student/practice/web','/student/practice/blocks','/learn','/learn/profile','/learn/games','/learn/mock-exam','/learn/custom-test','/learn/arcade','/learn/course/python','/learn/course/java','/learn/course/cpp','/learn/course/c','/learn/course/sql','/learn/course/web','/learn/course/blocks','/learn/teacher-course/visual-course','/teacher/login','/teacher/request-access','/teacher','/teacher/dashboard','/teacher/classes','/teacher/students/visual-student','/teacher/exams/create','/teacher/exams/manage','/teacher/exams/visual-exam/monitor','/teacher/exams/visual-exam/monitor?view=cards','/teacher/submissions','/teacher/grades','/teacher/handouts','/teacher/exam-dates','/teacher/courses','/teacher/community','/teacher/manage-teachers','/teacher/test-data','/teacher/account','/page-not-found']
 const listRoutes=['/student/join','/student/profile','/student/dashboard','/learn','/learn/profile','/teacher/dashboard','/teacher/classes','/teacher/students/visual-student','/teacher/exams/manage','/teacher/exams/visual-exam/monitor','/teacher/submissions','/teacher/handouts','/teacher/exam-dates','/teacher/courses','/teacher/community','/teacher/manage-teachers','/teacher/test-data']
 const params=new URLSearchParams(location.search)
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms))
@@ -16,7 +16,7 @@ function measure(){
  const width=document.documentElement.clientWidth
  const fields=[...document.querySelectorAll('input,textarea,select')].filter(e=>!['hidden','button','submit','reset'].includes(e.type) && e.getClientRects().length && !e.closest('[inert],.monaco-editor'))
  const unlabelled=fields.filter(e=>!e.labels?.length && !e.getAttribute('aria-label') && !e.getAttribute('aria-labelledby')).map(e=>e.placeholder || e.type || e.tagName).slice(0,12)
- const parse=value=>{const values=value.match(/[\d.]+/g)?.map(Number);return values?.length>=3?[...values.slice(0,3),values[3]??1]:null}
+ const parse=value=>{const values=value.match(/[\d.]+/g)?.map(Number);return values?.length>=3?[...values.slice(0,3).map(n=>value.startsWith('color(srgb ')?n*255:n),values[3]??1]:null}
  const blend=(front,back)=>front.slice(0,3).map((x,i)=>x*front[3]+back[i]*(1-front[3]))
  const lum=rgb=>rgb.map(n=>{const x=n/255;return x<=.04045?x/12.92:((x+.055)/1.055)**2.4}).reduce((n,x,i)=>n+x*[.2126,.7152,.0722][i],0)
  const background=element=>{const chain=[];for(let node=element;node;node=node.parentElement)chain.unshift(node);let result=[244,245,239];for(const node of chain){const colour=parse(getComputedStyle(node).backgroundColor);if(colour)result=blend(colour,result)}return result}
@@ -28,7 +28,7 @@ function measure(){
   const text=blend(fg,bg),a=lum(text),b=lum(bg),ratio=(Math.max(a,b)+.05)/(Math.min(a,b)+.05),size=parseFloat(style.fontSize),large=size>=24 || size>=18.66 && Number(style.fontWeight)>=700
   if(ratio<(large?3:4.5)-.02)contrast.push({text:element.textContent.trim().slice(0,75),ratio:Math.round(ratio*100)/100,className:element.className})
  }
- return {route:params.get('route'),width,theme:params.get('theme'),motion:params.get('motion'),state:params.get('state')||'populated',overflow:Math.max(0,document.documentElement.scrollWidth-width),unlabelled,contrast:contrast.slice(0,12),heading:document.querySelector('#main h1, [role="dialog"] h2, h1')?.textContent || '',errors:[...document.querySelectorAll('[data-qa-error]')].map(e=>e.textContent)}
+ return {route:params.get('route'),width:window.innerWidth,contentWidth:width,theme:params.get('theme'),motion:params.get('motion'),state:params.get('state')||'populated',overflow:Math.max(0,document.documentElement.scrollWidth-width),unlabelled,contrast:contrast.slice(0,12),heading:document.querySelector('#main h1, [role="dialog"] h2, h1')?.textContent || '',errors:[...document.querySelectorAll('[data-qa-error]')].map(e=>e.textContent)}
 }
 if(params.get('frame')==='1'){
  installFixtures(params)
@@ -36,7 +36,7 @@ if(params.get('frame')==='1'){
  window.addEventListener('message',async event=>{
   if(event.origin!==location.origin || event.data?.type!=='qa:inspect')return
   let ready=false
-  for(let i=0;i<80;i++){if(document.querySelector('#main h1,[role="dialog"] h2')){ready=true;break}await pause(75)}
+  for(let i=0;i<80;i++){if(document.querySelector('#main h1,[role="dialog"] h2,#main [role="alert"]')){ready=true;break}await pause(75)}
   await pause(450)
   // A disposable, local fixture action checks the active exam layout. Its transport
   // is synthetic, fullscreen is represented in the fixture, and media is absent.

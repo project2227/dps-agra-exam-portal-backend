@@ -107,10 +107,12 @@
 /* Compatibility utilities use the same six tokens; preserve existing class contracts. */
 .btn-primary.text-white,.btn-accent.text-white { color: rgb(var(--inverse)); }
 [class*='transition-all'],[class*='transition-[width]'] { transition-property: transform,opacity; }
+.transition,.transition-colors { transition-property: transform,opacity; }
 .bg-gradient-to-br,.bg-gradient-to-r { background-image: none; }
 .bg-dps-green,.bg-dps-neon,.bg-green-500,.bg-emerald-500,.bg-dps-orange,.bg-dps-gold { color: rgb(var(--inverse)); }
 .opacity-70,.opacity-80 { opacity: 1; }
 .font-display { font-family: 'DM Sans',system-ui,sans-serif; }
+.grid > * { min-width: 0; }
 .print-only { display: none; }
 @keyframes skeleton-shimmer { to { transform: translateX(100%); } }
 @keyframes live-signal { 0%,100% { opacity: 1; } 50% { opacity: .45; } }

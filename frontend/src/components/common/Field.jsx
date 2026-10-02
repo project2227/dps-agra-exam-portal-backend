@@ -2,8 +2,9 @@ import { useId } from 'react'
 import { cx } from '../../utils/format'
 
 /** Label + control + hint/error, wired up with ids for screen readers. */
-export function Field({ label, hint, error, required, className = '', children }) {
-  const id = useId()
+export function Field({ label, hint, error, required, id: suppliedId, className = '', children }) {
+  const generated = useId()
+  const id = suppliedId || generated
   const describedBy = error ? `${id}-err` : hint ? `${id}-hint` : undefined
   const child = typeof children === 'function' ? children({ id, 'aria-describedby': describedBy, 'aria-invalid': !!error || undefined }) : children
   return (

@@ -20,7 +20,7 @@ function StudentMonitorCard({ student: s, snapshot = {}, selected, onOpen, compa
       aria-pressed={selected}
       aria-label={`${s.name}, roll ${s.rollNumber}, ${total} flags. Open details`}
       className={cx(
-        'glass group flex w-full flex-col gap-3 p-3 text-left transition hover:-translate-y-0.5 hover:border-white/25',
+        'glass group flex w-full flex-col gap-3 p-3 text-left hover:border-white/25',
         selected && 'border-dps-neon/60 ring-1 ring-dps-neon/40',
         total >= 3 && !selected && 'border-red-400/40',
         offline && 'opacity-70',
@@ -47,12 +47,12 @@ function StudentMonitorCard({ student: s, snapshot = {}, selected, onOpen, compa
           <span>{s.answered || 0} answered</span>
         </div>
         <div className="h-1.5 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} aria-label="Answered">
-          <div className="h-full rounded-full bg-gradient-to-r from-dps-green to-dps-neon transition-all" style={{ width: `${progress}%` }} />
+          <div className="h-full rounded-full bg-dps-green" style={{ width: `${progress}%` }} />
         </div>
       </div>
 
       {!compact && (
-        <pre className="h-[74px] overflow-hidden rounded-lg border border-white/[0.06] bg-navy-950/80 p-2 font-mono text-[10.5px] leading-[1.35] text-slate-300" aria-label="Answer progress">
+        <pre className="h-[74px] overflow-hidden rounded-lg border border-white/[0.06] bg-navy-950/80 p-2 font-sans text-xs leading-[1.35] text-slate-300" aria-label="Answer progress">
           <span className="text-slate-500">Progress only. Answer text is available after submission.</span>
           
         </pre>
