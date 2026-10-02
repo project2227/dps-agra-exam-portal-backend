@@ -83,7 +83,7 @@ Motion for React uses lazy-loaded animation features. Tokens are **150ms** feedb
 
 ## Loading, copy and navigation
 
-Static branded HTML appears before JavaScript starts. Network loaders explain a slow first visit: “Waking up the server — this can take up to a minute on first visit.” Preserve retry actions and distinguish an empty list from a failed fetch. Navigation has consistent role labels, breadcrumbs on deep pages and a visible Find a page control with Ctrl/⌘K. Headings and buttons use sentence case and plain verbs.
+Static branded HTML appears before JavaScript starts. Network loaders explain a slow first visit: “Waking up the server — this can take up to a minute on first visit.” Preserve retry actions and distinguish an empty list from a failed fetch. A persistent page error boundary provides a labelled reload screen if a route module cannot download; it never remounts a working exam or monitor. Navigation has consistent role labels, breadcrumbs on deep pages and a visible Find a page control with Ctrl/⌘K. Headings and buttons use sentence case and plain verbs.
 
 ## Verification and deployment
 
@@ -96,3 +96,9 @@ Before staging/production, check the live exam list and exam-date schedule for t
 ### Production performance baseline
 
 Measured before the redesign with PageSpeed Insights on 2 October 2026: mobile Lighthouse performance 85, desktop performance 99, accessibility 95, FCP 3.0 seconds, LCP 3.2 seconds, TBT 0 milliseconds and CLS 0. The release must meet or exceed this performance score. Report: https://pagespeed.web.dev/analysis/https-dpslab-onrender-com/krp16j9r08?form_factor=mobile
+
+### Release check coverage
+
+The local release suite passes 117 tests (38 backend, 26 authenticated HTTP/Socket.IO integration and 53 frontend checks). The visual gallery covers 54 route variants at 360, 768 and 1440px, in light/dark mode and normal/reduced motion, plus empty and failed-fetch states for 18 list screens. Guest practice-profile coverage remains separate from the school account profile. The submissions table scrolls inside a labelled keyboard-focusable region; its screen-reader-only header is contained so it cannot widen the page. Grade analysis includes loading, empty and retry states. Production builds exclude the synthetic visual entry and fixtures.
+
+The production CSS budget is 76.91 kB (14.85 kB gzip), down from 148.61 kB (28.99 kB gzip). Animation features load as a separate ~6.10 kB gzip chunk. Do not substitute these bundle measurements for the production Lighthouse comparison.

@@ -13,7 +13,7 @@ const courses=[{id:'visual-course',title:'Python loops and logic',language:'pyth
 export function installFixtures(params){
  const route=params.get('route') || '/', theme=params.get('theme') || 'light',state=params.get('state') || 'populated'
  const isTeacher=(route==='/teacher' || route.startsWith('/teacher/')) && !['/teacher/login','/teacher/request-access'].includes(route)
- const hasStudent=route.startsWith('/student/profile') || route.includes('set-password') || route.includes('/student/exam/') || route==='/student/dashboard' || route==='/student/join' || route.startsWith('/learn')
+ const hasStudent=!route.includes('guest=1') && (route.startsWith('/student/profile') || route.includes('set-password') || route.includes('/student/exam/') || route==='/student/dashboard' || route==='/student/join' || route.startsWith('/learn'))
  const account={ready:true,student:hasStudent?{...student,theme,mustChangePassword:route==='/student/set-password'}:null,teacher:isTeacher?teacher:null,progress:{courses:{python:{completed:[0,1]}},games:{memory:120},mocks:[{score:75}],customTests:[]},csrfToken:null}
  updateAccount(account)
  setStudentSession({sessionId:'visual-session',token:'visual-fixture-only-not-a-credential',student:{name:student.name,rollNumber:student.rollNumber,class:'IX',section:'A'},exam:live,monitoring:{webcam:false,screen:false,recording:false},joinedAt:iso(now)})

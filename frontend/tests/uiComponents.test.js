@@ -17,7 +17,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT=true
 window.matchMedia=()=>({matches:false,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){}})
 window.scrollTo=()=>{}
 const cache=path.join(root,'.test-cache',String(process.pid));await mkdir(cache,{recursive:true})
-await build({stdin:{contents:`export {default as Button} from './src/components/common/Button';export {default as Input} from './src/components/common/Input';export {default as Modal} from './src/components/common/Modal';export {default as Loader} from './src/components/common/Loader';export {default as Skeleton} from './src/components/common/Skeleton';export {default as StatusBadge} from './src/components/common/StatusBadge';export {default as MotionProvider} from './src/components/common/Motion';export {ToastProvider,useToast} from './src/components/common/Toast';export {default as PageTransition} from './src/components/common/PageTransition';`,resolveDir:root,loader:'jsx'},outfile:path.join(cache,'ui.mjs'),bundle:true,format:'esm',platform:'node',packages:'external',jsx:'automatic',define:{'import.meta.env.BASE_URL':'"/"'}})
+await build({stdin:{contents:`export {default as Button} from './src/components/common/Button';export {default as Input} from './src/components/common/Input';export {default as Modal} from './src/components/common/Modal';export {default as Loader} from './src/components/common/Loader';export {default as Skeleton} from './src/components/common/Skeleton';export {default as StatusBadge} from './src/components/common/StatusBadge';export {default as MotionProvider} from './src/components/common/Motion';export {ToastProvider,useToast} from './src/components/common/Toast';export {default as PageTransition} from './src/components/common/PageTransition';export {default as PageErrorBoundary} from './src/components/common/PageErrorBoundary';`,resolveDir:root,loader:'jsx'},outfile:path.join(cache,'ui.mjs'),bundle:true,format:'esm',platform:'node',packages:'external',jsx:'automatic',define:{'import.meta.env.BASE_URL':'"/"'}})
 const React=await import('react'),{MemoryRouter,Link}=await import('react-router-dom')
 const {render,screen,cleanup,waitFor}=await import('@testing-library/react'),{default:userEvent}=await import('@testing-library/user-event')
 const ui=await import(pathToFileURL(path.join(cache,'ui.mjs')))
@@ -67,4 +67,10 @@ test('light and dark text, semantic status and focus colours meet AA contrast',a
  const luminance=rgb=>rgb.map(n=>{const x=n/255;return x<=.04045?x/12.92:((x+.055)/1.055)**2.4}).reduce((n,x,i)=>n+x*[.2126,.7152,.0722][i],0)
  const ratio=(a,b)=>{const x=luminance(a),y=luminance(b);return(Math.max(x,y)+.05)/(Math.min(x,y)+.05)}
  for(const block of blocks){const tokens=Object.fromEntries([...block.matchAll(/--([a-z-]+): (\d+) (\d+) (\d+)/g)].map(m=>[m[1],m.slice(2).map(Number)]));for(const text of ['ink','muted','green'])for(const bg of ['paper','surface'])assert.ok(ratio(tokens[text],tokens[bg])>=4.5,`${text} on ${bg}`);for(const tone of ['success','warning','danger','info'])assert.ok(ratio(tokens[tone],tokens[tone+'-soft'])>=4.5,tone);assert.ok(ratio(tokens['control-line'],tokens.surface)>=3,'Input border');assert.ok(ratio(tokens.green,tokens.inverse)>=4.5,'Primary button')}
+})
+
+test('a page render failure shows a labelled recovery screen instead of a blank page',()=>{
+ function BrokenPage(){throw new Error('Synthetic module failure')}
+ const original=console.error;console.error=()=>{}
+ try{render(wrap(h(ui.PageErrorBoundary,null,h(BrokenPage))));assert.ok(screen.getByRole('alert'));assert.ok(screen.getByRole('heading',{name:'This page could not open'}));assert.ok(screen.getByRole('button',{name:'Reload page'}));assert.equal(screen.getByRole('link',{name:'Return to the portal'}).getAttribute('href'),'/');assert.equal(screen.queryByText('Synthetic module failure'),null)}finally{console.error=original}
 })

@@ -4,6 +4,7 @@ import ExperienceLayer from './components/common/ExperienceLayer'
 import MotionProvider from './components/common/Motion'
 import PageTransition from './components/common/PageTransition'
 import Loader from './components/common/Loader'
+import PageErrorBoundary from './components/common/PageErrorBoundary'
 import ToolFinder from './components/common/ToolFinder'
 import RoutePresentation from './components/common/RoutePresentation'
 import { BrowserRouter, HashRouter, Navigate, Route, Routes } from 'react-router-dom'
@@ -62,7 +63,7 @@ export default function App() {
       <a href="#main" onClick={event => { event.preventDefault(); const content = document.querySelector('#main main') || document.getElementById('main'); content?.setAttribute('tabindex', '-1'); content?.focus() }} className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-lg focus:bg-dps-green focus:px-4 focus:py-2 focus:text-white">Skip to content</a>
       <ToastProvider>
         <div id="main"><PageTransition>
-          <Suspense fallback={<PageLoader />}>
+          <PageErrorBoundary><Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<LandingPage />} />
 
@@ -113,7 +114,7 @@ export default function App() {
 
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </Suspense>
+          </Suspense></PageErrorBoundary>
         </PageTransition></div>
       </ToastProvider>
     </Router></MotionProvider>

@@ -148,7 +148,7 @@ export default function Submissions() {
             <h2 className="text-xl font-semibold">DPS Agra Exam Portal: Results</h2>
             <p className="text-sm">Generated {formatDateTime(new Date())}{filters.class && ` | Class ${filters.class}`}{filters.section && `-${filters.section}`}</p>
           </div>
-          <div className="overflow-x-auto">
+          <div className="relative max-w-full overflow-x-auto" role="region" aria-label="Exam submissions" tabIndex={0}>
             <table className="table-base">
               <thead>
                 <tr><th>Roll</th><th>Name</th><th>Class</th><th>Exam</th><th>Submitted</th><th>Score</th><th>Flags</th><th>Status</th><th className="no-print"><span className="sr-only">Actions</span></th></tr>
