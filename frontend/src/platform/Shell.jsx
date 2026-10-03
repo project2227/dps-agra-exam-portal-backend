@@ -390,8 +390,26 @@ export function WorkLayout() {
           {links
             .filter(
               ([href]) =>
-                !['/tasks', '/chat', '/attendance'].includes(href) ||
-                tenant.features.includes(href.slice(1)),
+                !{
+                  '/tasks': 'tasks',
+                  '/chat': 'chat',
+                  '/attendance': 'attendance',
+                  '/sharing': 'monitoring',
+                  '/monitor': 'monitoring',
+                  '/flags': 'monitoring',
+                  '/teams': 'teams',
+                }[href] ||
+                tenant.features.includes(
+                  {
+                    '/tasks': 'tasks',
+                    '/chat': 'chat',
+                    '/attendance': 'attendance',
+                    '/sharing': 'monitoring',
+                    '/monitor': 'monitoring',
+                    '/flags': 'monitoring',
+                    '/teams': 'teams',
+                  }[href],
+                ),
             )
             .map(([href, label]) => (
               <NavLink key={href} to={href}>

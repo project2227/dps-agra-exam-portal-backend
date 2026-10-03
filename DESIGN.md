@@ -10,7 +10,7 @@ Plinth is a free, independent platform for institutes and workplaces. The reques
 | surface | #FFFFFF | #151515 | Forms and product windows |
 | ink | #000000 | #FFFFFF | Primary text and outlines |
 | muted | #555555 | #B8B8B8 | Secondary text; AA on canvas |
-| line | #B9B9B9 | #666666 | Visible controls and separators |
+| line | #888888 | #666666 | Visible controls and separators |
 | signature | #2EC4B6 → #F2E36B | Same | Single gradient; black text |
 
 Instrument Serif is the display family. Manrope is the UI family. JetBrains Mono is reserved for code editors. Fonts load once, with display=swap. Body text starts at 16px; small labels are 13px; headings follow 24/32/48/72/112px with fluid clamping. Headlines are left aligned, sentence case, and whole phrases. No pricing or billing flows.

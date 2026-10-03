@@ -189,6 +189,10 @@ router.patch(
       t.id,
       JSON.stringify([...new Set(v.features)]),
     ]);
+    if(t.path==='workplace'&&!v.features.includes('monitoring')){
+      await db.query("UPDATE work_sessions SET status='paused',webcam_on=false WHERE ended_at IS NULL");
+      require('../platform/workplace').disconnectTenant(t.id);
+    }
     res.json({ updated: true });
   }),
 );

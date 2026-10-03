@@ -11,6 +11,7 @@ app.disable('x-powered-by');app.use(helmet({contentSecurityPolicy:{directives:{
 }}}));
 app.use(cors({origin(origin,cb){if(!origin||(require('./platform/context').enabled()?require('./platform/tenancy').corsOrigin(origin):origins.includes(origin)))return cb(null,true);return cb(null,false);},credentials:true,methods:['GET','POST','PUT','PATCH','DELETE','OPTIONS']}));
 app.use(require('./platform/tenancy').middleware);
+app.use(require('./platform/features').middleware);
 app.get('/preview-sandbox',require('./services/previewSandbox').previewSandbox);
 app.use(express.json({limit:'96kb'}));
 app.use('/api',rateLimit({windowMs:60000,limit:4000,standardHeaders:'draft-7',legacyHeaders:false}));

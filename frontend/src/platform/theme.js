@@ -1,7 +1,12 @@
 import presets from '../../../shared/themes.json';
 export { presets };
 export function luminance(hex) {
- const values=hex.replace('#','').match(/.{2}/g).map(x=>parseInt(x,16)/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4);return values.reduce((n,x,i)=>n+x*[.2126,.7152,.0722][i],0);
+  const values = hex
+    .replace('#', '')
+    .match(/.{2}/g)
+    .map((x) => parseInt(x, 16) / 255)
+    .map((x) => (x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4));
+  return values.reduce((n, x, i) => n + x * [0.2126, 0.7152, 0.0722][i], 0);
 }
 export function foreground(hex) {
   const rgb = hex
@@ -44,7 +49,7 @@ export function applyTheme(tenant) {
         surface: dark ? '#151515' : '#ffffff',
         ink: dark ? '#ffffff' : '#000000',
         muted: dark ? '#b8b8b8' : '#555555',
-        line: dark ? '#666666' : '#929292',
+        line: dark ? '#666666' : '#888888',
         primary: dark ? '#ffffff' : '#000000',
         accent: '#2ec4b6',
         onPrimary: dark ? '#000000' : '#ffffff',
@@ -57,7 +62,13 @@ export function applyTheme(tenant) {
     ink: dark && tenant ? t.darkInk : t.ink,
     muted: dark && tenant ? t.darkMuted : t.muted,
     line: dark && tenant ? t.darkLine : t.line,
-    green: (()=>{const bg=dark&&tenant?t.darkCanvas:t.canvas,a=luminance(t.primary),b=luminance(bg),ratio=(Math.max(a,b)+.05)/(Math.min(a,b)+.05);return ratio>=4.5?t.primary:dark&&tenant?t.darkInk:t.ink})(),
+    green: (() => {
+      const bg = dark && tenant ? t.darkCanvas : t.canvas,
+        a = luminance(t.primary),
+        b = luminance(bg),
+        ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+      return ratio >= 4.5 ? t.primary : dark && tenant ? t.darkInk : t.ink;
+    })(),
   }))
     set('--' + key, rgb(value));
   set('--p-primary', t.primary);

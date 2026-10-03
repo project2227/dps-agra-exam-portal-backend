@@ -116,11 +116,12 @@ async function sharingAllowed(userId) {
   must(tenant?.path === 'workplace', 403, 'Open your workplace site.');
   const fresh = (
     await db.query(
-      'SELECT monitoring_policy,retention_days,name FROM tenants WHERE id=$1',
+      'SELECT monitoring_policy,retention_days,name,features FROM tenants WHERE id=$1',
       [tenant.id],
     )
   ).rows[0];
   const policy = fresh.monitoring_policy;
+  must(fresh.features.includes('monitoring'),403,'Monitoring is turned off in your organisation’s site settings.');
   must(
     workHours(policy),
     403,

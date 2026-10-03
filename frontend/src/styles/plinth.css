@@ -1,3 +1,17 @@
+.p-skip {
+  position: fixed;
+  inset: 8px auto auto 8px;
+  z-index: 200;
+  background: rgb(var(--surface));
+  color: rgb(var(--ink));
+  padding: 12px 18px;
+  border: 2px solid currentColor;
+  border-radius: 8px;
+  transform: translateY(-160%);
+}
+.p-skip:focus {
+  transform: none;
+}
 /* Plinth: one signature gradient, outlined objects and calm tenant workspaces. */
 :root {
   --p-gradient: linear-gradient(125deg, #2ec4b6, #f2e36b);

@@ -4,7 +4,7 @@ import { buildWebPreview } from '../../services/codeRunner'
 import { PLINTH, API_BASE_URL } from '../../config'
 
 /** Live preview for HTML/CSS/JS answers. Sandboxed: scripts only, no same-origin. */
-export default function WebPreview({ files, channel, refreshKey = 0 }) {
+export default function WebPreview({ files, channel = 'dps-preview', refreshKey = 0 }) {
   const [debounced, setDebounced] = useState(files)
   const [manual, setManual] = useState(0)
   const frame = useRef(null)
