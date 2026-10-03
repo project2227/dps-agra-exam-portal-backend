@@ -59,3 +59,4 @@ export function installFixtures(params){
  const originalFetch=window.fetch.bind(window)
  window.fetch=async(input,options)=>{const url=typeof input==='string'?input:input.url;const parsed=new URL(url,location.origin);if(!parsed.pathname.startsWith('/api/'))return originalFetch(input,options);const authRead=parsed.pathname.endsWith('/accounts/session') || parsed.pathname.endsWith('/student/learning');return new Response(JSON.stringify(state==='error'&&!authRead?{error:'Preview connection failed. Try again.'}:reply(parsed.pathname+parsed.search)),{status:state==='error'&&!authRead?503:200,headers:{'Content-Type':'application/json'}})}
 }
+

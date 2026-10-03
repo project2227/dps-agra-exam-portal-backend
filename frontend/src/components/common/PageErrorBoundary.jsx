@@ -14,3 +14,4 @@ export default class PageErrorBoundary extends Component {
     </main>
   }
 }
+

@@ -58,6 +58,7 @@ async function upload(buffer,prefix,originalName=''){
  const key=`${prefix}/${crypto.randomUUID()}.${kind.ext}`;
  if(env.UPLOAD_PROVIDER==='postgres'){
   await db.transaction(async c=>{
+   if(require('../platform/context').enabled())await require('../platform/storage').reserve(c,buffer.length);
    // Database-scoped lock prevents concurrent requests from bypassing quotas.
    await c.query('SELECT pg_advisory_xact_lock($1)',[DB_STORAGE_LOCK]);
    const q=await c.query('SELECT COUNT(*)::integer AS count, COALESCE(SUM(size_bytes),0)::bigint AS bytes FROM stored_files');
@@ -80,9 +81,10 @@ async function signedRead(key){
  if(env.UPLOAD_PROVIDER==='postgres'){
   must(env.API_PUBLIC_URL,503,'Public API URL missing from Render configuration.');
   must(typeof key==='string'&&/^(handouts|student-answers)\/[\w-]+\.(pdf|png|jpg|txt|docx|pptx)$/.test(key),400,'Invalid file reference.');
-  const body=Buffer.from(JSON.stringify({key,exp:Date.now()+SIGNED_URL_SECONDS*1000})).toString('base64url');
+  const tenant=require('../platform/context').currentTenant();
+  const body=Buffer.from(JSON.stringify({key,...(tenant?{tenant:tenant.id}:{}),exp:Date.now()+SIGNED_URL_SECONDS*1000})).toString('base64url');
   const token=body+'.'+signature(body);
-  return env.API_PUBLIC_URL.replace(/\/$/,'')+'/api/files/'+token;
+  return (tenant?require('../platform/tenancy').siteUrl(tenant):env.API_PUBLIC_URL.replace(/\/$/,''))+'/api/files/'+token;
  }
  return getSignedUrl(storage(),new GetObjectCommand({Bucket:env.S3_BUCKET,Key:key}),{expiresIn:SIGNED_URL_SECONDS});
 }
@@ -102,6 +104,7 @@ async function readSignedFile(token){
  must(Number.isSafeInteger(payload.exp)&&payload.exp>Date.now()&&
   typeof payload.key==='string'&&/^(handouts|student-answers)\/[\w-]+\.(pdf|png|jpg|txt|docx|pptx)$/.test(payload.key),403,
  'Invalid or expired download link.');
+ const tenant=require('../platform/context').currentTenant();if(tenant)must(payload.tenant===tenant.id,403,'This file belongs to another organisation.');
  const q=await db.query('SELECT file_bytes,mime_type,original_name,size_bytes FROM stored_files WHERE storage_key=$1',[payload.key]);
  must(q.rowCount,404,'This file has been deleted.');
  return {buffer:q.rows[0].file_bytes,type:q.rows[0].mime_type,name:q.rows[0].original_name,size:q.rows[0].size_bytes};

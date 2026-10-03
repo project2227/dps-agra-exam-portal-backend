@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs'
 const src=p=>readFileSync('src/'+p,'utf8')
 test('the teacher can remove and restore hosted exams from a dedicated management page',()=>{
  const page=src('pages/ManageHostedExams.jsx')
- const app=src('App.jsx'),nav=src('components/layout/Sidebar.jsx')
+ const app=src('InstituteApp.jsx'),nav=src('components/layout/Sidebar.jsx')
  assert.match(page,/api\.removeExam\(pending\.id,typed\.trim\(\)\)/)
  assert.match(page,/api\.restoreExam\(exam\.id\)/)
  assert.match(page,/Wait until all active students submit|live exam with students still taking it/i)

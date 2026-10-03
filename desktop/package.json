@@ -1,0 +1,61 @@
+{
+  "name": "plinth-workplace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A thin, consent-gated Windows bridge for the Plinth Workplace web app.",
+  "author": "Plinth",
+  "license": "UNLICENSED",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.cjs",
+    "release": "node release-check.cjs && electron-builder --win nsis --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "^6.6.2"
+  },
+  "devDependencies": {
+    "electron": "^41.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "app.plinth.workplace",
+    "productName": "Plinth Workplace",
+    "forceCodeSigning": true,
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "badge-preload.cjs",
+      "badge.html",
+      "setup.html",
+      "security.cjs",
+      "sensor.cjs",
+      "package.json",
+      "badge-renderer.cjs",
+      "setup-renderer.cjs",
+      "build-config.json",
+      "setup-preload.cjs"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "Plinth-Workplace-${version}-Setup.exe",
+      "signAndEditExecutable": true
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "publish": {
+      "provider": "generic",
+      "url": "https://updates.plinth.invalid"
+    }
+  }
+}

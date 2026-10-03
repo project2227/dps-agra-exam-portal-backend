@@ -73,7 +73,7 @@ function attachSockets(io){
  io.use(async(socket,next)=>{
   const token=socket.handshake.auth?.token;
   try {
-   const origin=socket.handshake.headers.origin;if(origin&&!origins.includes(origin))throw new Error('Untrusted origin.');
+   const origin=socket.handshake.headers.origin;if(origin&&!(require('../platform/context').enabled()?require('../platform/tenancy').trustedOrigin(origin):origins.includes(origin)))throw new Error('Untrusted origin.');
    const account=await resolveSession(socket.handshake.headers);
    if(account?.teacher_id){socket.data.identity={kind:'teacher',id:account.teacher_id,accountSessionId:account.id};return next();}
    if(typeof token!=='string')throw new Error('Authentication required.');
@@ -122,7 +122,7 @@ function attachSockets(io){
    if(ident.kind!=='teacher')return;
    const q=await db.query('SELECT active FROM teachers WHERE id=$1 AND active=true',[ident.id]);
    if(!q.rowCount)return;
-   socket.join('teachers:community');socket.emit('teachers:communityJoined',{ok:true});
+   socket.join(require('../services/events').communityRoom());socket.emit('teachers:communityJoined',{ok:true});
   }));
   socket.on('student:joinExamRoom',()=>guard(async()=>{
    const s=await checkStudent(true);socket.join(`exam:${s.exam_id}:students`);socket.join(studentRoom(s.id));
@@ -397,26 +397,7 @@ function attachSockets(io){
   }));
   // Only signaling messages are relayed; there is NO server-side media capture/recording.
   async function webrtcRelay(event,data){
-   const now=Date.now();while(relayWindow.length&&relayWindow[0]<now-10000)relayWindow.shift();
-   if(relayWindow.length>=240)return;relayWindow.push(now);
-   const cap=event==='webrtc:iceCandidate'?4096:65536;
-   if(JSON.stringify(data||{}).length>cap)return;
-   const sessionId=String(data?.sessionId||'');
-   const mediaType=String(data?.mediaType||'');
-   if(!['webcam','screen'].includes(mediaType))return;
-   if(ident.kind==='student'){
-    const s=await checkStudent();if(s.id!==sessionId)return;
-    if(mediaType==='webcam'&&!s.consent_webcam)return;
-    if(mediaType==='screen'&&!s.consent_screen)return;
-    if(event==='webrtc:answer')return;
-    io.to(teacherRoom(s.exam_id)).emit(event,{sessionId:s.id,mediaType,payload:data?.payload});
-   }else{
-    const s=await checkOwnedStudent(sessionId);
-    if(mediaType==='webcam'&&!s.consent_webcam)return;
-    if(mediaType==='screen'&&!s.consent_screen)return;
-    if(event==='webrtc:offer')return; // Students initiate all sharing after explicit browser consent.
-    privateStudent(s.id,event,{sessionId:s.id,mediaType,payload:data?.payload});
-   }
+   return require('../services/monitorRelay').relay({event,data,ident,io,teacherRoom,privateStudent,checkStudent,checkOwnedStudent,relayWindow});
   }
   for(const e of ['webrtc:offer','webrtc:answer','webrtc:iceCandidate','webrtc:endStream'])
    socket.on(e,data=>guard(()=>webrtcRelay(e,data)));

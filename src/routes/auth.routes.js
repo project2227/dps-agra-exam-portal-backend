@@ -29,7 +29,7 @@ router.post('/teacher/login',limiter,asyncWrap(async(req,res)=>{
  await accounts.success(keys);const t=q.rows[0],session=await sessions.createSession(req,res,{teacherId:t.id,remember:parsed.data.remember});res.json({...session,teacher:{id:t.id,name:t.name,email:t.email,role:t.role,subject:t.subject,assigned_classes:t.assigned_classes}});
 }));
 router.get('/teacher/me',teacher,(req,res)=>res.json({teacher:req.teacher,csrfToken:req.accountSession.csrfToken}));
-router.post('/teacher/logout',teacher,asyncWrap(async(req,res)=>{await db.query('UPDATE account_sessions SET revoked_at=now() WHERE id=$1',[req.accountSession.id]);sessions.disconnectSessions([req.accountSession.id]);sessions.clearCookie(res);res.json({signedOut:true});}));
+router.post('/teacher/logout',teacher,asyncWrap(async(req,res)=>{await db.query('UPDATE account_sessions SET revoked_at=now() WHERE id=$1',[req.accountSession.id]);sessions.disconnectSessions([req.accountSession.id]);sessions.clearCookie(res);if(require('../platform/context').enabled())await require('../platform/auth').revoke(req,res);res.json({signedOut:true});}));
 // Provisioning is admin-only; never expose open public teacher registration.
 router.post('/teacher/register',teacher,admin,asyncWrap(async(req,res)=>{
  const data=z.object({name:z.string().trim().min(2).max(120),email:z.string().email().max(200),

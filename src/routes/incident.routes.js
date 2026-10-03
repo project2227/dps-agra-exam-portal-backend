@@ -21,7 +21,7 @@ router.post('/student/incidents',student,rateLimit({windowMs:60000,limit:12,keyG
   const q=await c.query(`INSERT INTO incident_recordings(exam_id,session_id,client_id,trigger_type,mime_type)
    VALUES($1,$2,$3,$4,$5) RETURNING *`,[req.student.exam_id,req.student.id,v.clientId,v.triggerType,v.mimeType]);return q.rows[0];
  });
- notify(r);res.status(201).json({recordingId:r.id,expiresAt:r.expires_at,maxBytes:CLIP_LIMIT});
+ if(require('../platform/context').enabled()){const days=require('../platform/context').currentTenant().retention_days;await db.query('UPDATE incident_recordings SET expires_at=started_at+make_interval(days=>$2) WHERE id=$1',[r.id,days]);r.expires_at=new Date(new Date(r.started_at).getTime()+days*86400000);}notify(r);res.status(201).json({recordingId:r.id,expiresAt:r.expires_at,maxBytes:CLIP_LIMIT});
 }));
 router.post('/student/incidents/:id/chunks/:sequence',student,rateLimit({windowMs:60000,limit:90,keyGenerator:req=>req.student.id,standardHeaders:'draft-7',legacyHeaders:false}),upload.single('chunk'),asyncWrap(async(req,res)=>{
  id.parse(req.params.id);
@@ -39,6 +39,7 @@ router.post('/student/incidents/:id/chunks/:sequence',student,rateLimit({windowM
   if(sequence===0)must(req.file.buffer.subarray(0,4).equals(Buffer.from([0x1a,0x45,0xdf,0xa3])),415,'Expected a WebM screen recording.');
   const total=Number((await c.query('SELECT coalesce(sum(size_bytes),0) AS n FROM incident_recordings')).rows[0].n);
   must(row.size_bytes+req.file.buffer.length<=CLIP_LIMIT&&total+req.file.buffer.length<=TOTAL_LIMIT,507,'Incident recording storage is full. Recording is incomplete; ask the administrator to remove old test data.');
+  if(require('../platform/context').enabled())await require('../platform/storage').reserve(c,req.file.buffer.length);
   await c.query('INSERT INTO incident_recording_chunks(recording_id,sequence,file_bytes) VALUES($1,$2,$3)',[row.id,sequence,req.file.buffer]);
   return (await c.query('UPDATE incident_recordings SET size_bytes=size_bytes+$1 WHERE id=$2 RETURNING *',[req.file.buffer.length,row.id])).rows[0];
  });res.json({saved:true,sizeBytes:r.size_bytes});

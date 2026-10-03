@@ -1,3 +1,4 @@
+import { SCHOOL, PLINTH } from '../../config'
 import { useAccount } from '../common/AccountBootstrap'
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
@@ -31,7 +32,7 @@ export default function ExamNavbar() {
     }
   }
   return <header className="lab-header exam-header"><nav className="lab-wrap lab-navigation" aria-label="Main">
-    <Link to="/" className="exam-brand" aria-label="DPS Agra Exam Portal home" data-tour="home"><ExamCrest size={44} decorative /><span>DPS Agra<small>Exam portal</small></span></Link>
+    <Link to="/" className="exam-brand" aria-label={SCHOOL.portal+' home'} data-tour="home"><ExamCrest size={44} decorative /><span>{SCHOOL.short}<small>Exam portal</small></span></Link>
     <div className="lab-desktop-links exam-desktop-links">
       <NavLink to="/" end>Home</NavLink>
       <NavLink to={account.student?"/student/profile":"/student/login"} data-tour="join">{account.student?"My profile":"Student sign in"}</NavLink>

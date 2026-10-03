@@ -8,6 +8,7 @@ import './styles/globals.css'
 import './styles/animations.css'
 import './styles/learning-remake.css'
 import './styles/exam-portal.css'
+import './styles/plinth.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

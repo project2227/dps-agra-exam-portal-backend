@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const read=p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8');
 test('webRTC relay allows bounded ICE candidate bursts for both media types',()=>{
- const s=read('src/sockets/exam.socket.js');
+ const s=read('src/sockets/exam.socket.js')+read('src/services/monitorRelay.js').replace(/\s/g,'');
  assert.match(s,/relayWindow\.length>=240/);
  assert.match(s,/event==='webrtc:iceCandidate'\?4096:65536/);
  assert.doesNotMatch(s,/limited\(event,100\)/);

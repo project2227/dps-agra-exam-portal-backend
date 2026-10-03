@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 test('public teacher requests have a separate page, not staff login privileges',()=>{
- const app=fs.readFileSync('src/App.jsx','utf8')
+ const app=fs.readFileSync('src/InstituteApp.jsx','utf8')
  const page=fs.readFileSync('src/pages/TeacherAccessRequest.jsx','utf8')
  assert.match(app,/path="\/teacher\/request-access"/)
  assert.match(page,/\/api\/staff-access\/request/)

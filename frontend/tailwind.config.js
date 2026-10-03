@@ -17,7 +17,7 @@ export default {
       blue: shades('info'), sky: shades('info'), cyan: shades('info'), indigo: shades('info'), violet: shades('info'), purple: shades('info'), pink: shades('info'),
     },
     extend: {
-      fontFamily: {sans:['"DM Sans"','system-ui','sans-serif'],display:['"DM Sans"','system-ui','sans-serif'],mono:['"JetBrains Mono"','ui-monospace','monospace']},
+      fontFamily: {sans:['"Manrope"','system-ui','sans-serif'],display:['"Manrope"','system-ui','sans-serif'],mono:['"JetBrains Mono"','ui-monospace','monospace']},
       boxShadow: {glow:'var(--shadow-card)','glow-orange':'var(--shadow-card)','glow-red':'var(--shadow-card)'},
     },
   },

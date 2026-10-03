@@ -7,3 +7,4 @@ if(process.env.UI_VISUAL_QA==='true'){
   const {rm}=await import('node:fs/promises')
   await rm(new URL('../dist/visual',import.meta.url),{recursive:true,force:true})
 }
+

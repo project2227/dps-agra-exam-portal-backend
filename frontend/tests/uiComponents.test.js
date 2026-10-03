@@ -74,3 +74,4 @@ test('a page render failure shows a labelled recovery screen instead of a blank 
  const original=console.error;console.error=()=>{}
  try{render(wrap(h(ui.PageErrorBoundary,null,h(BrokenPage))));assert.ok(screen.getByRole('alert'));assert.ok(screen.getByRole('heading',{name:'This page could not open'}));assert.ok(screen.getByRole('button',{name:'Reload page'}));assert.equal(screen.getByRole('link',{name:'Return to the portal'}).getAttribute('href'),'/');assert.equal(screen.queryByText('Synthetic module failure'),null)}finally{console.error=original}
 })
+

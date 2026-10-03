@@ -7,7 +7,7 @@ async function migrate(){
   await c.query('SELECT pg_advisory_lock(73259102)');
   await c.query('CREATE TABLE IF NOT EXISTS schema_migrations(filename text primary key, applied_at timestamptz NOT NULL DEFAULT now())');
   const dir=path.resolve(__dirname,'../../db/migrations');
-  const filenames=fs.readdirSync(dir).filter(n=>/^\d{3}_.*\.sql$/.test(n)).sort();
+  const filenames=fs.readdirSync(dir).filter(n=>/^\d{3}_.*\.sql$/.test(n)&&(!/^01\d_/.test(n)||process.env.PLINTH_ENABLED==='true')).sort();
   const applied=new Set((await c.query('SELECT filename FROM schema_migrations')).rows.map(r=>r.filename));
   for(const f of filenames){ if(applied.has(f))continue;await c.query('BEGIN');try {
    await c.query(fs.readFileSync(path.join(dir,f),'utf8'));

@@ -1,6 +1,6 @@
 import { getCsrfToken } from './session'
 import { io } from 'socket.io-client'
-import { DEMO_MODE, SOCKET_PATH, SOCKET_URL } from '../config'
+import { DEMO_MODE, SOCKET_PATH, SOCKET_URL, PLINTH } from '../config'
 import { demoMonitorTick } from './mockData'
 
 /*
@@ -54,7 +54,7 @@ export function getSocket({ role, token }) {
         path: SOCKET_PATH,
         withCredentials: true,
         transports: ['websocket', 'polling'],
-        auth: { token, role },
+        auth: { token, role, ...(PLINTH.enabled?{site:PLINTH.tenant?.slug}: {}) },
         reconnection: true,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 8000,

@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { CalendarDays, ClipboardCheck, FilePlus2, FileText, Archive, LayoutDashboard, PanelLeftClose, PanelLeftOpen, School, X, BookOpen, MessageCircle, BarChart3, UserPlus, KeyRound } from 'lucide-react'
 import { cx } from '../../utils/format'
+import {PLINTH} from '../../config'
 import { getTeacherAuth } from '../../services/session'
 
 export const TEACHER_NAV = [
@@ -19,6 +20,8 @@ export const TEACHER_NAV = [
   { to: '/teacher/account', label: 'My account', icon: KeyRound },
 ]
 
+const schoolNav=PLINTH.enabled?[...['attendance','timetable','announcements','fees','profiles'].filter(k=>PLINTH.tenant.features.includes(k)).map(k=>({to:'/school/'+k,label:k[0].toUpperCase()+k.slice(1),icon:School})),{to:'/teacher/site-settings',label:'Site settings',icon:KeyRound,adminOnly:true}]:[]
+
 export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile, liveExams = [] }) {
   const content = (isMobile) => (
     <div className="flex h-full flex-col gap-1 overflow-y-auto p-3">
@@ -28,7 +31,7 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
           <button type="button" className="btn btn-ghost btn-sm" onClick={onCloseMobile} aria-label="Close menu"><X size={16} /></button>
         </div>
       )}
-      {TEACHER_NAV.filter(x => !x.adminOnly || getTeacherAuth()?.teacher?.role==='admin').map(({ to, label, icon: Icon }) => (
+      {[...TEACHER_NAV,...schoolNav].filter(x => !x.adminOnly || getTeacherAuth()?.teacher?.role==='admin').map(({ to, label, icon: Icon }) => (
         <NavLink key={to} to={to} onClick={isMobile ? onCloseMobile : undefined} title={collapsed && !isMobile ? label : undefined}
           className={({ isActive }) => cx(
             'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition',

@@ -1,25 +1,28 @@
 // Central configuration. Values come from Vite env variables (see .env.example).
 const env = import.meta.env || {}
+let site = null
+try { site = JSON.parse(document.getElementById('plinth-site')?.textContent || 'null') } catch { /* use configured preview */ }
+export const PLINTH = site || { enabled: env.VITE_PLINTH_MODE === 'true', tenant: null, base: '' }
 
 const selfHosted = typeof document !== 'undefined' && !!document.querySelector('meta[name="dps-self-hosted"]')
-export const API_BASE_URL = (selfHosted ? '' : env.VITE_API_BASE_URL || '').replace(/\/+$/, '')
-export const SOCKET_URL = (selfHosted ? '' : env.VITE_SOCKET_URL || API_BASE_URL).replace(/\/+$/, '')
+export const API_BASE_URL = (PLINTH.enabled ? PLINTH.base || '' : selfHosted ? '' : env.VITE_API_BASE_URL || '').replace(/\/+$/, '')
+export const SOCKET_URL = (PLINTH.enabled ? '' : selfHosted ? '' : env.VITE_SOCKET_URL || API_BASE_URL).replace(/\/+$/, '')
 export const SOCKET_PATH = env.VITE_SOCKET_PATH || '/socket.io'
-export const DEMO_MODE = selfHosted ? false : env.VITE_DEMO_MODE ? env.VITE_DEMO_MODE === 'true' : !API_BASE_URL
-export const ROUTER_MODE = selfHosted ? 'hash' : env.VITE_ROUTER_MODE === 'hash' ? 'hash' : 'browser'
+export const DEMO_MODE = PLINTH.enabled || selfHosted ? false : env.VITE_DEMO_MODE ? env.VITE_DEMO_MODE === 'true' : !API_BASE_URL
+export const ROUTER_MODE = PLINTH.enabled ? 'browser' : selfHosted ? 'hash' : env.VITE_ROUTER_MODE === 'hash' ? 'hash' : 'browser'
 export const SNAPSHOT_INTERVAL_MS = Number(env.VITE_SNAPSHOT_INTERVAL_MS || 10000)
-export const LOGO_SRC = `${env.BASE_URL}dps-logo.png`
+export const LOGO_SRC = PLINTH.enabled ? PLINTH.tenant?.logoUrl || (PLINTH.tenant?.slug==='dps-agra'?`${env.BASE_URL}dps-logo.png`:`${env.BASE_URL}plinth.svg`) : `${env.BASE_URL}dps-logo.png`
 
 let parsedIce = null
 try { parsedIce = env.VITE_ICE_SERVERS ? JSON.parse(env.VITE_ICE_SERVERS) : null } catch { parsedIce = null }
 export const ICE_SERVERS = parsedIce || [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }]
 
 export const SCHOOL = {
-  name: 'Delhi Public School, Agra',
-  short: 'DPS Agra',
-  portal: 'DPS Agra Exam Portal',
-  department: 'Department of Computer Science',
-  motto: 'Service Before Self',
+  name: PLINTH.tenant?.name || 'Delhi Public School, Agra',
+  short: PLINTH.tenant?.name || 'DPS Agra',
+  portal: PLINTH.tenant ? PLINTH.tenant.name + ' Exam Portal' : 'DPS Agra Exam Portal',
+  department: PLINTH.tenant&&PLINTH.tenant.slug!=='dps-agra'?'Learning and assessments':'Department of Computer Science',
+  motto: PLINTH.tenant&&PLINTH.tenant.slug!=='dps-agra'?'A place for your people':'Service Before Self',
 }
 
 // Edit these lists to match the school's actual classes and sections.

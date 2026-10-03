@@ -7,15 +7,16 @@ const digest=value=>crypto.createHash('sha256').update(String(value)).digest('he
 const COOKIE='__Host-dps-account';
 // Partitioning permits this school's separate Render frontend/API to use cookies
 // without granting an unrelated embedding site access to the account session.
-function cookieOptions(remember=false){return {httpOnly:true,secure:env.NODE_ENV!=='test',sameSite:env.NODE_ENV==='test'?'lax':'none',partitioned:env.NODE_ENV!=='test',path:'/',...(remember?{maxAge:7*86400000}:{})};}
+function cookieOptions(remember=false){const sameOrigin=require('../platform/context').enabled();return {httpOnly:true,secure:env.NODE_ENV!=='test',sameSite:sameOrigin||env.NODE_ENV==='test'?'lax':'none',partitioned:!sameOrigin&&env.NODE_ENV!=='test',path:'/',...(remember?{maxAge:7*86400000}:{})};}
 function cookieToken(headers){const raw=String(headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith(COOKIE+'='));return raw?.slice(COOKIE.length+1);}
 function csrfValue(token){return crypto.createHmac('sha256',env.JWT_SECRET).update('account-csrf:'+token).digest('hex');}
 function deviceLabel(ua=''){const browser=/Edg\//.test(ua)?'Edge':/Firefox\//.test(ua)?'Firefox':/Chrome\//.test(ua)?'Chrome':/Safari\//.test(ua)?'Safari':'Browser';const os=/Android/.test(ua)?'Android':/iPhone|iPad/.test(ua)?'iOS':/Windows/.test(ua)?'Windows':/Macintosh/.test(ua)?'macOS':/Linux/.test(ua)?'Linux':'device';return `${browser} on ${os}`;}
-async function createSession(req,res,{studentId=null,teacherId=null,remember=false}){
+async function createSession(req,res,{studentId=null,teacherId=null,remember=false,syncOrg=true}){
  const previous=cookieToken(req.headers);if(previous)await db.query('UPDATE account_sessions SET revoked_at=now() WHERE token_hash=$1',[digest(previous)]);
  const token=crypto.randomBytes(32).toString('base64url'),csrfToken=csrfValue(token);
  const expiresAt=new Date(Date.now()+(remember?7*86400000:2*3600000));
  const q=await db.query(`INSERT INTO account_sessions(token_hash,csrf_hash,student_id,teacher_id,device_label,expires_at) VALUES($1,$2,$3,$4,$5,$6) RETURNING id,expires_at`,[digest(token),digest(csrfToken),studentId,teacherId,deviceLabel(req.headers['user-agent']),expiresAt]);
+ if(require('../platform/context').enabled()&&syncOrg){const platform=require('../platform/auth');if(teacherId){const t=(await db.query('SELECT * FROM teachers WHERE id=$1',[teacherId])).rows[0];const u=(await db.query("INSERT INTO org_users(name,email,password_hash,role,teacher_id,verified_at) VALUES($1,$2,$3,$4,$5,now()) ON CONFLICT(tenant_id,email) DO UPDATE SET name=excluded.name,role=excluded.role,teacher_id=excluded.teacher_id,password_hash=excluded.password_hash RETURNING *",[t.name,t.email,t.password_hash,t.role,teacherId])).rows[0];await platform.create(req,res,u,remember);}else await platform.revoke(req,res);}
  res.cookie(COOKIE,token,cookieOptions(remember));res.set('Cache-Control','no-store');
  return {csrfToken,expiresAt:q.rows[0].expires_at};
 }
@@ -25,7 +26,7 @@ async function resolveSession(headers){
  const row=q.rows[0];if(!row||!(row.student_id?row.student_active:row.teacher_active))return null;
  row.csrfToken=csrfValue(token);return row;
 }
-function checkOrigin(req){const origin=req.headers.origin;if(origin)must(origins.includes(origin),403,'This request came from an untrusted site.');}
+function checkOrigin(req){const origin=req.headers.origin;if(origin)must(require('../platform/context').enabled()?require('../platform/tenancy').trustedOrigin(origin):origins.includes(origin),403,'This request came from an untrusted site.');}
 function checkCsrf(req,session){
  if(['GET','HEAD','OPTIONS'].includes(req.method))return;
  checkOrigin(req);const supplied=String(req.headers['x-csrf-token']||'');

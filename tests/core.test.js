@@ -25,7 +25,7 @@ test('no local untrusted code execution is used',()=>{
  assert.match(source,/JUDGE0_API_URL/);
 });
 test('WebRTC signaling requires per-media consent and avoids recording',()=>{
- const socket=fs.readFileSync(path.join(root,'src/sockets/exam.socket.js'),'utf8');
+ const socket=fs.readFileSync(path.join(root,'src/sockets/exam.socket.js'),'utf8')+fs.readFileSync(path.join(root,'src/services/monitorRelay.js'),'utf8').replace(/\s/g,'');
  assert.match(socket,/mediaType==='webcam'&&!s\.consent_webcam/);
  assert.match(socket,/mediaType==='screen'&&!s\.consent_screen/);
  assert.doesNotMatch(socket,/MediaRecorder|createWriteStream\(/);

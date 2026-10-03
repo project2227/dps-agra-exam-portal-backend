@@ -150,7 +150,7 @@ router.post('/teacher/community',teacher,writeLimiter,asyncWrap(async(req,res)=>
  const q=await db.query(`INSERT INTO teacher_community_messages(teacher_id,body,resource_url) VALUES($1,$2,$3) RETURNING id,body,resource_url,created_at`,[req.teacher.id,d.body,d.resourceUrl||null]);
  const message={...q.rows[0],author:req.teacher.name};
  // Broadcast only to connected, active, authorized teachers.
- const {getIo}=require('../services/events');const io=getIo();if(io)io.to('teachers:community').emit('teachers:message',message);
+ const {getIo,communityRoom}=require('../services/events');const io=getIo();if(io)io.to(communityRoom()).emit('teachers:message',message);
  res.status(201).json({message});
 }));
 router.delete('/teacher/community/:id',teacher,admin,asyncWrap(async(req,res)=>{

@@ -15,10 +15,14 @@ const limit=rateLimit({
  windowMs:30*60*1000,limit:18,standardHeaders:'draft-7',legacyHeaders:false,
  keyGenerator:req=>{
   const bearer=String(req.headers.cookie||req.headers.authorization||'');
-  return bearer.startsWith('Bearer ')?crypto.createHash('sha256').update(bearer).digest('hex'):'unauthenticated';
+  return bearer?crypto.createHash('sha256').update(bearer).digest('hex'):'unauthenticated:'+req.ip;
  }
 });
 async function auth(req,res,next){
+ if(require('../platform/context').enabled()){
+  const user=await require('../platform/auth').resolve(req.headers);
+  if(user){req.orgUser=user;return next();}
+ }
  const account=await resolveSession(req.headers);if(account?.teacher_id){req.accountSession=account;return teacher(req,res,next);}
  const bearer=String(req.headers.authorization||'').match(/^Bearer (.+)$/i)?.[1];
  if(!bearer)return res.status(401).json({error:'Exam or teacher authentication required.'});

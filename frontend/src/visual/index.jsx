@@ -88,3 +88,4 @@ if(params.get('frame')==='1'){
  }
  createRoot(document.getElementById('root')).render(<Gallery/> )
 }
+

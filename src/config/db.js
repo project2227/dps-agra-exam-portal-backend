@@ -38,4 +38,4 @@ async function transaction(fn) {
   }
 }
 
-module.exports = { pool, query: (q, v) => pool.query(q, v), transaction };
+module.exports = require('../platform/scopedDb').wrapDatabase(pool);
