@@ -17,6 +17,10 @@ async function cleanupReleaseFixtures(ids){
   await c.query('DELETE FROM audit_logs WHERE teacher_id=$1',[ids.teacher]);
   const student=ids.student&&(await c.query('SELECT id FROM students WHERE id=$1 AND created_by=$2 FOR UPDATE',[ids.student,ids.teacher])).rows[0];
   await c.query('DELETE FROM account_sessions WHERE teacher_id=$1',[ids.teacher]);
+  if(process.env.PLINTH_ENABLED==='true'){
+   await c.query('DELETE FROM org_sessions WHERE user_id IN(SELECT id FROM org_users WHERE teacher_id=$1)',[ids.teacher]);
+   await c.query('DELETE FROM org_users WHERE teacher_id=$1',[ids.teacher]);
+  }
   if(student){
    for(const table of ['account_sessions','student_learning_progress','student_password_resets','student_deletion_requests'])await c.query(`DELETE FROM ${table} WHERE student_id=$1`,[ids.student]);
    await c.query('DELETE FROM students WHERE id=$1 AND created_by=$2',[ids.student,ids.teacher]);
@@ -25,15 +29,20 @@ async function cleanupReleaseFixtures(ids){
  });
 }
 async function releaseSmoke(){
- const endpoint=env.API_PUBLIC_URL;if(!endpoint||!endpoint.startsWith('https://'))throw Error('A public HTTPS API URL is required for the release smoke test.');
+ if(process.env.PLINTH_ENABLED==='true'&&!require('../src/platform/context').currentTenant()){
+  const context=require('../src/platform/context'),tenant=(await db.platformQuery('SELECT * FROM tenants WHERE id=$1',[context.DPS_ID])).rows[0];
+  return context.withTenant(tenant,releaseSmoke);
+ }
+ const isPlinth=process.env.PLINTH_ENABLED==='true';
+ const endpoint=env.API_PUBLIC_URL+(isPlinth?'/t/dps-agra':'');if(!endpoint||!endpoint.startsWith('https://'))throw Error('A public HTTPS API URL is required for the release smoke test.');
  const ids={teacher:crypto.randomUUID(),student:null,exam:crypto.randomUUID(),question:crypto.randomUUID()},clients=[];
  const teacherPassword=crypto.randomBytes(24).toString('base64url'),studentPassword=crypto.randomBytes(24).toString('base64url'),passcode='SMOKE'+crypto.randomBytes(8).toString('hex').toUpperCase();
  let completed=0;
  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
- async function request(path,jar,method='GET',body,token){const r=await fetch(endpoint+path,{method,headers:{Origin:env.FRONTEND_URL.split(',')[0],...(jar?.cookie?{Cookie:jar.cookie,'X-CSRF-Token':jar.csrfToken}:{}),...(token?{Authorization:'Bearer '+token}:{}),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(30000)});const result=await r.json();if(jar){const cookie=r.headers.get('set-cookie');if(cookie){assert.match(cookie,/HttpOnly/);assert.match(cookie,/Secure/);assert.match(cookie,/SameSite=None/);jar.cookie=cookie.split(';')[0]}if(result.csrfToken)jar.csrfToken=result.csrfToken}return {status:r.status,data:result}}
+ async function request(path,jar,method='GET',body,token){const r=await fetch(endpoint+path,{method,headers:{Origin:env.FRONTEND_URL.split(',')[0],...(jar?.cookie?{Cookie:jar.cookie,'X-CSRF-Token':jar.csrfToken}:{}),...(token?{Authorization:'Bearer '+token}:{}),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(30000)});const result=await r.json();if(jar){const cookie=r.headers.get('set-cookie');if(cookie){assert.match(cookie,/HttpOnly/);assert.match(cookie,/Secure/);assert.match(cookie,isPlinth?/SameSite=Lax/:/SameSite=None/);jar.cookie=cookie.split(';')[0]}if(result.csrfToken)jar.csrfToken=result.csrfToken}return {status:r.status,data:result}}
  const once=(socket,event)=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Smoke monitor did not receive '+event)),12000);socket.once(event,data=>{clearTimeout(timer);resolve(data)});socket.once('connect_error',()=>{clearTimeout(timer);reject(Error('Smoke socket authentication failed'))})});
  try {
-  let healthy=false;for(let i=0;i<30;i++){try{const h=await request('/api/health');if(h.status===200&&h.data.release==='student-accounts-v1'){healthy=true;break}}catch{}await sleep(3000)}assert.ok(healthy,'New build must be reachable through public HTTPS');completed++;
+  let healthy=false;for(let i=0;i<30;i++){try{const h=await request('/api/health');if(h.status===200&&h.data.release===(isPlinth?'plinth-v1':'student-accounts-v1')){healthy=true;break}}catch{}await sleep(3000)}assert.ok(healthy,'New build must be reachable through public HTTPS');completed++;
   const email=ids.teacher+'@example.invalid';await db.query(`INSERT INTO teachers(id,name,email,password_hash,assigned_classes) VALUES($1,'Deployment Smoke Teacher',$2,$3,'["IX"]')`,[ids.teacher,email,await bcrypt.hash(teacherPassword,12)]);
   const teacher={};assert.equal((await request('/api/auth/teacher/login',teacher,'POST',{email,password:teacherPassword})).status,200);completed++;
   const roll='s-'+ids.teacher.slice(0,12),created=await request('/api/accounts/teacher/students',teacher,'POST',{admissionNumber:'SMOKE-'+ids.teacher.slice(0,12),name:'Deployment Smoke Student',rollNumber:roll,className:'IX',section:'A',schoolEmail:''});assert.equal(created.status,201);ids.student=created.data.student.id;
@@ -42,7 +51,7 @@ async function releaseSmoke(){
   await db.query(`INSERT INTO questions(id,exam_id,type,title,marks,correct_answer) VALUES($1,$2,'short','Synthetic answer',5,'null')`,[ids.question,ids.exam]);
   const joined=await request('/api/exams/'+ids.exam+'/join',student,'POST',{passcode});assert.equal(joined.status,201);const token=joined.data.token;completed++;
   assert.equal((await request('/api/student/exams/'+ids.exam+'/questions',null,'GET',null,token)).status,200);assert.equal((await request('/api/student/exams/'+ids.exam+'/answers/save',null,'POST',{questionId:ids.question,answerText:'Synthetic saved answer'},token)).status,200);completed++;
-  const {io}=require('socket.io-client');const observer=io(endpoint,{transports:['websocket'],reconnection:false,extraHeaders:{Cookie:teacher.cookie,Origin:env.FRONTEND_URL.split(',')[0]}}),pupil=io(endpoint,{transports:['websocket'],reconnection:false,auth:{token},extraHeaders:{Origin:env.FRONTEND_URL.split(',')[0]}});clients.push(observer,pupil);await Promise.all([once(observer,'connect'),once(pupil,'connect')]);const monitor=once(observer,'teacher:monitorJoined');observer.emit('teacher:joinMonitorRoom',{examId:ids.exam});await monitor;const update=once(observer,'exam:studentStatusUpdate'),ready=once(pupil,'exam:joined');pupil.emit('student:joinExamRoom');await Promise.all([update,ready]);completed++;
+  const {io}=require('socket.io-client'),socketOrigin=isPlinth?env.API_PUBLIC_URL:endpoint,site=isPlinth?{site:'dps-agra'}:{};const observer=io(socketOrigin,{transports:['websocket'],reconnection:false,forceNew:true,auth:site,extraHeaders:{Cookie:teacher.cookie,Origin:env.FRONTEND_URL.split(',')[0]}}),pupil=io(socketOrigin,{transports:['websocket'],reconnection:false,forceNew:true,auth:{token,...site},extraHeaders:{Origin:env.FRONTEND_URL.split(',')[0]}});clients.push(observer,pupil);await Promise.all([once(observer,'connect'),once(pupil,'connect')]);const monitor=once(observer,'teacher:monitorJoined');observer.emit('teacher:joinMonitorRoom',{examId:ids.exam});await monitor;const update=once(observer,'exam:studentStatusUpdate'),ready=once(pupil,'exam:joined');pupil.emit('student:joinExamRoom');await Promise.all([update,ready]);completed++;
   const flagged=once(observer,'exam:proctorFlag');const event=await request('/api/proctor/event',null,'POST',{eventType:'TAB_SWITCH',message:'Synthetic release verification'},token);assert.equal(event.status,201);const flag=await flagged;assert.equal(flag.sessionId,joined.data.session.id);assert.equal(flag.event.eventType,'TAB_SWITCH');const monitorRows=await request('/api/teacher/exams/'+ids.exam+'/monitor',teacher);assert.equal(monitorRows.status,200);assert.equal(monitorRows.data.students.find(s=>s.id===joined.data.session.id).answered,1);completed++;
   assert.equal((await request('/api/student/exams/'+ids.exam+'/submit',null,'POST',{},token)).status,200);assert.equal((await db.query('SELECT answer_text,student_id FROM answers WHERE session_id=$1',[joined.data.session.id])).rows[0].student_id,ids.student);completed++;
   const submissions=await request('/api/teacher/exams/'+ids.exam+'/submissions',teacher);assert.equal(submissions.status,200);assert.ok(submissions.data.submissions.some(s=>s.id===joined.data.session.id));completed++;

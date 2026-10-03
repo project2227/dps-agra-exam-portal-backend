@@ -4,6 +4,7 @@ import {citext} from '@electric-sql/pglite/contrib/citext'
 import {pgcrypto} from '@electric-sql/pglite/contrib/pgcrypto'
 import {createRequire} from 'node:module'
 const require=createRequire(import.meta.url)
+process.env.MAIL_PROVIDER='smtp';process.env.BREVO_API_KEY='';process.env.SMTP_URL='';process.env.MAIL_FROM='';process.env.TENANT_DOMAIN=''
 process.env.NODE_ENV='test';process.env.PLINTH_ENABLED='true';process.env.PLATFORM_URL='http://127.0.0.1:5000';process.env.FRONTEND_URL='http://127.0.0.1:5000';process.env.DATABASE_URL='postgres://disposable-test-only';process.env.JWT_SECRET='disposable-plinth-account-secret-32-characters';process.env.STUDENT_SESSION_SECRET='disposable-plinth-exam-secret-32-characters';process.env.FINGERPRINT_PEPPER='disposable-plinth-fingerprint-pepper'
 const pg=new PGlite({extensions:{citext,pgcrypto}});await pg.waitReady
 let tail=Promise.resolve();const lock=async()=>{let release;const previous=tail;tail=new Promise(r=>release=r);await previous;return release}
