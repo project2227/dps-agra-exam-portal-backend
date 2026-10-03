@@ -2,7 +2,7 @@
 
 ## Compatibility baseline
 
-Source: project2227/dps-agra-exam-portal-backend, deployed commit d62579178142e9d70c790a63f5dc2fe1c7c0b39a. Work is isolated from the existing DPSLab checkout. Every existing Institute route and exam contract remains available. DPSLab currently starts incident recording after a flag; it does not have a pre-flag rolling buffer. The original default remains unchanged. Workplace opts into a bounded five-second pre-roll through the shared web recorder, never native capture.
+Source: project2227/dps-agra-exam-portal-backend, deployed commit d62579178142e9d70c790a63f5dc2fe1c7c0b39a. Work is isolated from the existing DPSLab checkout. Every existing Institute route and exam contract remains available. DPSLab currently starts incident recording after a flag; it does not have a pre-flag rolling buffer. The original default remains unchanged. Workplace opts into a bounded ten-second pre-roll through the shared web recorder, never native capture.
 
 ## Tenant boundary
 
