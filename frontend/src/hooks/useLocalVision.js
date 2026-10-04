@@ -24,6 +24,7 @@ export default function useLocalVision({enabled,stream,onEvent}) {
     worker.postMessage({type:'init',wasm:new URL('wasm/',assets).href,model:new URL('face_landmarker.task',assets).href});
     const timer=setInterval(async()=>{
       if(disposed||!ready||busy||video.readyState<2||document.hidden)return;
+      if(!stream.getVideoTracks().some(t=>t.readyState==='live')){ready=false;setStatus('unavailable');return;}
       busy=true;
       try{
         const frame=await createImageBitmap(video,{resizeWidth:480,resizeHeight:360});

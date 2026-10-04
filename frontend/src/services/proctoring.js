@@ -110,7 +110,9 @@ export function createProctorReporter({ examId, sessionId, socket }) {
       try {
         await api.sendProctorEvent(queue[0])
         queue.shift()
-      } catch {
+      } catch (error) {
+        // Revoked optional vision consent must not block the original integrity-event queue.
+        if (queue[0]?.type?.startsWith('vision_') && (error.status === 403 || error.response?.status === 403)) { queue.shift(); continue }
         setTimeout(flush, 5000)
         break
       }
@@ -145,4 +147,3 @@ export function createProctorReporter({ examId, sessionId, socket }) {
     },
   }
 }
-
