@@ -130,6 +130,7 @@ export function createProctorReporter({ examId, sessionId, socket }) {
         ts: new Date().toISOString(),
       }
       const remoteType = {
+        vision_head_turn:'VISION_HEAD_TURN', vision_gaze_away:'VISION_GAZE_AWAY', vision_face_missing:'VISION_FACE_MISSING', vision_multiple_faces:'VISION_MULTIPLE_FACES',
         tab_hidden:'TAB_SWITCH', window_blur:'WINDOW_BLUR', window_focus:'WINDOW_FOCUS',
         fullscreen_exit:'FULLSCREEN_EXIT', copy:'COPY', cut:'COPY', paste:'PASTE', right_click:'RIGHT_CLICK',
         devtools_suspected:'DEVTOOLS_SUSPECTED', devtools_shortcut:'DEVTOOLS_SUSPECTED',
@@ -144,3 +145,4 @@ export function createProctorReporter({ examId, sessionId, socket }) {
     },
   }
 }
+

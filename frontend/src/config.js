@@ -64,6 +64,10 @@ export const STARTER_CODE = {
 
 // Proctoring events: label, severity and the message a student sees.
 export const PROCTOR_EVENTS = {
+  vision_head_turn: { label: 'Sustained head turn (estimate; review)', severity: 'low' },
+  vision_gaze_away: { label: 'Sustained gaze deviation (estimate; review)', severity: 'low' },
+  vision_face_missing: { label: 'Face not visible (review lighting)', severity: 'low' },
+  vision_multiple_faces: { label: 'Multiple faces estimated (review)', severity: 'low' },
   tab_hidden: { label: 'Switched tab / minimised', severity: 'high', warn: 'You left the exam tab. This has been recorded and your teacher can see it.' },
   tab_visible: { label: 'Returned to exam tab', severity: 'info' },
   window_blur: { label: 'Exam window lost focus', severity: 'medium', warn: 'The exam window lost focus. Keep this window active until you submit.' },
@@ -98,3 +102,4 @@ export const FLAG_BUCKETS = {
 export function bucketOf(type) {
   return Object.keys(FLAG_BUCKETS).find((k) => FLAG_BUCKETS[k].types.includes(type)) || null
 }
+

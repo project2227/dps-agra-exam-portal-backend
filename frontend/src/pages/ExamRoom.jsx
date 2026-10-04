@@ -1,3 +1,4 @@
+import useLocalVision from '../hooks/useLocalVision'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
@@ -83,6 +84,8 @@ export default function ExamRoom() {
   const [flagCount, setFlagCount] = useState(0)
   const [fsLost, setFsLost] = useState(false)
   const [mediaLost, setMediaLost] = useState(null) // 'webcam' | 'screen' | null
+  const [visionApproved, setVisionApproved] = useState(false)
+  const [visionMessage, setVisionMessage] = useState('')
   const [streams, setStreams] = useState({ webcam: null, screen: null })
   const [screenOptInBusy, setScreenOptInBusy] = useState(false)
   const [screenOptInMessage, setScreenOptInMessage] = useState('')
@@ -232,6 +235,7 @@ export default function ExamRoom() {
   })
 
   /* ---------- anti-cheat ---------- */
+  const vision = useLocalVision({enabled:phase === 'active' && visionApproved,stream:streams.webcam,onEvent:(type,details)=>reporter.report(type,details)})
   const onProctorEvent = useCallback((type, details) => {
     incident.report(type)
     reporter.report(type, details)
@@ -394,7 +398,11 @@ export default function ExamRoom() {
   useEffect(() => () => stopAllMedia(), [stopAllMedia])
 
   /* ---------- actions ---------- */
-  const onConsentReady = ({ webcam, screen }) => {
+  const onConsentReady = async ({ webcam, screen, visionConsent }) => {
+    if(exam?.settings?.visionTracking){
+      try { const q=await api.setVisionConsent(!!visionConsent); setVisionApproved(q.consent===true) }
+      catch { setVisionMessage('Local analysis could not start. Your exam can continue.'); setVisionApproved(false) }
+    }
     setStreams({ webcam, screen })
     const started = startedAt || new Date(Date.now()+serverOffset).toISOString()
     setStartedAt(started)
@@ -523,6 +531,10 @@ export default function ExamRoom() {
         </button>
       </header>
 
+      {s.visionTracking && phase === 'active' && <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-2 text-xs" role="status">
+        <span>{visionMessage || (!visionApproved ? 'Local head/gaze analysis is off.' : vision.status === 'active' ? 'Local head/gaze analysis is on. Estimates require teacher review.' : vision.status === 'calibrating' ? 'Calibrating: look straight at the screen for a few seconds.' : vision.status === 'loading' ? 'Loading local analysis…' : 'Local analysis is unavailable; your exam can continue.')}</span>
+        {visionApproved && <><button type="button" className="btn btn-ghost btn-sm" onClick={vision.recalibrate}>Recalibrate</button><button type="button" className="btn btn-ghost btn-sm" onClick={async()=>{try{await api.setVisionConsent(false);setVisionApproved(false)}catch{setVisionMessage('Could not save the pause; local analysis has stopped.');setVisionApproved(false)}}}>Pause analysis</button></>}
+      </div>}
       {incident.status!=='idle'&&<div role="status" className={cx('border-b px-4 py-2 text-xs',incident.status==='recording'?'border-red-400/40 bg-red-500/15 text-red-100':'border-white/10 bg-white/5 text-slate-300')}><span className="font-semibold">{incident.status==='recording'?'● Recording screen incident: ':''}</span>{incident.message}</div>}
       <AntiCheatWarningBanner warning={warning} flagCount={flagCount} onDismiss={dismissWarning} />
       {submitError && (
@@ -642,3 +654,4 @@ export default function ExamRoom() {
     </div>
   )
 }
+

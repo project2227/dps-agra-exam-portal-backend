@@ -32,6 +32,7 @@ export function normalizeExam(e = {}) {
     status,
     settings: {
       ...raw,
+      visionTracking: raw.visionTracking === true,
       requireWebcam: raw.requireWebcam ?? e.webcam_required === 'true',
       requireScreen: raw.requireScreenShare ?? e.screen_required === 'true',
       tabDetection: raw.enableTabSwitchDetection ?? true,
@@ -96,7 +97,8 @@ function toBackendExam(p) {
     endTime: p.endsAt,
     durationMinutes: Number(p.durationMin),
     settings: {
-      requireWebcam: Boolean(s.requireWebcam),
+      visionTracking: Boolean(s.visionTracking),
+      requireWebcam: Boolean(s.requireWebcam || s.visionTracking),
       requireScreenShare: Boolean(s.requireScreen),
       enableTabSwitchDetection: Boolean(s.tabDetection),
       enableCopyPasteDetection: Boolean(s.copyPasteRestriction),
@@ -250,6 +252,8 @@ export function createLiveApi(http) {
     },
     sendProctorEvent: async e => {
       const types = {
+        vision_head_turn:'VISION_HEAD_TURN', vision_gaze_away:'VISION_GAZE_AWAY', vision_face_missing:'VISION_FACE_MISSING', vision_multiple_faces:'VISION_MULTIPLE_FACES',
+        
         tab_hidden: 'TAB_SWITCH', window_blur: 'WINDOW_BLUR', window_focus: 'WINDOW_FOCUS',
         fullscreen_exit: 'FULLSCREEN_EXIT', copy: 'COPY', cut: 'COPY', paste: 'PASTE',
         right_click: 'RIGHT_CLICK', devtools_shortcut: 'DEVTOOLS_SUSPECTED',
@@ -371,3 +375,4 @@ export function createLiveApi(http) {
     deleteExamDate: id => t.delete(`/api/teacher/exam-dates/${id}`),
   }
 }
+

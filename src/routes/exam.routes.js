@@ -7,7 +7,7 @@ const {getIo,publish}=require('../services/events');
 const {env}=require('../config/env');
 const {encryptPasscode,decryptPasscode}=require('../services/passcodeVault');const {assertAssignedClass}=require('../services/permissions');
 const router=express.Router();router.use(teacher);
-const settingsSchema=z.object({requireWebcam:z.boolean().default(false),requireScreenShare:z.boolean().default(false),
+const settingsSchema=z.object({visionTracking:z.boolean().default(false),requireWebcam:z.boolean().default(false),requireScreenShare:z.boolean().default(false),
  enableTabSwitchDetection:z.boolean().default(true),enableCopyPasteDetection:z.boolean().default(true),
  enableFullscreenMode:z.boolean().default(false),enableCodeRunner:z.boolean().default(false),
  allowLateJoin:z.boolean().default(true),monitorAnswerText:z.boolean().default(false),allowGuestJoin:z.boolean().default(true)}).strict();
@@ -163,3 +163,4 @@ router.delete('/questions/:questionId',asyncWrap(async(req,res)=>{
  [req.params.questionId,req.teacher.id]);must(q.rowCount,404,'Editable question not found.');res.json({deleted:true});
 }));
 module.exports=router;
+

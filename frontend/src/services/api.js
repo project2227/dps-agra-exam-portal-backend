@@ -55,6 +55,7 @@ const publicExam = ({ passcode, ...rest }) => withStatus(rest)
 
 /* ------------------------------ API ------------------------------- */
 export const api = {
+  setVisionConsent: consent => DEMO_MODE ? Promise.resolve({consent}) : data(http.post('/api/student/vision-consent',{consent})),
   // Student-initiated consent only: never called in response to a teacher's request.
   setScreenMediaConsent: screenShare => DEMO_MODE
     ? Promise.resolve({screenShare})
@@ -280,3 +281,4 @@ export const api = {
 if (!DEMO_MODE) Object.assign(api, createLiveApi(http))
 
 export default api
+

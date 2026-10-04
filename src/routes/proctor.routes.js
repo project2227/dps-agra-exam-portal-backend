@@ -12,6 +12,12 @@ router.post('/proctor/event',student,rateLimit({windowMs:60000,limit:30,standard
  res.status(201).json({eventId:saved.id,reviewRequired:true,
   notice:'This event is a review flag, not automatic proof of misconduct.'});
 }));
+router.post('/student/vision-consent',student,asyncWrap(async(req,res)=>{
+ const {consent}=z.object({consent:z.boolean()}).strict().parse(req.body);
+ if(consent){const exam=await db.query(`SELECT 1 FROM exams WHERE id=$1 AND settings->>'visionTracking'='true'`,[req.student.exam_id]);must(exam.rowCount,403,'Your teacher has not enabled local vision for this exam.');}
+ const q=await db.query(`UPDATE exam_sessions SET consent_vision=$1 WHERE id=$2 AND status NOT IN('submitted','revoked') RETURNING consent_vision`,[consent,req.student.id]);
+ must(q.rowCount,409,'This exam session has ended.');res.json({consent:q.rows[0].consent_vision});
+}));
 router.get('/teacher/exams/:examId/proctor-events',teacher,asyncWrap(async(req,res)=>{
  const exam=await ownExam(req.params.examId,req.teacher.id);
  const limit=Math.max(1,Math.min(250,Number(req.query.limit)||100));
@@ -72,3 +78,4 @@ router.post('/teacher/sessions/:sessionId/readmit',teacher,asyncWrap(async(req,r
 }));
 
 module.exports=router;
+
