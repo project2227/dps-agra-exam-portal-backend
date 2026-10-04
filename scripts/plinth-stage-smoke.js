@@ -194,6 +194,9 @@ async function stageSmoke() {
     if(task){
       ok(await request(base+'/api/productivity/summaries',employee,'POST',{taskId:task.id,summary:'Cannot claim someone else’s task',aiConsent:false}),404);
     }
+    const assigned=ok(await request(base+'/api/workplace/tasks',admin,'POST',{teamId:team.id,assigneeId:session.user_id,title:'Release report task',description:'Complete a synthetic work summary'}),201).task;
+    const note=ok(await request(base+'/api/productivity/summaries',employee,'POST',{taskId:assigned.id,summary:'Completed the synthetic report and checked its employee scope.',aiConsent:false}),201);assert.ok(note.note.id);
+    assert.equal(ok(await request(base+'/api/productivity/report',employee)).rows[0].summaries,1);
     const opts = (j) => ({
       transports: ['websocket'],
       reconnection: false,
@@ -340,6 +343,7 @@ async function stageSmoke() {
         .allowed,
       false,
     );
+    ok(await request(base+'/api/productivity/sessions/'+session.id+'/activity',employee,'POST',activity),403);
     ok(await request(base + '/api/site/logout', employee, 'POST', {}));
     ok(await request(base + '/api/workplace/dashboard', employee), 401);
     return {
