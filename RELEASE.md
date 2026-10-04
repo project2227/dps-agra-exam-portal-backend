@@ -1,49 +1,46 @@
-# Plinth release status — 3 October 2026
+# Plinth and DPS release status — 4 October 2026
 
-The web application is deployed to staging at https://plinth-stage-20261003.onrender.com/. It is not released to DPS production. Source is preserved on `feature/plinth` in `project2227/dps-agra-exam-portal-backend`.
+Plinth is live at https://plinth-pk84.onrender.com/. Render assigned this hostname; the requested `plinth.onrender.com` was not allocated. DPS remains at https://dpslab.onrender.com/ with its pre-Plinth school design. The services have separate production database branches and release branches: `feature/plinth` for Plinth and `main` for DPS.
 
-## What changed
+## Deployed changes
 
-- Tenant-isolated Institute and Workplace sites, branding, ten light/dark themes, an accessible guided tour and a new Plinth landing page.
-- Existing DPS exams, student accounts, learning, IDEs, teacher tools and proctoring retained; Institute attendance, timetable, announcements and fee records added.
-- Workplace teams, tasks, attendance, explicit monitoring consent, policy/work-hour checks, shared WebRTC signalling, flag clips, membership-controlled chat and files.
-- A thin Electron bridge with an always-visible sharing badge, pause, restricted IPC/navigation and a signing-required Windows release configuration.
-- Brevo HTTPS transactional email and TLS SMTP support shared by organisation verification and student password resets. Server credentials never enter the frontend or repository.
-- Migration and storage-quota enforcement, export/deletion controls, feature settings and tenant isolation tests. Printed student slips use the organisation's name and current site address.
+- Plinth retains its Institute and Workplace sites, branding, themes, guided tour, tenant isolation, teams, tasks, attendance, chat, files and consented sharing.
+- Work progress now combines assigned-task summaries with observed activity estimates. Employee CSV reports include editing, interaction, reading, meeting, idle and unknown time, estimated engagement hours, task outcomes, repetition counts, review flags and explicit limitations. Reports are restricted to the employee, their team manager or administrator.
+- Writing mode can raise an idle review signal after five minutes and a sustained repetition signal. Reading and meeting modes do not trigger idle-input flags. Browser observation covers the Plinth page; it does not measure work in other applications. The Windows source adds device-idle sensing without a keyboard hook, but a new signed Windows installer has not been produced or tested.
+- Optional exam head/gaze analysis is deployed on both sites. A teacher must enable it and a student must separately consent. The CPU model runs locally in a browser worker; its pinned model and WASM are hosted by the app. Head turn, approximate gaze deviation, missing face and multiple faces generate review events only after sustained changes. These events carry zero cheating-score points. No microphone or whisper classifier is included.
+- Consent withdrawal and camera shutdown stop local analysis. A rejected optional vision event cannot block the existing tab-switch/fullscreen event queue. Existing account/guest join, autosave, Socket.IO monitoring and submission routes remain in place.
+- Server-side SMTP supports Brevo relay settings with required STARTTLS. Relay host, port 2525, username and the active sender are configured privately on Plinth and the DPS API. The SMTP key is missing; email authorization and delivery are not operational yet. The connector cannot export or generate that key. Public organisation provisioning continues to show an actionable unavailable message rather than pretend a verification email was sent.
+- An authenticated HTTPS gateway for optional local Ollama task-summary review is supplied. It has not been installed or connected to an organisation PC. See AI_SETUP.md for exact configuration and limits.
 
-## Verified
+## Post-deployment verification
 
 | Check | Result |
 | --- | --- |
-| Server tests | 47 passed |
-| Existing student-account integration tests | 26 passed |
-| Frontend tests | 56 passed |
-| Platform/tenant integration tests | 15 passed |
-| Desktop bridge policy tests | 3 passed |
-| Total automated tests | 147 passed, zero failures |
-| JavaScript checks | Passed |
-| Optimised frontend and separate staging visual builds | Passed |
-| Deployed HTTPS/socket/storage smoke | 46 checks passed |
-| Real Institute IDE preview | HTML rendered and JavaScript console output confirmed in the browser |
-| Responsive Institute route matrix | 684 checks completed; one timed-out fixture passed on recheck |
+| Server tests | 52 passed |
+| Student-account integration tests | 26 passed |
+| Frontend tests | 62 passed |
+| Platform/tenant integration tests | 17 passed |
+| Desktop policy tests | 3 passed |
+| Total automated tests | 160 passed, zero failures |
+| Plinth production HTTPS/socket/storage/work-report smoke | 63 checks passed |
+| DPS production account/guest exam flow and vision consent smoke | 16 checks passed |
+| Staging Institute responsive fixtures | 684 completed; one timeout passed on exact recheck |
+| Deployed browser vision model initialization | CPU worker and WASM initialized successfully, without a camera |
+| Plinth landing | Public page rendered; horizontal overflow fixed and verified |
 
-The deployed smoke exercises student login and first password change, guest and account exam join, answer autosave, monitor Socket.IO events, proctor flags and submission. It also exercises synthetic Workplace provisioning, organisation login, roles, consent, hours, relay signalling, severity, valid WebM storage and authorised downloads, chat/files, pause and logout. The Workplace verification token is explicitly a staging fixture; this is not proof of email delivery. The uploaded WebM is a valid encoded test file; this is not proof of browser screen capture or real RTP playback.
+The 684 fixture checks cover 54 Institute route variants at 360/768/1440px, light/dark themes and normal/reduced motion, plus eighteen empty and eighteen error states. The `/teacher/grades` 360px/dark/normal populated fixture timed out once and passed when rerun. Completed checks found no measured overflow, unlabelled visible form controls, measured text-contrast failures or page errors. Synthetic transport and data are used. This is not a complete manual accessibility or Lighthouse audit and does not cover every new Workplace screen.
 
-The browser matrix covers 54 Institute route variants at 360/768/1440px, in light/dark mode and normal/reduced motion (648 populated checks), plus 18 empty and 18 error states. It uses synthetic records and transport, without real capture or credentials. No overflow above 2px, unlabelled visible form controls, measured text-contrast failures or page errors were found. One teacher-login fixture at 768px/light/reduced timed out and then passed when rerun. This is a DOM/layout check, not a complete screen-reader, manual contrast or Lighthouse audit. New Workplace screens and actual media still need the release checks above.
+Production exam checks exercise HTTPS cookie login, account and guest check-in, answers, autosave, teacher Socket.IO events, vision permission boundaries, submission and logout. Workplace checks cover tenant access, current consent, work hours, replay prevention, scoped reports and CSV, assigned summaries, shared relay signalling, valid encoded WebM storage, authorised downloads, chat/files, pause and logout. Verification tokens and users are synthetic fixtures, and cleanup is limited to those fixtures. These checks do not establish real email delivery, browser screen capture, camera accuracy or real RTP playback.
 
-## Production protection
+The final deployed application revisions are `6c7b7866d5691d51098d8507c77e66c138471c05` for Plinth and `243ec82a239135c21c1517a5304bedd6ff6bbff4` for DPS. This report can be updated without a runtime change.
 
-Production stays at `d62579178142e9d70c790a63f5dc2fe1c7c0b39a`. No production environment variables or database migrations have been applied. A retained Neon branch backup was created and verified ready before staging migrations. The active-exam/next-three-hours SQL gate returned no exams during this session. Recheck the public schedules for every class and the SQL gate immediately before any production migration/deploy.
+## Production protection and remaining setup
 
-The cloned staging database applied migrations 010 and 011 successfully. Earlier staging build and smoke-harness problems were fixed before the successful deployment. There have been **no production rollbacks** and no production database restore.
+The public exam-date endpoint and the production SQL gate were checked before deployment; no exam was live or due to start within three hours. A fresh DPS Neon branch backup was verified ready before the additive vision-consent migration. Plinth was provisioned on a separate clone of staging; workplace progress and consent migrations were applied there. A later, additional Plinth snapshot attempt hit the Neon branch quota and did not create a new backup. Existing backup/source branches were retained. No production rollback or database restore occurred.
 
-## Unresolved release gates
+1. Put the Brevo SMTP key into private Render `SMTP_PASSWORD` and redeploy both configured server services. Never commit it or put it in frontend variables. Then verify controlled delivery and one-time organisation verification/student reset links. Email is currently blocked on this credential.
+2. Install Ollama and Node.js 22 on the organisation PC, pull `qwen3:4b`, configure the supplied HTTPS gateway behind an organisation-controlled authenticated tunnel, and set private Render `LOCAL_AI_GATEWAY_URL` and `LOCAL_AI_GATEWAY_KEY`. AI review remains disabled until connected.
+3. Validate actual cameras in a supervised pilot. Gaze/head changes and input counts are fallible observations, not proof of cheating or productive/irrelevant work. They do not make grade or employment decisions.
+4. Test real browser screen capture, manager/teacher playback, recorded flag clips and TURN across networks. Build, sign and test the Windows companion on Windows before publishing an installer.
 
-1. **Real email delivery.** This session exposes no Brevo tool/connection and has no private Brevo credential or verified sender. Public site creation remains disabled with a clear message; it does not issue a fake verification link. Configure `MAIL_PROVIDER=brevo`, `BREVO_API_KEY` and `MAIL_FROM` only in the private Render service environment, using a sender verified in Brevo. The Brevo API key is different from an SMTP key. Then verify inbox delivery, one-time verification/provisioning and a real school-email password reset. Standard SMTP ports are blocked on Render's free plan; HTTPS avoids that restriction.
-2. **Actual browser media.** Run the Institute and Workplace flows with real `getDisplayMedia`/`MediaRecorder`, teacher/manager stream playback and review of a browser-produced flag clip. The current relay and storage checks do not replace this test. Validate TURN across different networks.
-3. **Windows release.** No Windows runtime, trusted signing certificate or update-feed credentials are available. Test reboot, pickerless consent-gated capture, active-window sensing, webcam-off behaviour, persistent badge and pause on Windows; publish only a genuinely signed installer. The download endpoint remains unavailable until that artifact exists.
-4. **Tenant subdomains.** No owned wildcard domain or DNS credentials are available. Staging uses functional `/t/:slug` addresses. No unregistered subdomain is represented as live.
-
-Production deployment remains conditional on the user's specified release gates. Once they pass: recheck exams, retain a fresh backup, deploy the tested build and migrate, run the production smoke, and automatically revert the build and restore the backup if the smoke fails.
-
-See DESIGN.md, ARCHITECTURE.md, COMPLIANCE.md and docs/DPS_DESIGN.md for the design, preservation baseline and operational details.
+See AI_SETUP.md, DESIGN.md, ARCHITECTURE.md and docs/DPS_DESIGN.md for setup, design and preservation details.
