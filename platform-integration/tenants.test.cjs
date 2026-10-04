@@ -725,6 +725,25 @@ test(
         );
       },
     );
+    await t.test('work activity requires current consent and rejects replay and foreign sessions',async()=>{
+      const activity={mode:'reading',source:'browser',inputEvents:0,edits:0,repeats:0,idleSeconds:600};
+      const endpoint=work.base+'/api/productivity/sessions/'+session.id+'/activity';
+      const first=await req(endpoint,employee,'POST',activity);assert.equal(first.status,200,JSON.stringify(first.data));assert.equal(first.data.category,'reading');
+      assert.equal((await req(endpoint,employee,'POST',activity)).data.accepted,false);
+      assert.equal((await req(endpoint,work.jar,'POST',activity)).status,404);
+      assert.equal((await req(other.base+'/api/productivity/sessions/'+session.id+'/activity',other.jar,'POST',activity)).status,404);
+    });
+    await t.test('work summaries and reports obey assignee, employee and tenant boundaries',async()=>{
+      const created=await req(work.base+'/api/workplace/tasks',work.jar,'POST',{teamId:team.id,assigneeId:session.user_id,title:'Synthetic report outcome',description:'Scope a progress report'});
+      assert.equal(created.status,201,JSON.stringify(created.data));const taskId=created.data.task.id;
+      const summary={taskId,summary:'Completed the report scope checks using synthetic data.',aiConsent:false};
+      assert.equal((await req(work.base+'/api/productivity/summaries',employee,'POST',summary)).status,201);
+      assert.equal((await req(work.base+'/api/productivity/summaries',work.jar,'POST',summary)).status,404);
+      assert.equal((await req(other.base+'/api/productivity/summaries',other.jar,'POST',summary)).status,404);
+      const own=await req(work.base+'/api/productivity/report',employee);assert.equal(own.status,200,JSON.stringify(own.data));assert.equal(own.data.rows.length,1);assert.equal(own.data.rows[0].employee_id,session.user_id);assert.equal(own.data.rows[0].summaries,1);
+      assert.equal((await req(work.base+'/api/productivity/report',null)).status,401);
+      const foreign=await req(other.base+'/api/productivity/report',other.jar);assert(!foreign.data.rows?.some(r=>r.employee_id===session.user_id));
+    });
     await t.test(
       'Workplace uses the shared relay with team ownership, optional webcam and pause checks',
       async () => {
