@@ -8,7 +8,8 @@ export default function useLocalVision({enabled,stream,onEvent}) {
     if(!window.Worker || !window.createImageBitmap || !window.OffscreenCanvas){setStatus('unavailable');return;}
     let disposed=false, busy=false, ready=false;
     setStatus('loading');
-    const worker=new Worker(new URL('../services/vision.worker.js',import.meta.url),{type:'module'});
+    // MediaPipe loads its WASM factory with importScripts; use Vite's bundled classic worker.
+    const worker=new Worker(new URL('../services/vision.worker.js',import.meta.url),{type:'classic'});
     workerRef.current=worker;
     const video=document.createElement('video');video.muted=true;video.playsInline=true;video.srcObject=stream;
     video.play().catch(()=>setStatus('unavailable'));
