@@ -1,7 +1,7 @@
 // This entry exists only in the separately built staging visual bundle.
 import React,{useRef,useState} from 'react'
 import {createRoot} from 'react-dom/client'
-import App from '../App'
+import App from '../InstituteApp'
 import {installFixtures} from './fixtures'
 import '../styles/globals.css'
 import '../styles/animations.css'
@@ -96,4 +96,3 @@ if(params.get('frame')==='1'){
  }
  createRoot(document.getElementById('root')).render(<Gallery/> )
 }
-

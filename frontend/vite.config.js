@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
     base: mode === 'visual' ? '/visual/' : env.VITE_BASE_PATH || '/',
-    define: mode === 'visual' ? {'import.meta.env.VITE_ROUTER_MODE':JSON.stringify('hash'),'import.meta.env.VITE_DEMO_MODE':JSON.stringify('false')} : {},
+    define: mode === 'visual' ? {'import.meta.env.VITE_PLINTH_MODE':JSON.stringify('false'),'import.meta.env.VITE_ROUTER_MODE':JSON.stringify('hash'),'import.meta.env.VITE_DEMO_MODE':JSON.stringify('false')} : {},
     resolve: { alias: mode === 'visual' ? { 'socket.io-client': fileURLToPath(new URL('./src/visual/socket.js',import.meta.url)) } : {} },
     plugins: [react()],
     server: { port: 5173 },
