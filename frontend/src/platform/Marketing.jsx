@@ -440,7 +440,8 @@ export default function Marketing() {
               </div>
               <ul>
                 <li>Teams, tasks & session attendance</li>
-                <li>Consented screen sharing & flag review</li>
+                <li>Task outcomes, work summaries & employee reports</li>
+                <li>Consented activity estimates & human flag review</li>
                 <li>Channels, direct messages & shared files</li>
               </ul>
               <span className="p-path-cta">

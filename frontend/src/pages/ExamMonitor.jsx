@@ -25,6 +25,7 @@ import { mergeMonitorStatus, isRunningExamStatus } from '../utils/monitoringStat
 
 const EMPTY_FLAGS = { tab: 0, blur: 0, fullscreen: 0, copyPaste: 0, devtools: 0, other: 0 }
 const SERVER_EVENT_TYPES = {
+  VISION_HEAD_TURN:'vision_head_turn', VISION_GAZE_AWAY:'vision_gaze_away', VISION_FACE_MISSING:'vision_face_missing', VISION_MULTIPLE_FACES:'vision_multiple_faces',
   TAB_SWITCH: 'tab_hidden', WINDOW_BLUR: 'window_blur', WINDOW_FOCUS: 'window_focus',
   FULLSCREEN_EXIT: 'fullscreen_exit', COPY: 'copy', PASTE: 'paste', RIGHT_CLICK: 'right_click',
   MULTIPLE_SESSION_ATTEMPT: 'multiple_tabs', BROWSER_CHANGED: 'devtools_suspected',

@@ -38,7 +38,8 @@ function Step({ done, required, icon: Icon, title, children }) {
  */
 export default function ProctoringConsentModal({ open, exam, allowOptionalScreen = false, onReady, onDecline }) {
   const settings = exam?.settings || {}
-  const needCam = !!settings.requireWebcam
+  const needCam = !!settings.requireWebcam || !!settings.visionTracking
+  const [visionConsent, setVisionConsent] = useState(false)
   const needScreen = !!settings.requireScreen
   const canStartScreen = needScreen || allowOptionalScreen
   const [webcam, setWebcam] = useState(null)
@@ -94,7 +95,7 @@ export default function ProctoringConsentModal({ open, exam, allowOptionalScreen
     } catch { /* the exam room will ask again */ }
     handedOver.current = true
     setBusy('')
-    onReady?.({ webcam, screen })
+    onReady?.({ webcam, screen, visionConsent: settings.visionTracking && visionConsent })
   }
 
   const decline = () => {
@@ -164,6 +165,11 @@ export default function ProctoringConsentModal({ open, exam, allowOptionalScreen
         After you start, the teacher can view already-consented feeds without asking again; an on-screen indicator stays visible. Sharing stops when you submit or leave. Browser permissions must be granted separately, and you can stop a track using the browser's controls. A flag alone does not prove cheating.
       </p>
 
+      {settings.visionTracking && <div className="mt-4 rounded-xl border border-white/10 p-4">
+        <label className="flex items-start gap-3 text-sm"><input type="checkbox" checked={visionConsent} onChange={e=>setVisionConsent(e.target.checked)} />
+          <span>I agree to local head and gaze analysis during this exam.</span></label>
+        <p className="mt-2 text-xs text-slate-400">Look straight at the screen for the first few seconds to calibrate. Sustained head turns, gaze deviations, missing or multiple faces generate approximate review signals. Lighting, glasses and camera position affect accuracy. This analysis uploads no images or landmarks, uses no microphone, and never decides your grade. You can pause or recalibrate it. Declining this analysis does not prevent starting the exam.</p>
+      </div>}
       <div className="mt-6 flex flex-wrap justify-end gap-3">
         <button type="button" className="btn btn-ghost" onClick={decline} disabled={busy === 'start'}>Go back</button>
         <button type="button" className="btn btn-primary" onClick={start} disabled={!ready || !!busy}>

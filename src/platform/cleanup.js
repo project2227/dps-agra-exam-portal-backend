@@ -11,6 +11,8 @@ const OWNED_DELETE_ORDER = [
   'work_recording_chunks',
   'work_recordings',
   'work_events',
+  'work_progress_notes',
+  'work_activity_intervals',
   'work_tasks',
   'work_sessions',
   'monitoring_consents',
@@ -93,6 +95,8 @@ async function cleanup() {
           0,
         );
 
+        await c.query("DELETE FROM work_activity_intervals WHERE created_at < now() - make_interval(days => $1)", [tenant.retention_days]);
+        await c.query("DELETE FROM work_progress_notes WHERE created_at < now() - make_interval(days => $1)", [tenant.retention_days]);
         await c.query(
           "UPDATE work_sessions SET status='offline',active_socket_id=NULL WHERE ended_at IS NULL AND last_seen_at<now()-interval '90 seconds' AND status='sharing'",
         );

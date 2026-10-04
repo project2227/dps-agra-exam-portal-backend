@@ -20,6 +20,7 @@ import {
   TenantHome,
 } from './Shell';
 const Dashboard = lazy(() => import('./WorkDashboard'));
+const Progress = lazy(() => import('./WorkProgress'));
 const Sharing = lazy(() => import('./WorkSharing'));
 const Tasks = lazy(() => import('./WorkTasks'));
 const Chat = lazy(() => import('./Chat'));
@@ -63,6 +64,7 @@ export default function PlatformApp() {
                         }
                       >
                         <Route path="/dashboard" element={<Dashboard />} />
+                        <Route path="/productivity" element={<Progress />} />
                         <Route path="/sharing" element={<Sharing />} />
                         <Route
                           path="/monitor"

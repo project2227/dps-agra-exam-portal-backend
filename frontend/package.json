@@ -7,11 +7,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/build-visual.mjs",
+    "build": "node scripts/prepare-vision.mjs && vite build && node scripts/build-visual.mjs",
     "preview": "vite preview --port 4173",
     "test": "node --test tests/*.test.js"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "0.10.32",
     "@monaco-editor/react": "^4.6.0",
     "axios": "^1.7.7",
     "gsap": "^3.15.0",

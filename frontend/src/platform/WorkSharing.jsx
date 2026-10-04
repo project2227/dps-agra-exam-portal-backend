@@ -1,3 +1,4 @@
+import useWorkActivity from './useWorkActivity';
 import { useEffect, useRef, useState } from 'react';
 import {
   Monitor,
@@ -46,6 +47,8 @@ export default function WorkSharing() {
   const sharing =
     !!screen?.getVideoTracks().some((t) => t.readyState === 'live') &&
     session?.status === 'sharing';
+  const [workMode,setWorkMode] = useState('writing');
+  const activityStatus=useWorkActivity(session?.id,sharing && consent.data?.accepted === true,workMode);
   current.current = { session, sharing };
   streams.current = { screen, webcam };
   useStudentRTC(socket, streams, sharing);
@@ -278,7 +281,7 @@ export default function WorkSharing() {
       try {
         const q = await request(
           '/api/workplace/sessions/' + current.current.session.id + '/sensor',
-          { method: 'POST', body: data },
+          { method: 'POST', body: {app:data.app,title:data.title} },
         );
         if (q.flag && engine.current?.begin({ flagId: q.flag.id })) {
           clearTimeout(clipTimer);
@@ -388,6 +391,7 @@ export default function WorkSharing() {
                     A short buffer stays in memory. Flag clips are retained for{' '}
                     {consent.data.notice.retentionDays} days.
                   </dd>
+                  <dt>Activity estimates</dt><dd>{consent.data.notice.activity}</dd>
                   <dt>Work hours</dt>
                   <dd>
                     {consent.data.notice.workHours} ·{' '}
@@ -439,6 +443,8 @@ export default function WorkSharing() {
         </section>
         <section className="p-card">
           <h2>{sharing ? 'Sharing controls' : 'Your sharing session'}</h2>
+          <label>Current work mode<select className="input" value={workMode} onChange={e=>setWorkMode(e.target.value)}><option value="writing">Writing or editing</option><option value="reading">Reading or research</option><option value="meeting">Meeting or discussion</option></select></label>
+          <p role="status">{activityStatus}. Reading and meeting modes do not generate idle-input alerts.</p>
           <label>
             Team
             <select

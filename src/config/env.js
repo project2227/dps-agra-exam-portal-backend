@@ -15,6 +15,8 @@ const schema = z.object({
   STORE_IP:z.enum(['true','false']).default('false'),
   FINGERPRINT_PEPPER:z.string().min(16),
   SMTP_URL:z.string().default(''), MAIL_FROM:z.string().default(''),
+  SMTP_HOST:z.string().default(''), SMTP_PORT:z.coerce.number().int().min(1).max(65535).default(2525),
+  SMTP_USER:z.string().default(''), SMTP_PASSWORD:z.string().default(''),
   MAIL_PROVIDER:z.enum(['brevo','smtp']).optional(), BREVO_API_KEY:z.string().default(''),
   ACCOUNT_APP_URL:z.string().url().or(z.literal('')).default(''),
   UPLOAD_PROVIDER:z.enum(['s3','postgres','disabled']).default('disabled'),

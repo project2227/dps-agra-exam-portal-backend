@@ -108,6 +108,7 @@ export default function WorkDashboard({
   };
   return (
     <>
+      {!monitor && !attendance && !flags && <section className="p-card"><h2>Start with the work</h2><p>Review tasks and outcomes alongside observed activity. Reading, meetings and gaps stay visible; flags need a conversation.</p><Link className="btn btn-primary" to="/productivity">Review work progress</Link></section>}
       <div className="p-page-heading">
         <div>
           <p className="p-caption">

@@ -23,6 +23,7 @@ if(require('./platform/context').enabled()){
  app.use('/api/platform',require('./routes/platform.routes'));
  app.use('/api/site',require('./routes/site.routes'));
  app.use('/api/erp',require('./routes/erp.routes'));
+ app.use('/api/productivity',require('./routes/productivity.routes'));
  app.use('/api/workplace',require('./routes/workplace.routes'));
  app.use('/api/chat',require('./routes/chat.routes'));
 }

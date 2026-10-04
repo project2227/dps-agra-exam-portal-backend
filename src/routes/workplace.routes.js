@@ -128,12 +128,12 @@ router.get(
   asyncWrap(async (req, res) => {
     const t = currentTenant(),
       q = await db.query(
-        'SELECT accepted_at,revoked_at FROM monitoring_consents WHERE user_id=$1 AND policy_version=$2',
+        'SELECT accepted_at,revoked_at,notice FROM monitoring_consents WHERE user_id=$1 AND policy_version=$2',
         [req.actor.id, t.monitoring_policy.version],
       );
     res.json({
       notice: work.notice(t),
-      accepted: !!q.rows[0] && !q.rows[0].revoked_at,
+      accepted: !!q.rows[0] && !q.rows[0].revoked_at && q.rows[0].notice?.activityVersion === 1,
       canShare: work.workHours(t.monitoring_policy),
       policyVersion: t.monitoring_policy.version,
     });

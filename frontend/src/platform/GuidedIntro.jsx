@@ -44,7 +44,7 @@ const SCENES = [
   },
   {
     title: 'Your team, at a glance.',
-    text: 'Managers see consented screen tiles, online status, attendance, assigned tasks and flags sorted by severity. Employees can see their own activity and flag history.',
+    text: 'Start with assigned tasks and work summaries. Work progress brings observed activity, declared reading or meetings and outcomes into a downloadable employee report. Estimates and flags need human review; employees can see their own records.',
     path: 'workplace',
     scene: 'monitor',
   },

@@ -364,6 +364,7 @@ export function WorkLayout() {
   const manager = ['admin', 'manager'].includes(user?.role);
   const links = [
     ['/dashboard', 'Overview'],
+    ['/productivity', 'Work progress'],
     ['/sharing', 'My sharing'],
     ...(manager ? [['/monitor', 'Live monitor']] : []),
     ['/tasks', 'Tasks'],
@@ -394,6 +395,7 @@ export function WorkLayout() {
                   '/tasks': 'tasks',
                   '/chat': 'chat',
                   '/attendance': 'attendance',
+                  '/productivity': 'monitoring',
                   '/sharing': 'monitoring',
                   '/monitor': 'monitoring',
                   '/flags': 'monitoring',
@@ -404,7 +406,8 @@ export function WorkLayout() {
                     '/tasks': 'tasks',
                     '/chat': 'chat',
                     '/attendance': 'attendance',
-                    '/sharing': 'monitoring',
+                    '/productivity': 'monitoring',
+                  '/sharing': 'monitoring',
                     '/monitor': 'monitoring',
                     '/flags': 'monitoring',
                     '/teams': 'teams',

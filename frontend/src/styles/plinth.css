@@ -2097,6 +2097,7 @@ html[data-plinth] .modal-panel {
   margin-top: 20px;
 }
 .p-table-wrap {
+  max-width: 100%;
   position: relative;
   max-width: 100%;
   overflow: auto;
@@ -3337,3 +3338,10 @@ html[data-plinth] .modal-panel {
     transform: none;
   }
 }
+
+/* Task outcomes and estimates remain legible on lab desktops and phones. */
+.p-grid-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--p-space-5, 1.25rem); margin-bottom: 1.25rem; }
+.p-grid-two label { display: block; margin: .8rem 0; }
+.p-grid-two .p-checkbox { display: flex; }
+.p-grid-two textarea { width: 100%; }
+@media (max-width: 768px) { .p-grid-two { grid-template-columns: minmax(0, 1fr); } }

@@ -5,6 +5,8 @@ const { currentTenant } = require('./context');
 const { EVENT_SEVERITY } = require('../services/proctor');
 const SEVERITY = {
   ...EVENT_SEVERITY,
+  IDLE_ACTIVITY: 'low',
+  REPETITIVE_ACTIVITY: 'low',
   NON_WORK_APP: 'medium',
   SHARING_PAUSED: 'low',
   SHARING_STARTED: 'low',
@@ -46,6 +48,8 @@ function notice(tenant) {
   const p = tenant.monitoring_policy;
   return {
     version: p.version,
+    activityVersion: 1,
+    activity: 'Aggregate input counts, edit sizes, repeated-key counts and idle duration while sharing. No key values or field text. Browser observation is partial; Windows can report device idle. Declared reading/meeting modes prevent idle alerts. Task summaries are optional; local AI receives them only when you choose it. Estimates and alerts require human review.',
     organisation: tenant.name,
     screen: true,
     webcam: 'Optional, off by default. Turn it off at any time.',

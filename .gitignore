@@ -7,3 +7,6 @@ coverage/
 .DS_Store
 
 frontend/.test-cache/
+
+# Reproducible, checksum-verified model assets; built on deploy.
+frontend/public/ai/

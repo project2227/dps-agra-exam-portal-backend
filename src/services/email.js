@@ -6,7 +6,8 @@ const nodemailer = require('nodemailer');
 const address = (value) => /^[^\s@<>\r\n]+@[^\s@<>\r\n]+\.[^\s@<>\r\n]+$/.test(value || '');
 function configuration(env = process.env) {
   const provider = env.MAIL_PROVIDER || (env.BREVO_API_KEY ? 'brevo' : 'smtp');
-  const ready = address(env.MAIL_FROM) && (provider === 'brevo' ? !!env.BREVO_API_KEY : provider === 'smtp' && !!env.SMTP_URL);
+  const smtp = !!env.SMTP_URL || (!!env.SMTP_HOST && !!env.SMTP_USER && !!env.SMTP_PASSWORD);
+  const ready = address(env.MAIL_FROM) && (provider === 'brevo' ? !!env.BREVO_API_KEY : provider === 'smtp' && smtp);
   return { provider, ready, from: env.MAIL_FROM };
 }
 const emailReady = () => configuration().ready;
@@ -25,9 +26,13 @@ async function sendEmail({ to, subject, text, name = 'Plinth' }) {
       if (!response.ok) throw unavailable();
       await response.body?.cancel();
     } else {
-      const transport = nodemailer.createTransport(process.env.SMTP_URL, {
-        requireTLS: true, connectionTimeout: 15000, greetingTimeout: 10000, socketTimeout: 20000,
-      });
+      const opts = { requireTLS: true, connectionTimeout: 15000, greetingTimeout: 10000, socketTimeout: 20000,
+        tls: { minVersion: 'TLSv1.2', rejectUnauthorized: true } };
+      const transport = process.env.SMTP_URL
+        ? nodemailer.createTransport({ ...opts, ...require('nodemailer/lib/shared').parseConnectionUrl(process.env.SMTP_URL) })
+        : nodemailer.createTransport({ ...opts, host: process.env.SMTP_HOST, port: Number(process.env.SMTP_PORT || 2525),
+            secure: Number(process.env.SMTP_PORT || 2525) === 465,
+            auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD } });
       try { await transport.sendMail({ from: { name, address: config.from }, to, subject, text }); }
       finally { transport.close?.(); }
     }
