@@ -431,3 +431,4 @@ html[data-theme='dark'] .legacy-exam-landing .exam-crest-orbit { border-color: #
 .legacy-exam-landing .exam-crest { overflow: visible; }
 .legacy-exam-landing .lab-nav-actions .nav-exam { background: #203e2e!important; color: #f7faef!important; }
 html[data-theme='dark'] .legacy-exam-landing .lab-nav-actions .nav-exam { background: #dcecbe!important; color: #203e2e!important; }
+.legacy-exam-landing .footer-motto { color: var(--lab-muted); opacity: 1; }
