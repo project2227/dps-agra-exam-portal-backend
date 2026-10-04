@@ -26,6 +26,7 @@ html[data-plinth] {
   scroll-padding-top: 96px;
 }
 html[data-plinth] body {
+  overflow-x: clip;
   background: rgb(var(--paper));
   color: rgb(var(--ink));
 }

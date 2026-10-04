@@ -1,0 +1,10 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict');
+Object.assign(process.env,{NODE_ENV:'test',FRONTEND_URL:'http://127.0.0.1:5000',DATABASE_URL:'postgres://disposable-test-only',JWT_SECRET:'synthetic-secret-for-unit-tests-only-32',STUDENT_SESSION_SECRET:'synthetic-student-secret-unit-tests-32',FINGERPRINT_PEPPER:'synthetic-unit-pepper'});
+const {classify,csvCell,reviewSummary}=require('../src/platform/productivity');
+const base={mode:'writing',source:'browser',inputEvents:100,edits:50,repeats:0,idleSeconds:10};
+test('reading and meetings remain declared modes even without input',()=>{for(const mode of ['reading','meeting'])assert.equal(classify({...base,mode,inputEvents:0,edits:0,idleSeconds:600}),mode);});
+test('idle, repeated input and missing observation are not called productive editing',()=>{assert.equal(classify({...base,idleSeconds:300}),'idle');assert.equal(classify({...base,repeats:90}),'unknown');assert.equal(classify({...base,inputEvents:0,edits:0}),'unknown');assert.equal(classify(base),'editing');});
+test('native interaction is distinct from editing and cannot establish relevance',()=>assert.equal(classify({...base,source:'desktop',inputEvents:0,edits:0}),'interaction'));
+test('CSV exports prevent spreadsheet formulas in employee names and summaries',()=>{assert.equal(csvCell('=HYPERLINK("x")'),'"\'=HYPERLINK(""x"")"');assert.equal(csvCell(' \n+cmd'),'"\' \n+cmd"');assert.equal(csvCell('ordinary'),'"ordinary"');});
+test('unconfigured local AI returns a saved-for-human-review status',async()=>{delete process.env.LOCAL_AI_GATEWAY_URL;delete process.env.LOCAL_AI_GATEWAY_KEY;assert.equal((await reviewSummary('Task','Summary')).status,'unavailable');});

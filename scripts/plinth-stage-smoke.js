@@ -13,11 +13,9 @@ const fixtureVideo = Buffer.from(
 );
 async function stageSmoke() {
   const root = process.env.API_PUBLIC_URL;
-  if (
-    process.env.PLINTH_STAGE_SMOKE !== 'true' ||
-    !/^https:\/\/plinth-stage-[a-z0-9-]+\.onrender\.com$/.test(root || '')
-  )
-    throw Error('This check runs only on the named staging service.');
+  const staging=process.env.PLINTH_STAGE_SMOKE==='true' && /^https:\/\/plinth-stage-[a-z0-9-]+\.onrender\.com$/.test(root||'');
+  const production=process.env.PLINTH_RELEASE_SMOKE==='true' && root==='https://plinth-pk84.onrender.com';
+  if(!staging&&!production)throw Error('Explicit named-service release smoke opt-in required.');
   let checks = 0,
     tenant;
   const sockets = [],
@@ -185,6 +183,17 @@ async function stageSmoke() {
       }),
       201,
     ).session;
+    const activity={mode:'reading',source:'browser',inputEvents:0,edits:0,repeats:0,idleSeconds:600};
+    const observed=ok(await request(base+'/api/productivity/sessions/'+session.id+'/activity',employee,'POST',activity));assert.equal(observed.category,'reading');
+    assert.equal(ok(await request(base+'/api/productivity/sessions/'+session.id+'/activity',employee,'POST',activity)).accepted,false);
+    ok(await request(base+'/api/productivity/sessions/'+session.id+'/activity',admin,'POST',activity),404);
+    const report=ok(await request(base+'/api/productivity/report',employee));assert.equal(report.rows.length,1);
+    assert.ok(!report.rows.some(r=>r.name==='Synthetic admin'));
+    const exported=ok(await request(base+'/api/productivity/export.csv',admin));assert.ok(exported.toString().includes('estimated_engaged_hours'));
+    const task=ok(await request(base+'/api/workplace/tasks',admin)).tasks.find(t=>t.assignee_id===null);
+    if(task){
+      ok(await request(base+'/api/productivity/summaries',employee,'POST',{taskId:task.id,summary:'Cannot claim someone else’s task',aiConsent:false}),404);
+    }
     const opts = (j) => ({
       transports: ['websocket'],
       reconnection: false,
