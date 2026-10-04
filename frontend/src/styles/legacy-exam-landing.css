@@ -427,3 +427,7 @@ html[data-theme='dark'] .legacy-exam-landing .exam-crest-orbit { border-color: #
 @media(prefers-reduced-motion:reduce) {
  .legacy-exam-landing,.legacy-exam-landing *, .legacy-exam-landing *::before,.legacy-exam-landing *::after { animation:none!important;transition:none!important;scroll-behavior:auto!important; }
 }
+/* Keep the current account-aware navbar legible in the restored public shell. */
+.legacy-exam-landing .exam-crest { overflow: visible; }
+.legacy-exam-landing .lab-nav-actions .nav-exam { background: #203e2e!important; color: #f7faef!important; }
+html[data-theme='dark'] .legacy-exam-landing .lab-nav-actions .nav-exam { background: #dcecbe!important; color: #203e2e!important; }
