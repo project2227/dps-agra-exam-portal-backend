@@ -11,7 +11,7 @@ import { BrowserRouter, HashRouter, Navigate, Route, Routes } from 'react-router
 import { ToastProvider } from './components/common/Toast'
 import { StudentGuard, TeacherGuard, StudentAccountGuard } from './components/common/Guards'
 const TeacherLayout = lazy(() => import('./components/layout/TeacherLayout'))
-import LandingPage from './pages/ExamLanding'
+const LandingPage = lazy(() => import('./pages/LegacyExamLanding'))
 const StudentJoinPage = lazy(() => import('./pages/StudentJoinPage'))
 const TeacherLogin = lazy(() => import('./pages/TeacherLogin'))
 import NotFound from './pages/NotFound'
