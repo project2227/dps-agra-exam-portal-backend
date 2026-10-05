@@ -1,15 +1,21 @@
 // Disposable, synthetic PostgreSQL-compatible stage. No connection to production.
-import {PGlite} from '@electric-sql/pglite'
-import {citext} from '@electric-sql/pglite/contrib/citext'
-import {pgcrypto} from '@electric-sql/pglite/contrib/pgcrypto'
 import {createRequire} from 'node:module'
 import crypto from 'node:crypto'
 import {readFile} from 'node:fs/promises'
-import v8 from 'node:v8'
+import {spawn} from 'node:child_process'
 const require=createRequire(import.meta.url)
 if(process.env.DPS_DISPOSABLE_STAGE!=='true'||process.env.DATABASE_URL!=='postgres://disposable-ai-stage-only')throw Error('This stage must not use a real database.')
 // Avoid PostgreSQL WASM's large optimizing-compiler memory peak on this stage.
-v8.setFlagsFromString('--liftoff-only')
+// These flags must be set before V8 starts, rather than changed at runtime.
+if(!process.execArgv.includes('--liftoff-only')){
+ const child=spawn(process.execPath,['--max-old-space-size=128','--liftoff-only',...process.execArgv,...process.argv.slice(1)],{stdio:'inherit'})
+ for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>child.kill(signal))
+ const code=await new Promise(resolve=>{child.on('error',()=>resolve(1));child.on('exit',c=>resolve(c??1))})
+ process.exit(code)
+}
+const {PGlite}=await import('@electric-sql/pglite')
+const {citext}=await import('@electric-sql/pglite/contrib/citext')
+const {pgcrypto}=await import('@electric-sql/pglite/contrib/pgcrypto')
 process.env.DPS_AI_GATEWAY_KEY=crypto.randomBytes(32).toString('base64url')
 process.env.DPS_AI_GATEWAY_URL=await require('../scripts/staging-ai-gateway').startStagingGateway(process.env.DPS_AI_GATEWAY_KEY)
 // Pre-warming avoids a second database engine during runtime initialization.
