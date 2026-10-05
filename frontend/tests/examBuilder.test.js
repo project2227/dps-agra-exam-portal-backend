@@ -33,6 +33,12 @@ test('AI MCQ index zero becomes the correct option text and rubric approval star
  const loaded=ui.normalizeTeacherQuestion({id:'q',type:'mcq',description:q.prompt,marks:1,options:q.options,correct_answer:'2'})
  assert.equal(loaded.correct,'0');assert.deepEqual(ui.validateQuestions([loaded]),{})
 })
+test('every AI practical language renders in the exam editor, including JavaScript',()=>{
+ const languages=['python','java','cpp','c','javascript'],items=languages.map(language=>ui.aiQuestionToEditor({...q,type:'code',prompt:'Practical in '+language,options:[],correctAnswer:null,language}))
+ render(wrap(h(ui.Builder,{questions:items,onChange:()=>{},examClass:'IX'})))
+ assert.equal(screen.getAllByLabelText('Question').length,5);assert.equal(screen.getAllByLabelText('Programming language')[4].value,'javascript');assert.ok(screen.getByPlaceholder('Optional JavaScript code students start with'))
+ assert.ok(items.every(item=>Object.keys(ui.validateQuestions([item])).length===0));assert.deepEqual(items.map(item=>ui.toBackendQuestion(item).language),languages)
+})
 test('AI preview requires teacher review before questions can be added',async()=>{
  ui.api.getExamAiStatus=async()=>({ready:true,message:'Local AI is connected.'});ui.api.getHandouts=async()=>[]
  let added=null;ui.api.generateExamDraft=async()=>({title:'Addition test',questions:[q],warnings:[],status:'draft',needsTeacherReview:true})

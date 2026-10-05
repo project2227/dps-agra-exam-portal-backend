@@ -35,6 +35,7 @@ export const LANGUAGES = {
   c: { label: 'C', long: 'C (GCC)', monaco: 'c' },
   cpp: { label: 'C++', long: 'C++17 (G++)', monaco: 'cpp' },
   sql: { label: 'SQL', long: 'SQL basics (SQLite)', monaco: 'sql' },
+  javascript: { label: 'JavaScript', long: 'JavaScript (Node.js)', monaco: 'javascript' },
 }
 
 // Which IDEs each class sees on the dashboard and in the exam builder.
@@ -102,4 +103,3 @@ export const FLAG_BUCKETS = {
 export function bucketOf(type) {
   return Object.keys(FLAG_BUCKETS).find((k) => FLAG_BUCKETS[k].types.includes(type)) || null
 }
-
