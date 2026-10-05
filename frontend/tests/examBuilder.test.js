@@ -36,7 +36,7 @@ test('AI MCQ index zero becomes the correct option text and rubric approval star
 test('every AI practical language renders in the exam editor, including JavaScript',()=>{
  const languages=['python','java','cpp','c','javascript'],items=languages.map(language=>ui.aiQuestionToEditor({...q,type:'code',prompt:'Practical in '+language,options:[],correctAnswer:null,language}))
  render(wrap(h(ui.Builder,{questions:items,onChange:()=>{},examClass:'IX'})))
- assert.equal(screen.getAllByLabelText('Question').length,5);assert.equal(screen.getAllByLabelText('Programming language')[4].value,'javascript');assert.ok(screen.getByPlaceholder('Optional JavaScript code students start with'))
+ assert.equal(screen.getAllByLabelText('Question').length,5);assert.equal(screen.getAllByLabelText('Programming language')[4].value,'javascript');assert.ok(screen.getByPlaceholderText('Optional JavaScript code students start with'))
  assert.ok(items.every(item=>Object.keys(ui.validateQuestions([item])).length===0));assert.deepEqual(items.map(item=>ui.toBackendQuestion(item).language),languages)
 })
 test('AI preview requires teacher review before questions can be added',async()=>{
