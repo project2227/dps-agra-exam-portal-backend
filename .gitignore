@@ -8,3 +8,4 @@ coverage/
 
 frontend/.test-cache/
 frontend/public/ai/
+.disposable-ai-stage.tgz

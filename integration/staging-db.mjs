@@ -4,11 +4,19 @@ import {citext} from '@electric-sql/pglite/contrib/citext'
 import {pgcrypto} from '@electric-sql/pglite/contrib/pgcrypto'
 import {createRequire} from 'node:module'
 import crypto from 'node:crypto'
+import {readFile} from 'node:fs/promises'
+import v8 from 'node:v8'
 const require=createRequire(import.meta.url)
 if(process.env.DPS_DISPOSABLE_STAGE!=='true'||process.env.DATABASE_URL!=='postgres://disposable-ai-stage-only')throw Error('This stage must not use a real database.')
+// Avoid PostgreSQL WASM's large optimizing-compiler memory peak on this stage.
+v8.setFlagsFromString('--liftoff-only')
 process.env.DPS_AI_GATEWAY_KEY=crypto.randomBytes(32).toString('base64url')
 process.env.DPS_AI_GATEWAY_URL=await require('../scripts/staging-ai-gateway').startStagingGateway(process.env.DPS_AI_GATEWAY_KEY)
-const pg=new PGlite({extensions:{citext,pgcrypto}});await pg.waitReady
+// Pre-warming avoids a second database engine during runtime initialization.
+// This tiny, disposable data set shares a 512 MB free instance with Node.
+const prepared=new Blob([await readFile(new URL('../.disposable-ai-stage.tgz',import.meta.url))])
+const pg=new PGlite({extensions:{citext,pgcrypto},initialMemory:128*1024*1024,
+ loadDataDir:prepared,postgresqlconf:['shared_buffers=16MB','work_mem=1MB','maintenance_work_mem=8MB']});await pg.waitReady
 let tail=Promise.resolve()
 const lock=async()=>{let release;const previous=tail;tail=new Promise(r=>{release=r});await previous;return release}
 const direct=async(sql,params)=>{if(!params?.length){const rs=await pg.exec(sql),r=rs.at(-1)||{};return {...r,rowCount:r.rows?.length||r.affectedRows||0}}const r=await pg.query(sql,params);return {...r,rowCount:r.rows?.length||r.affectedRows||0}}
