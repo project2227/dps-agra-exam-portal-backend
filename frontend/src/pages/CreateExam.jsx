@@ -10,6 +10,7 @@ import TeacherExamBuilder, { newQuestion, validateQuestions } from '../component
 import ExamAiAssistant from '../components/teacher/ExamAiAssistant'
 import { ErrorNote, Spinner } from '../components/common/Feedback'
 import { canEditExam } from '../services/examAiDraft'
+import { moveExamWorkspace, readExamWorkspace, teacherWorkspaceKey, writeExamWorkspace } from '../services/teacherExamWorkspace'
 import api from '../services/api'
 import { CLASSES, EXAM_TYPES, SECTIONS } from '../config'
 import { formatDateTime, fromLocalInput, generatePasscode, toLocalInput } from '../utils/format'
@@ -26,15 +27,18 @@ export default function CreateExam() {
   const toast = useToast()
   const [search, setSearch] = useSearchParams()
   const editId = search.get('edit') || ''
+  const workspaceKey = teacherWorkspaceKey('builder', editId), assistantWorkspaceKey = teacherWorkspaceKey('assistant', editId)
+  const initialWorkspace = useMemo(() => !editId ? readExamWorkspace(workspaceKey) : null, [])
   const loadedId = useRef(''), savedPasscode = useRef('')
   const [existing, setExisting] = useState(null), [loading, setLoading] = useState(!!editId), [loadError, setLoadError] = useState('')
   const times = useMemo(defaultTimes, [])
   const [form, setForm] = useState({
     title: '', class: 'IX', section: 'All', subject: 'Computers', type: 'Practical',
-    startsAt: times.start, endsAt: times.end, durationMin: 45, passcode: generatePasscode(), instructions: '',
+    startsAt: times.start, endsAt: times.end, durationMin: 45, instructions: '', ...(initialWorkspace?.form || {}), passcode: generatePasscode(),
   })
-  const [settings, setSettings] = useState({ requireWebcam: true, requireScreen: true, tabDetection: true, copyPasteRestriction: true, codeExecution: true })
-  const [questions, setQuestions] = useState([])
+  const [settings, setSettings] = useState(initialWorkspace?.settings || { requireWebcam: true, requireScreen: true, tabDetection: true, copyPasteRestriction: true, codeExecution: true })
+  const [questions, setQuestions] = useState(initialWorkspace?.questions || [])
+  const [storageError, setStorageError] = useState(false)
   const [errors, setErrors] = useState({})
   const [qErrors, setQErrors] = useState({})
   const [busy, setBusy] = useState('')
@@ -47,16 +51,22 @@ export default function CreateExam() {
       const r = await api.getExamBuilder(editId)
       if (!canEditExam(r.exam)) throw new Error('This exam is already active, closed or removed. Its questions and timing are locked.')
       const pass = await api.getExamPasscode(editId)
+      const cached = readExamWorkspace(workspaceKey), resume = cached?.updatedAt === r.exam.updated_at ? cached : null
       setExisting(r.exam); loadedId.current = editId
       savedPasscode.current = pass.passcode || ''
       setForm({ title: r.exam.title, class: r.exam.class, section: r.exam.section, subject: r.exam.subject,
         type: r.exam.type, startsAt: toLocalInput(r.exam.startsAt), endsAt: toLocalInput(r.exam.endsAt),
-        durationMin: r.exam.durationMin, passcode: pass.passcode || '', instructions: r.exam.instructions || '' })
-      setSettings(r.exam.settings); setQuestions(r.questions)
+        durationMin: r.exam.durationMin, instructions: r.exam.instructions || '', ...(resume?.form || {}), passcode: pass.passcode || '' })
+      setSettings(resume?.settings || r.exam.settings); setQuestions(resume?.questions || r.questions)
     } catch (e) { setLoadError(e.message) }
     finally { setLoading(false) }
   }
   useEffect(() => { loadExam() }, [editId])
+  useEffect(() => {
+    if (loading || loadError) return
+    const { passcode, ...editableForm } = form
+    setStorageError(!writeExamWorkspace(workspaceKey, { form: editableForm, settings, questions, updatedAt: existing?.updated_at || null }))
+  }, [workspaceKey, form, settings, questions, existing, loading, loadError])
 
   const set = (k) => (e) => {
     const v = e.target.value
@@ -117,6 +127,8 @@ export default function CreateExam() {
       const exam = await api.saveExamDraft({ ...payload(status), expectedUpdatedAt: existing?.updated_at }, existing?.id)
       savedId = exam.id; loadedId.current = exam.id; setExisting(exam); setQuestions(exam.questions)
       if (!form.title.trim()) setForm(f => ({ ...f, title: exam.title }))
+      moveExamWorkspace(assistantWorkspaceKey, teacherWorkspaceKey('assistant', exam.id))
+      if (!editId && workspaceKey) { try { localStorage.removeItem(workspaceKey) } catch { /* the saved draft is available on the server */ } }
       setSearch({ edit: exam.id }, { replace: true })
       // An unfinished password does not prevent draft saving. Valid passwords
       // are saved encrypted through the existing password endpoint.
@@ -196,7 +208,9 @@ export default function CreateExam() {
             </div>
           </GlassCard>
 
-          <ExamAiAssistant examClass={form.class} subject={form.subject} disabled={!!busy} onBusy={setAiBusy} onApply={(items, title) => {
+          {storageError && <p role="alert" className="text-sm text-amber-300">This browser could not keep unsaved edits. Save a draft before leaving.</p>}
+          <ExamAiAssistant workspaceKey={assistantWorkspaceKey} examClass={form.class} subject={form.subject} disabled={!!busy} onBusy={setAiBusy} onApply={(items, title) => {
+            if (questions.length + items.length > 100) throw new Error('An exam can contain up to 100 questions. Remove some exam questions before adding this preview.')
             setQuestions(q => [...q, ...items]); setForm(f => ({ ...f, title: f.title.trim() ? f.title : title })); setQErrors({})
             toast('Reviewed questions added. You can edit them below.', 'success')
           }} />

@@ -1,5 +1,6 @@
 import api,{http} from '../services/api'
 import {updateAccount,setStudentSession} from '../services/session'
+import {teacherWorkspaceKey,writeExamWorkspace} from '../services/teacherExamWorkspace'
 import * as mock from '../services/mockData'
 const now=Date.now(),iso=time=>new Date(time).toISOString()
 const student={id:'visual-student',name:'Preview Student',displayName:'Preview',username:'PREVIEW1001',rollNumber:'14',className:'IX',section:'A',schoolEmail:'',avatar:'book',theme:'light',mustChangePassword:false,learningImportDecided:true,active:true}
@@ -11,6 +12,7 @@ upcoming.updated_at=iso(now)
 const practical={id:'visual-practical',type:'code',title:'Sum function',prompt:'Write a Python function that returns the sum of two numbers.',marks:5,languages:['python'],starterCode:{python:''},visibleTests:[],hiddenTests:[],modelAnswer:'',rubric:'Correct function and arithmetic: 5 marks.',aiMarking:true,rubricApproved:true}
 const classes=mock.classSummaries().filter(c=>['IX','X','XI','XII'].includes(c.name))
 const questions=[{id:'visual-q1',type:'mcq',title:'Variables and values',prompt:'Which value does len("School") return?',marks:2,options:[{id:'a',text:'5'},{id:'b',text:'6'},{id:'c',text:'7'},{id:'d',text:'It returns the string.'}]},{id:'visual-q2',type:'short',prompt:'Explain the purpose of a variable in a program.',marks:3,maxLength:600},{id:'visual-q3',type:'long',prompt:'Explain the difference between a list and a tuple, with an example.',marks:5}]
+const aiQuestion=(type,i=0)=>({type,prompt:type==='mcq'?'Which Python collection is mutable?':type==='code'?'Write a Python function that returns the length of a list.':type==='short'?'What is a Python list?':'Explain lists and tuples with examples.',marks:type==='mcq'?1:5,options:type==='mcq'?['List','Tuple']:[],correctAnswer:type==='mcq'?0:null,modelAnswer:'',rubric:'',language:type==='code'?'python':null,starterCode:'',sourcePages:[],previewId:'visual-preview-'+type+'-'+i,editorId:'visual-editor-'+type+'-'+i,added:false})
 const participants=[{sessionId:'visual-session-a',name:'Preview Student A',rollNumber:'1',class:'IX',section:'A',examId:live.id,examTitle:live.title,status:'active',connected:true,answered:2,totalQuestions:3,flags:{tab:1},timeline:[{type:'tab_hidden',severity:'medium',ts:iso(now-60000)}],lastSavedAt:iso(now-5000),device:{browser:'Chrome',os:'School desktop'},joinedAt:iso(now-600000),previewLanguage:'python',preview:'print("Hello")',webcam:false,screen:false},{sessionId:'visual-session-b',name:'Preview Student B',rollNumber:'2',class:'IX',section:'A',examId:live.id,status:'active',connected:true,answered:1,totalQuestions:3,flags:{other:1},timeline:[{type:'screen_share_stopped',severity:'high',ts:iso(now-30000)}],lastSavedAt:iso(now-8000),device:{browser:'Chrome',os:'School desktop'},webcam:false,screen:false},{sessionId:'visual-session-c',name:'Preview Student C',rollNumber:'3',class:'IX',section:'A',examId:live.id,status:'submitted',connected:true,answered:3,totalQuestions:3,flags:{},timeline:[],lastSavedAt:iso(now-3000),device:{browser:'Chrome'},webcam:false,screen:false}]
 const courses=[{id:'visual-course',title:'Python loops and logic',language:'python',className:'IX',summary:'Practise loops with small, understandable programs.',lessonCount:2,published:true,lessons:[{id:'one',title:'For loops',body:'Use a for loop to repeat a task for every item in a collection.'},{id:'two',title:'While loops',body:'A while loop repeats while a condition is true.'}],resources:[],quiz:[{prompt:'What does a loop do?',options:['Repeats a task','Deletes variables','Opens a page','Prints a file'],answerIndex:0}]}]
 export function installFixtures(params){
@@ -19,6 +21,11 @@ export function installFixtures(params){
  const hasStudent=!route.includes('guest=1') && (route.startsWith('/student/profile') || route.includes('set-password') || route.includes('/student/exam/') || route==='/student/dashboard' || route==='/student/join' || route.startsWith('/learn'))
  const account={ready:true,student:hasStudent?{...student,theme,mustChangePassword:route==='/student/set-password'}:null,teacher:isTeacher?teacher:null,progress:{courses:{python:{completed:[0,1]}},games:{memory:120},mocks:[{score:75}],customTests:[]},csrfToken:null}
  updateAccount(account)
+ if(isTeacher){
+  const examId=new URLSearchParams(route.split('?')[1]||'').get('edit')||''
+  for(const kind of ['builder','assistant'])localStorage.removeItem(teacherWorkspaceKey(kind,examId))
+  if(state==='ai-preview'&&route.startsWith('/teacher/exams/create'))writeExamWorkspace(teacherWorkspaceKey('assistant',examId),{preview:{title:'Synthetic mixed assessment',questions:['mcq','short','long','code'].map(type=>aiQuestion(type)),warnings:['Synthetic visual preview: no AI inference.']}})
+ }
  setStudentSession({sessionId:'visual-session',token:'visual-fixture-only-not-a-credential',student:{name:student.name,rollNumber:student.rollNumber,class:'IX',section:'A'},exam:live,monitoring:{webcam:false,screen:false,recording:false},joinedAt:iso(now)})
  localStorage.setItem('dps.ui.theme',theme);localStorage.setItem('dps.portal.intro.seen.v1','1');document.documentElement.dataset.theme=theme
  document.documentElement.dataset.reduceMotion=params.get('motion')==='reduced'?'true':'false'
@@ -41,7 +48,7 @@ export function installFixtures(params){
   getExamPasscode:read({available:true,passcode:'PREVIEW8888'}),generateExamPasscode:read({passcode:'PREVIEW8888'}),
   saveExamDraft:async p=>({...draft,...p,questions:p.questions}),publishExam:read(upcoming),postponeExam:read(upcoming),
   suggestAnswerMarks:read({verdict:'partially_correct',suggestedMarks:4,explanation:'Synthetic suggestion for visual checks only.',rubricChecks:['Check the function definition.'],needsTeacherReview:true,finalGrade:false}),
-  generateExamDraft:read({title:'Synthetic assessment',questions:[{type:'mcq',prompt:'Which Python collection is mutable?',marks:1,options:['List','Tuple'],correctAnswer:0,modelAnswer:'',rubric:'',language:null,starterCode:'',sourcePages:[]}],warnings:['Synthetic preview: no AI inference.'],needsTeacherReview:true,status:'draft'})
+  generateExamDraft:async p=>({title:'Synthetic assessment',questions:Array.from({length:p.questionCount||1},(_,i)=>aiQuestion(p.questionTypes[i%p.questionTypes.length],i)),warnings:['Synthetic preview: no AI inference.'],needsTeacherReview:true,status:'draft'})
  })
  const history=list([{submission_id:'visual-submission',exam_id:live.id,title:'Previous computer science quiz',date:iso(now-86400000),review_status:'reviewed',score:8,total_marks:10,results_released_at:iso(now)}])
  const reply=path=>{

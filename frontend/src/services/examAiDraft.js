@@ -4,7 +4,7 @@ export function aiQuestionToEditor(q) {
   const options = q.options.map((text, index) => ({ id: String(index), text }))
   const language = q.language || 'python'
   return {
-    id: uid('ai-q'), type: q.type, prompt: q.prompt, marks: q.marks,
+    id: q.editorId || uid('ai-q'), type: q.type, prompt: q.prompt, marks: q.marks,
     title: q.type === 'code' ? q.prompt.slice(0, 100) : '', options,
     correct: q.correctAnswer === null ? '' : String(q.correctAnswer),
     modelAnswer: q.modelAnswer, rubric: q.rubric,

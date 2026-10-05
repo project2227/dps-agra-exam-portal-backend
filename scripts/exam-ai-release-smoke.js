@@ -28,9 +28,13 @@ async function examAiReleaseSmoke(){
   const source=new FormData();source.append('file',new Blob(['Synthetic question: add two numbers. Answer: their sum.'],{type:'text/plain'}),'synthetic.txt');
   const sr=await fetch(endpoint+'/api/teacher/exam-ai/source',{method:'POST',headers:{Cookie:cookie,'X-CSRF-Token':csrf,Origin:env.FRONTEND_URL.split(',')[0]},body:source,signal:AbortSignal.timeout(30000)});assert.equal(sr.status,200);const parsed=await sr.json();assert.match(parsed.chunks[0].text,/Synthetic question/);checks++;
   const connection=await request('/api/teacher/exam-ai/status');assert.equal(connection.status,200);gatewayReady=connection.data.ready===true;checks++;
+  const oversized=await request('/api/teacher/exam-ai/draft','POST',{mode:'generate',className:'IX',subject:'Computers',topic:'Python lists',questionCount:6,questionTypes:['mcq']});
+  assert.equal(oversized.status,400);checks++;
   if(gatewayReady){
    const preview=await request('/api/teacher/exam-ai/draft','POST',{mode:'generate',className:'IX',subject:'Computers',topic:'Create exactly two MCQs about Python lists and tuples.',questionCount:2,questionTypes:['mcq'],sourceText:'[Page 1]\nPython lists are mutable. Tuples are immutable.'});
    assert.equal(preview.status,200);assert.equal(preview.data.questions.length,2);assert.equal(preview.data.needsTeacherReview,true);checks++;
+   const practical=await request('/api/teacher/exam-ai/draft','POST',{mode:'generate',className:'IX',subject:'Computers',topic:'One short Python practical: write a function that returns the length of a list.',questionCount:1,questionTypes:['code'],language:'python',sourceText:'[Page 1]\nThe Python len function returns the number of items in a list.'});
+   assert.equal(practical.status,200);assert.equal(practical.data.questions.length,1);assert.equal(practical.data.questions[0].type,'code');assert.equal(practical.data.questions[0].language,'python');checks++;
   }
   return {passed:true,checks,gatewayReady,gatewayConfigured:connection.data.configured===true,model:connection.data.model||'',gatewayMessage:connection.data.message||''};
  }catch(e){e.releaseChecks=checks;throw e;}finally{

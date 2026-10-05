@@ -7,7 +7,7 @@ const {attachSockets}=require('../src/sockets/exam.socket');
 const wait=(s,event)=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Missing '+event)),8000);s.once(event,p=>{clearTimeout(timer);resolve(p)})});
 test('teacher AI drafts, postponement and advisory grading preserve authenticated exam and monitor flows',{timeout:90000},async t=>{
  assert.equal(env.NODE_ENV,'test','Use only the disposable integration database');
- const key='synthetic-gateway-key-for-integration-only',calls=[];let bad=false,offline=false;
+ const key='synthetic-gateway-key-for-integration-only',calls=[];let bad=false,offline=false,importedCount=0;
  const generated={title:'Python assessment',questions:[{type:'mcq',prompt:'Which value is True?',marks:1,options:['True','False'],correctAnswer:0,modelAnswer:'',rubric:'',language:null,starterCode:'',sourcePages:[1]},
   {type:'code',prompt:'Write a function that returns the sum of two numbers.',marks:5,options:[],correctAnswer:null,modelAnswer:'',rubric:'Award 5 marks for a correct sum function.',language:'python',starterCode:'',sourcePages:[1]}],warnings:[],needsTeacherReview:true,status:'draft'};
  const gateway=http.createServer(async(req,res)=>{
@@ -15,7 +15,7 @@ test('teacher AI drafts, postponement and advisory grading preserve authenticate
   const payload=body?JSON.parse(body):null;calls.push({path:req.url,payload});res.setHeader('content-type','application/json');
   if(offline){res.writeHead(503);return res.end('{}');}
   if(req.url==='/health')return res.end(JSON.stringify({gatewayReady:true,modelInstalled:true,model:'synthetic-test-model',busy:false}));
-  if(req.url==='/v1/exams/draft'){const r=structuredClone(generated);if(bad)r.questions[0].correctAnswer=99;return res.end(JSON.stringify(r));}
+  if(req.url==='/v1/exams/draft'){const r=structuredClone(generated);if(importedCount)r.questions=Array.from({length:importedCount},(_,i)=>structuredClone(generated.questions[i%2]));if(bad)r.questions[0].correctAnswer=99;return res.end(JSON.stringify(r));}
   res.end(JSON.stringify({verdict:'correct',suggestedMarks:5,explanation:'Meets the approved rubric.',rubricChecks:['Returns a sum.'],needsTeacherReview:true,finalGrade:false}));
  });await new Promise(r=>gateway.listen(0,'127.0.0.1',r));
  env.DPS_AI_GATEWAY_URL='http://127.0.0.1:'+gateway.address().port;env.DPS_AI_GATEWAY_KEY=key;env.EXAM_PASSCODE_KEY='ab'.repeat(32);
@@ -49,6 +49,13 @@ test('teacher AI drafts, postponement and advisory grading preserve authenticate
   assert.equal((await db.query('SELECT count(*)::int AS n FROM exams WHERE teacher_id=$1',[hostId])).rows[0].n,0);
   bad=true;assert.equal((await request('/api/teacher/exam-ai/draft',host,'POST',{mode:'import',className:'IX',subject:'Computers',questionTypes:['mcq','code'],language:'python',sourceText})).status,502);bad=false;
   offline=true;assert.equal((await request('/api/teacher/exam-ai/status',host)).data.ready,false);offline=false;
+ });
+ await t.test('five-question limit rejects larger requests before inference and caps older gateway imports',async()=>{
+  const input={mode:'generate',className:'IX',subject:'Computers',topic:'Python',questionCount:6,questionTypes:['mcq','code'],language:'python',sourceText};const before=calls.length;
+  assert.equal((await request('/api/teacher/exam-ai/draft',host,'POST',input)).status,400);assert.equal(calls.length,before)
+  importedCount=8;const imported=await request('/api/teacher/exam-ai/draft',host,'POST',{...input,mode:'import',questionCount:5});assert.equal(imported.status,200);assert.equal(imported.data.questions.length,5);assert.ok(imported.data.warnings.some(w=>w.includes('first 5')))
+  assert.equal(calls.at(-1).payload.questionCount,undefined)
+  const smaller=await request('/api/teacher/exam-ai/draft',host,'POST',{...input,mode:'import',questionCount:2});assert.equal(smaller.status,200);assert.equal(smaller.data.questions.length,2);importedCount=0;
  });
  await t.test('unfinished drafts save, reopen and reject stale or non-owner edits',async()=>{
   const saved=await request('/api/teacher/exam-drafts',host,'POST',definition);assert.equal(saved.status,201);draft=saved.data.exam;
