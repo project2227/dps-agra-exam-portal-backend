@@ -19,9 +19,9 @@ const questionShape=z.object({type:z.enum(['mcq','short','long','code','file']),
  language:z.enum(['python','java','cpp','c','javascript']).nullable().optional(),starterCode:z.string().max(20000).default(''),
  visibleTestCases:z.array(z.object({stdin:z.string().max(2048),expectedOutput:z.string().max(2048)}).strict()).max(8).default([]),
  hiddenTestCases:z.array(z.object({stdin:z.string().max(2048),expectedOutput:z.string().max(2048)}).strict()).max(8).default([]),
- markingNotes:markingShape.default({}),order:z.number().int().min(0).max(10000).default(0)}).strict();
+ markingNotes:markingShape.default({}),order:z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).default(0)}).strict();
 const draftShape=z.object({exam:z.object(examFields).strict().refine(validWindow,{message:'End time must be after start time.'}),
- questions:z.array(questionShape).max(100),expectedUpdatedAt:z.string().datetime().optional()}).strict();
+ questions:z.array(questionShape),expectedUpdatedAt:z.string().datetime().optional()}).strict();
 // Non-MCQ answer keys use the existing private JSONB answer-key column.
 // The student serializer deliberately excludes this column and hidden tests.
 function markingNotes(q){

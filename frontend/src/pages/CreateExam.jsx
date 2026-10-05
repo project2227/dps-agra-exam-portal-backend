@@ -210,7 +210,6 @@ export default function CreateExam() {
 
           {storageError && <p role="alert" className="text-sm text-amber-300">This browser could not keep unsaved edits. Save a draft before leaving.</p>}
           <ExamAiAssistant workspaceKey={assistantWorkspaceKey} examClass={form.class} subject={form.subject} disabled={!!busy} onBusy={setAiBusy} onApply={(items, title) => {
-            if (questions.length + items.length > 100) throw new Error('An exam can contain up to 100 questions. Remove some exam questions before adding this preview.')
             setQuestions(q => [...q, ...items]); setForm(f => ({ ...f, title: f.title.trim() ? f.title : title })); setQErrors({})
             toast('Reviewed questions added. You can edit them below.', 'success')
           }} />

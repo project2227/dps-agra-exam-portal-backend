@@ -7,6 +7,9 @@ const {markingNotes}=require('../services/examDefinition');const ai=require('../
 const router=express.Router();router.use(teacher);
 const limit=rateLimit({windowMs:60000,limit:8,keyGenerator:req=>req.teacher.id,standardHeaders:'draft-7',legacyHeaders:false,
  message:{error:'Too many AI requests. Wait a minute and try again.'}});
+// Generating a paper must not consume the separate allowance for marking it.
+const draftLimit=rateLimit({windowMs:60000,limit:8,keyGenerator:req=>req.teacher.id,standardHeaders:'draft-7',legacyHeaders:false,
+ message:{error:'The AI needs a short pause. Generation will continue automatically.'}});
 const sourceLimit=rateLimit({windowMs:60000,limit:8,keyGenerator:req=>req.teacher.id,standardHeaders:'draft-7',legacyHeaders:false,
  message:{error:'Too many file requests. Wait a minute and try again.'}});
 const statusLimit=rateLimit({windowMs:60000,limit:30,keyGenerator:req=>req.teacher.id,standardHeaders:'draft-7',legacyHeaders:false});
@@ -22,7 +25,7 @@ router.post('/exam-ai/source',sourceLimit,uploader.single('file'),asyncWrap(asyn
  }
  res.json(await extractSource(file.buffer,file.name));
 }));
-router.post('/exam-ai/draft',limit,asyncWrap(async(req,res)=>{
+router.post('/exam-ai/draft',draftLimit,asyncWrap(async(req,res)=>{
  const v=ai.draftRequest.parse(req.body);await assertAssignedClass(req.teacher,v.className);
  const result=await ai.draft(v);await audit({teacherId:req.teacher.id,action:'exam:ai-preview',details:{mode:v.mode,questionCount:result.questions.length}});
  res.json(result);

@@ -16,7 +16,7 @@ window.scrollTo=()=>{};Element.prototype.scrollIntoView=()=>{}
 const cache=path.join(root,'.test-cache','exam-'+process.pid);await mkdir(cache,{recursive:true})
 await build({stdin:{contents:`export {default as Builder,newQuestion,validateQuestions} from './src/components/teacher/TeacherExamBuilder';export {default as Assistant} from './src/components/teacher/ExamAiAssistant';export {default as CreateExam} from './src/pages/CreateExam';export {default as ManageExams} from './src/pages/ManageHostedExams';export {default as api} from './src/services/api';export {aiQuestionToEditor} from './src/services/examAiDraft';export {toBackendQuestion,normalizeTeacherQuestion} from './src/services/liveApi';export {updateAccount} from './src/services/session';export {teacherWorkspaceKey,readExamWorkspace} from './src/services/teacherExamWorkspace';export {default as MotionProvider} from './src/components/common/Motion';export {ToastProvider} from './src/components/common/Toast';`,resolveDir:root,loader:'jsx'},outfile:path.join(cache,'ui.mjs'),bundle:true,format:'esm',platform:'node',packages:'external',jsx:'automatic',define:{'import.meta.env':'{"BASE_URL":"/","VITE_API_BASE_URL":"https://api.example.test","VITE_DEMO_MODE":"false"}'}})
 const React=await import('react'),{MemoryRouter}=await import('react-router-dom')
-const {render,screen,within,cleanup,waitFor}=await import('@testing-library/react'),{default:userEvent}=await import('@testing-library/user-event')
+const {render,screen,within,cleanup,waitFor,act}=await import('@testing-library/react'),{default:userEvent}=await import('@testing-library/user-event')
 const ui=await import(pathToFileURL(path.join(cache,'ui.mjs'))),h=React.createElement
 const methods={...ui.api},wrap=child=>h(ui.MotionProvider,null,h(MemoryRouter,{future:{v7_startTransition:true,v7_relativeSplatPath:true}},h(ui.ToastProvider,null,child)))
 afterEach(()=>{cleanup();Object.assign(ui.api,methods);localStorage.clear();ui.updateAccount({teacher:null})})
@@ -51,28 +51,39 @@ test('AI preview requires teacher review before questions can be added',async()=
  assert.ok(screen.getByRole('region',{name:'AI question preview'}));assert.match(screen.getByRole('region',{name:'AI question preview'}).textContent,/Added to exam/)
  assert.ok(button.disabled);await user.click(button);assert.equal(added.length,1)
 })
-test('mixed MCQ and practical generation uses single-type batches totalling five questions',async()=>{
+test('mixed MCQ and practical generation has no five-question cap and creates each question separately',async()=>{
  ui.api.getExamAiStatus=async()=>({ready:true,message:'Local AI is connected.'});ui.api.getHandouts=async()=>[]
- const calls=[];ui.api.generateExamDraft=async p=>{calls.push(p);return {title:'Mixed assessment',questions:Array.from({length:p.questionCount},(_,i)=>p.questionTypes[0]==='mcq'?{...q,prompt:'MCQ '+i}:{...q,type:'code',prompt:'Practical '+i,options:[],correctAnswer:null,language:'python'}),warnings:[]}}
+ const calls=[];ui.api.generateExamDraft=async p=>{calls.push(p);return {title:'Mixed assessment',questions:[p.questionTypes[0]==='mcq'?{...q,prompt:'MCQ '+p.sequence.position}:{...q,type:'code',prompt:'Practical '+p.sequence.position,options:[],correctAnswer:null,language:'python'}],warnings:[]}}
  render(wrap(h(ui.Assistant,{examClass:'IX',subject:'Computers',onApply:()=>{}})));const user=userEvent.setup();await screen.findByText('Local AI is connected.')
  await user.type(screen.getByLabelText('What is the exam about?'),'Python functions');await user.click(screen.getByLabelText('Practical'))
- const count=screen.getByLabelText('Number of questions');assert.equal(count.max,'5');await user.clear(count);await user.type(count,'5')
- await user.click(screen.getByRole('button',{name:'Generate question preview'}));await waitFor(()=>assert.equal(calls.length,2))
- assert.deepEqual(calls.map(p=>[p.questionTypes,p.questionCount]),[[['mcq'],3],[['code'],2]])
- await waitFor(()=>assert.equal(within(screen.getByRole('region',{name:'AI question preview'})).getAllByRole('article').length,5))
- await user.clear(count);await user.type(count,'6');await user.click(screen.getByRole('button',{name:'Generate question preview'}));assert.equal(calls.length,2)
- assert.ok(screen.getByText('Choose 1 to 5 questions, with at least one per selected type.'));assert.equal(within(screen.getByRole('region',{name:'AI question preview'})).getAllByRole('article').length,5)
+ const count=screen.getByLabelText('Number of questions');assert.equal(count.max,'');await user.clear(count);await user.type(count,'8')
+ await user.click(screen.getByRole('button',{name:'Generate question preview'}));await waitFor(()=>assert.equal(calls.length,8))
+ assert.ok(calls.every(p=>p.questionCount===1));assert.deepEqual(calls.slice(0,4).map(p=>p.questionTypes),[['mcq'],['code'],['mcq'],['code']])
+ await waitFor(()=>assert.equal(within(screen.getByRole('region',{name:'AI question preview'})).getAllByRole('article').length,8))
+ await user.clear(count);await user.type(count,'6');await user.click(screen.getByRole('button',{name:'Generate question preview'}));await waitFor(()=>assert.equal(calls.length,14))
+ assert.equal(within(screen.getByRole('region',{name:'AI question preview'})).getAllByRole('article').length,14)
+ assert.ok(screen.getByText('Finished. 6 new questions kept in your preview.'))
 })
 test('successful batches survive later failure, source changes and regeneration until explicitly deleted',async()=>{
  ui.api.getExamAiStatus=async()=>({ready:true,message:'Local AI is connected.'});ui.api.getHandouts=async()=>[]
- ui.api.generateExamDraft=async p=>{if(p.questionTypes[0]==='code')throw Error('Gateway is busy.');return {title:'Retained preview',questions:[{...q,prompt:'Retained MCQ'}],warnings:[]}}
+ let retained=0;ui.api.generateExamDraft=async p=>{if(p.questionTypes[0]==='code')throw Error('Gateway is busy.');return {title:'Retained preview',questions:[{...q,prompt:'Retained MCQ '+(++retained)}],warnings:[]}}
  render(wrap(h(ui.Assistant,{examClass:'IX',subject:'Computers',onApply:()=>{}})));const user=userEvent.setup();await screen.findByText('Local AI is connected.')
  await user.type(screen.getByLabelText('What is the exam about?'),'Python');await user.click(screen.getByLabelText('Practical'));await user.clear(screen.getByLabelText('Number of questions'));await user.type(screen.getByLabelText('Number of questions'),'2')
- await user.click(screen.getByRole('button',{name:'Generate question preview'}));await screen.findByText('Gateway is busy.');assert.ok(screen.getByText('Retained MCQ'))
- await user.type(screen.getByLabelText(/Source text \(optional\)/),'New source');await user.click(screen.getByLabelText('Import existing questions'));assert.ok(screen.getByText('Retained MCQ'))
+ await user.click(screen.getByRole('button',{name:'Generate question preview'}));await screen.findByText('Gateway is busy.');assert.ok(screen.getByText('Retained MCQ 1'))
+ await user.type(screen.getByLabelText(/Source text \(optional\)/),'New source');await user.click(screen.getByLabelText('Import existing questions'));assert.ok(screen.getByText('Retained MCQ 1'))
  await user.click(screen.getByLabelText('Generate new questions'));await user.click(screen.getByLabelText('Practical'));await user.clear(screen.getByLabelText('Number of questions'));await user.type(screen.getByLabelText('Number of questions'),'1')
- await user.click(screen.getByRole('button',{name:'Generate question preview'}));await waitFor(()=>assert.equal(screen.getAllByText('Retained MCQ').length,2))
- await user.click(screen.getByRole('button',{name:'Delete generated preview 1'}));assert.equal(screen.getAllByText('Retained MCQ').length,1)
+ await user.click(screen.getByRole('button',{name:'Generate question preview'}));await screen.findByText('Retained MCQ 2')
+ await user.click(screen.getByRole('button',{name:'Delete generated preview 1'}));assert.equal(screen.queryByText('Retained MCQ 1'),null);assert.ok(screen.getByText('Retained MCQ 2'))
+})
+test('the stop button keeps an in-flight result and the form stays open with its completed preview',async()=>{
+ ui.api.getExamAiStatus=async()=>({ready:true,message:'Local AI is connected.'});ui.api.getHandouts=async()=>[]
+ let finish,calls=0;ui.api.generateExamDraft=async()=>{calls++;if(calls===2)await new Promise(r=>{finish=r});return {title:'Progress preview',questions:[{...q,prompt:'Live preview '+calls}],warnings:[]}}
+ render(wrap(h(ui.Assistant,{examClass:'IX',subject:'Computers',onApply:()=>{}})));const user=userEvent.setup();await screen.findByText('Local AI is connected.')
+ await user.type(screen.getByLabelText('What is the exam about?'),'Python');await user.clear(screen.getByLabelText('Number of questions'));await user.type(screen.getByLabelText('Number of questions'),'8')
+ await user.click(screen.getByRole('button',{name:'Generate question preview'}));await screen.findByText('Live preview 1');await waitFor(()=>assert.equal(calls,2))
+ await user.click(screen.getByRole('button',{name:'Stop generation'}));assert.ok(screen.getByRole('button',{name:'Stopping after the current question…'}).disabled)
+ await act(async()=>{finish()});await screen.findByText('Stopped. 2 new questions kept in your preview.')
+ assert.equal(calls,2);assert.equal(within(screen.getByRole('region',{name:'AI question preview'})).getAllByRole('article').length,2);assert.equal(screen.getByRole('button',{name:'Generate question preview'}).disabled,false)
 })
 test('adding all four AI question types keeps Create exam open and restores previews and edited questions after reload',async()=>{
  ui.updateAccount({teacher:{id:'synthetic-workspace-teacher'}})

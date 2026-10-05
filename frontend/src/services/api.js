@@ -35,6 +35,8 @@ http.interceptors.response.use(
     else if (status === 409 && !serverMsg) message = 'This exam is already open in another browser or device.'
     const e = new Error(message)
     e.status = status
+    const retryAfter = Number(err.response?.headers?.['retry-after'])
+    if (Number.isFinite(retryAfter) && retryAfter > 0) e.retryAfter = Math.min(retryAfter, 120)
     e.data = err.response?.data
     return Promise.reject(e)
   },
@@ -281,4 +283,3 @@ export const api = {
 if (!DEMO_MODE) Object.assign(api, createLiveApi(http))
 
 export default api
-

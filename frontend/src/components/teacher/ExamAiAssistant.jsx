@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { CheckCircle2, FileText, Loader2, RefreshCw, Sparkles, Trash2 } from 'lucide-react'
+import { CheckCircle2, FileText, Loader2, RefreshCw, Sparkles, Square, Trash2 } from 'lucide-react'
 import GlassCard from '../common/GlassCard'
 import { ErrorNote } from '../common/Feedback'
 import api from '../../services/api'
 import { aiQuestionToEditor } from '../../services/examAiDraft'
-import { AI_TYPE_LABELS, MAX_AI_QUESTIONS, planAiBatches } from '../../services/examAiBatches'
+import { generateOneByOne } from '../../services/examAiBatches'
 import { readExamWorkspace, writeExamWorkspace } from '../../services/teacherExamWorkspace'
 import { uid } from '../../utils/format'
 
@@ -18,7 +18,10 @@ export default function ExamAiAssistant({ examClass, subject, onApply, onBusy, d
   const [busy, setBusy] = useState(''), [error, setError] = useState(''), [handoutError, setHandoutError] = useState('')
   const [preview, setPreview] = useState(() => readExamWorkspace(workspaceKey)?.preview || null), [reviewed, setReviewed] = useState(false)
   const [progress, setProgress] = useState(''), [storageError, setStorageError] = useState(false)
+  const [completion, setCompletion] = useState(''), [stopping, setStopping] = useState(false)
   const applying = useRef(false)
+  const generation = useRef(null), mounted = useRef(true)
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; generation.current?.abort() } }, [])
   useEffect(() => { setPreview(readExamWorkspace(workspaceKey)?.preview || null); setReviewed(false) }, [workspaceKey])
   useEffect(() => { setStorageError(!writeExamWorkspace(workspaceKey, { preview })) }, [preview, workspaceKey])
   useEffect(() => { onBusy?.(!!busy); return () => onBusy?.(false) }, [busy, onBusy])
@@ -44,29 +47,30 @@ export default function ExamAiAssistant({ examClass, subject, onApply, onBusy, d
     finally { setBusy('') }
   }
   const generate = async () => {
+    if (generation.current || disabled || busy) return
     setError('')
     if (!types.length) return setError('Choose at least one question type.')
-    if (mode === 'generate' && (!Number.isInteger(Number(count)) || count < types.length || count > MAX_AI_QUESTIONS)) return setError('Choose 1 to 5 questions, with at least one per selected type.')
+    if (!Number.isSafeInteger(Number(count)) || Number(count) < 1) return setError('Enter a whole number of questions, starting at 1.')
     if (mode === 'generate' && !topic.trim() && !source.trim()) return setError('Describe the exam or add source text first.')
     if (mode === 'import' && !source.trim()) return setError('Extract or paste the question paper text first.')
     if (source.length > 12000) return setError('Select a smaller source section: the limit is 12,000 characters.')
-    setBusy('generate')
+    const controller = new AbortController(); generation.current = controller
+    setBusy('generate'); setCompletion(''); setStopping(false)
     try {
-      const batches = mode === 'generate' ? planAiBatches(types, Number(count)) : [{ types, count: MAX_AI_QUESTIONS }]
-      let added = 0
-      for (const [index, batch] of batches.entries()) {
-        setProgress(mode === 'import' ? 'Importing up to 5 questions…' : `Generating ${batch.count} ${AI_TYPE_LABELS[batch.type]} question${batch.count === 1 ? '' : 's'} · Part ${index + 1} of ${batches.length}`)
-        const result = await api.generateExamDraft({ mode, className: examClass, subject, topic,
-          ...(mode === 'generate' ? { questionCount: batch.count } : {}), questionTypes: batch.types || [batch.type],
-          ...((batch.types || [batch.type]).includes('code') ? { language } : {}), sourceText: source })
-        const items = result.questions.slice(0, MAX_AI_QUESTIONS - added).map(q => ({ ...q, previewId: uid('ai-preview'), editorId: uid('ai-q'), added: false }))
-        added += items.length
-        setPreview(previous => ({ title: previous?.title || result.title, questions: [...(previous?.questions || []), ...items],
-          warnings: [...new Set([...(previous?.warnings || []), ...result.warnings])].slice(-30) }))
-        setReviewed(false)
-      }
-    } catch (e) { setError(e.message) }
-    finally { setBusy(''); setProgress('') }
+      const result = await generateOneByOne({ types, count: Number(count), mode,
+        payload: { className: examClass, subject, topic, ...(types.includes('code') ? { language } : {}), sourceText: source },
+        existingQuestions: preview?.questions || [], request: p => api.generateExamDraft(p), signal: controller.signal,
+        onProgress: message => { if (mounted.current) setProgress(message) },
+        onQuestion: (q, result) => {
+          if (!mounted.current) return
+          const item = { ...q, previewId: uid('ai-preview'), editorId: uid('ai-q'), added: false }
+          setPreview(previous => ({ title: previous?.title || result.title, questions: [...(previous?.questions || []), item],
+            warnings: [...new Set([...(previous?.warnings || []), ...(result.warnings || [])])].slice(-30) }))
+          setReviewed(false)
+        } })
+      if (mounted.current) setCompletion(`${result.stopped ? 'Stopped.' : 'Finished.'} ${result.completed} new question${result.completed === 1 ? '' : 's'} kept in your preview.`)
+    } catch (e) { if (mounted.current) setError(e.message) }
+    finally { generation.current = null; if (mounted.current) { setBusy(''); setProgress(''); setStopping(false) } }
   }
   const pending = preview?.questions.filter(q => !q.added) || []
   const apply = async () => {
@@ -108,13 +112,15 @@ export default function ExamAiAssistant({ examClass, subject, onApply, onBusy, d
       <label className="block"><span className="label">Source text {mode === 'generate' ? '(optional)' : '(required)'}</span><textarea className="input min-h-[140px]" value={source} onChange={e => setSource(e.target.value)} placeholder="Paste handout text, or a question paper and its answers. Keep [Page 1] labels if you want page references." /><span className="hint">{source.length.toLocaleString()} / 12,000 characters. Check columns, equations and code indentation.</span></label>
       <fieldset><legend className="label">Question types</legend><div className="flex flex-wrap gap-4 text-sm">{questionTypes.map(([type, label]) => <label className="flex items-center gap-2" key={type}><input type="checkbox" checked={types.includes(type)} onChange={e => setTypes(e.target.checked ? [...types, type] : types.filter(x => x !== type))} />{label}</label>)}</div></fieldset>
       <div className="grid gap-3 sm:grid-cols-2">
-        {mode === 'generate' && <label className="block"><span className="label">Number of questions</span><input className="input" type="number" min={Math.max(1, types.length)} max="5" value={count} onChange={e => setCount(e.target.value)} /></label>}
+        <label className="block"><span className="label">Number of questions</span><input className="input" type="number" min="1" step="1" value={count} onChange={e => setCount(e.target.value)} /></label>
         {types.includes('code') && <label className="block"><span className="label">Practical language</span><select className="input" value={language} onChange={e => setLanguage(e.target.value)}>{[['python','Python'],['java','Java'],['cpp','C++'],['c','C'],['javascript','JavaScript']].map(([v,label]) => <option key={v} value={v}>{label}</option>)}</select></label>}
       </div>
-      <p className="hint">Up to 5 questions per try. Selected types are generated separately and combined here. Each successful batch stays even if a later batch fails.</p>
+      <p className="hint">Choose how many questions you need. The AI creates one at a time, cycling through the selected types for new questions. Each question stays as it arrives. Imports keep the paper’s question types; another run continues from the same paper.</p>
       <button type="button" className="btn btn-primary" disabled={!status?.ready} onClick={generate}><Sparkles size={16} aria-hidden="true" /> {mode === 'import' ? 'Preview imported questions' : 'Generate question preview'}</button>
     </fieldset>
     {busy && <p role="status" className="flex items-center gap-2 text-sm"><Loader2 size={16} className="animate-spin" aria-hidden="true" />{busy === 'extract' ? 'Reading the source…' : busy === 'apply' ? 'Adding questions to the exam…' : progress || 'Generating questions…'}</p>}
+    {busy === 'generate' && <button type="button" className="btn btn-ghost btn-sm" disabled={stopping} onClick={() => { generation.current?.abort(); setStopping(true) }}><Square size={14} aria-hidden="true" /> {stopping ? 'Stopping after the current question…' : 'Stop generation'}</button>}
+    {completion && <p role="status" className="text-sm">{completion}</p>}
     {error && <ErrorNote message={error} />}
     {storageError && <p role="alert" className="text-sm text-amber-300">This browser could not keep a local copy. Add the questions and save a draft before leaving.</p>}
     {preview?.questions.length > 0 && <section aria-label="AI question preview" className="space-y-3 border-t border-white/10 pt-4">

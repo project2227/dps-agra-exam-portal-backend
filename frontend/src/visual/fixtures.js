@@ -48,7 +48,7 @@ export function installFixtures(params){
   getExamPasscode:read({available:true,passcode:'PREVIEW8888'}),generateExamPasscode:read({passcode:'PREVIEW8888'}),
   saveExamDraft:async p=>({...draft,...p,questions:p.questions}),publishExam:read(upcoming),postponeExam:read(upcoming),
   suggestAnswerMarks:read({verdict:'partially_correct',suggestedMarks:4,explanation:'Synthetic suggestion for visual checks only.',rubricChecks:['Check the function definition.'],needsTeacherReview:true,finalGrade:false}),
-  generateExamDraft:async p=>({title:'Synthetic assessment',questions:Array.from({length:p.questionCount||1},(_,i)=>{const q=aiQuestion(p.questionTypes[i%p.questionTypes.length],i);if(q.type==='code')q.language=p.language||'python';return q}),warnings:['Synthetic preview: no AI inference.'],needsTeacherReview:true,status:'draft'})
+  generateExamDraft:async p=>({title:'Synthetic assessment',questions:Array.from({length:p.questionCount||1},(_,i)=>{const q=aiQuestion(p.questionTypes[i%p.questionTypes.length],i);if(q.type==='code')q.language=p.language||'python';if(p.sequence)q.prompt+=' Sample '+p.sequence.position+'.';return q}),warnings:['Synthetic preview: no AI inference.'],needsTeacherReview:true,status:'draft'})
  })
  const history=list([{submission_id:'visual-submission',exam_id:live.id,title:'Previous computer science quiz',date:iso(now-86400000),review_status:'reviewed',score:8,total_marks:10,results_released_at:iso(now)}])
  const reply=path=>{

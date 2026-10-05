@@ -2,9 +2,13 @@
 const {z}=require('zod');const {env}=require('../config/env');const {must,HttpError}=require('../utils/http');
 const languages=['python','java','cpp','c','javascript'];
 const draftRequest=z.object({mode:z.enum(['generate','import']),className:z.string().trim().min(1).max(20),subject:z.string().trim().min(1).max(80),
- topic:z.string().trim().max(1200).default(''),questionCount:z.number().int().min(1).max(5).optional(),
- questionTypes:z.array(z.enum(['mcq','short','long','code'])).min(1).max(4),language:z.enum(languages).optional(),sourceText:z.string().max(12000).default('')}).strict().superRefine((v,c)=>{
- if(v.mode==='generate'&&(!v.questionCount||v.questionCount<new Set(v.questionTypes).size))c.addIssue({code:'custom',path:['questionCount'],message:'Choose 1 to 5 questions, at least one per selected type.'});
+ // The older PC gateway supports eight per inference. The portal queues single
+ // questions with no total quota; retaining this bound keeps old clients compatible.
+ topic:z.string().trim().max(1200).default(''),questionCount:z.number().int().min(1).max(8).optional(),
+ questionTypes:z.array(z.enum(['mcq','short','long','code'])).min(1).max(4),language:z.enum(languages).optional(),sourceText:z.string().max(12000).default(''),
+ sequence:z.object({position:z.number().int().positive().max(Number.MAX_SAFE_INTEGER),previousPrompts:z.array(z.string().max(500)).max(6).default([])}).strict().optional()}).strict().superRefine((v,c)=>{
+ if(v.sequence&&(v.questionCount!==1||(v.mode==='generate'&&new Set(v.questionTypes).size!==1)))c.addIssue({code:'custom',path:['questionCount'],message:'Sequential requests create one question at a time.'});
+ if(v.mode==='generate'&&(!v.questionCount||v.questionCount<new Set(v.questionTypes).size))c.addIssue({code:'custom',path:['questionCount'],message:'Request at least one question per selected type.'});
  if(v.mode==='generate'&&!v.topic&&!v.sourceText.trim())c.addIssue({code:'custom',path:['topic'],message:'Describe the exam or add source text.'});
  if(v.mode==='import'&&!v.sourceText.trim())c.addIssue({code:'custom',path:['sourceText'],message:'Extract or paste the paper text first.'});
  if(v.questionTypes.includes('code')&&!v.language)c.addIssue({code:'custom',path:['language'],message:'Choose a practical language.'});
@@ -59,27 +63,35 @@ async function status(){
 }
 async function draft(input){
  const request=draftRequest.parse(input);request.questionTypes=[...new Set(request.questionTypes)];
- const gatewayRequest={...request};
+ const {sequence,...gatewayRequest}=request;
  // Import counts are a portal-side cap. The existing PC gateway interprets a
  // supplied count as exact, which would reject shorter question papers.
- if(request.mode==='import')delete gatewayRequest.questionCount;
- if(request.mode==='generate'&&request.questionTypes.length===1){
+ if(request.mode==='import'&&!sequence)delete gatewayRequest.questionCount;
+ if(sequence){
+  const instruction=request.mode==='import'
+   ? 'Import ONLY original question '+sequence.position+' from the supplied paper, with its original type and provided answer key. Do not invent missing questions or answers. '
+   : 'Generate exactly ONE '+request.questionTypes[0]+' question, number '+sequence.position+' in the exam. Vary the concept and example from earlier questions. ';
+  const prior=sequence.previousPrompts.length?' Avoid repeating earlier prompts: '+sequence.previousPrompts.map(p=>p.slice(0,110)).join(' | '):'';
+  const topic=request.topic.slice(0,Math.min(650,1200-instruction.length));
+  gatewayRequest.topic=(instruction+topic+prior).slice(0,1200);
+ }else if(request.mode==='generate'&&request.questionTypes.length===1){
   const instruction='Generate exactly '+request.questionCount+' '+request.questionTypes[0]+' questions only for this part of the exam. ';
   gatewayRequest.topic=instruction+request.topic.slice(0,1200-instruction.length);
  }
  const raw=await callGateway('/v1/exams/draft',gatewayRequest),parsed=draftResponse.safeParse(raw);
  must(parsed.success,502,'The model returned an invalid exam draft. Try a smaller request. Nothing has been saved.');
  const result=parsed.data;
- // Older PC gateways can import eight questions. Preserve compatibility while
- // enforcing the portal's five-question cap for every import request.
- if(request.mode==='import'&&result.questions.length>(request.questionCount||5)){
-  result.questions=result.questions.slice(0,request.questionCount||5);
-  result.warnings=[...result.warnings,'Only the first '+(request.questionCount||5)+' questions were imported. Select the remaining source questions for your next request.'].slice(-30);
+ if(sequence)must(result.questions.length===1,502,'The model did not return one question. Your earlier previews are unchanged; try again.');
+ // Legacy imports may request a smaller preview, but there is no five-question cap.
+ if(request.mode==='import'&&!sequence&&request.questionCount&&result.questions.length>request.questionCount){
+  result.questions=result.questions.slice(0,request.questionCount);
+  result.warnings=[...result.warnings,'Only the first '+request.questionCount+' questions were imported. Select the remaining source questions for your next request.'].slice(-30);
  }
  if(request.mode==='generate'){
   must(result.questions.length===request.questionCount,502,'The model returned the wrong number of questions. Try again. Nothing has been saved.');
   must(result.questions.every(q=>request.questionTypes.includes(q.type))&&request.questionTypes.every(type=>result.questions.some(q=>q.type===type)),502,'The model missed a requested question type. Try again.');
  }
+ if(sequence&&request.mode==='import')must(result.questions.every(q=>request.questionTypes.includes(q.type)),502,'This source question has a different type. Select its type and try again.');
  const sourcePages=new Set([...request.sourceText.matchAll(/\[Page (\d+)\]/g)].map(m=>Number(m[1])));
  must(result.questions.every(q=>q.sourcePages.every(p=>sourcePages.has(p))),502,'The model cited a page outside the supplied source. Try again.');
  return result;
