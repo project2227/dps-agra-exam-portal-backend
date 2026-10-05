@@ -3,7 +3,7 @@ const db=require('../config/db');const {publish}=require('./events');
 const {must}=require('../utils/http');
 const EVENT_SEVERITY={TAB_SWITCH:'medium',WINDOW_BLUR:'low',WINDOW_FOCUS:'low',FULLSCREEN_EXIT:'medium',
  COPY:'medium',PASTE:'medium',RIGHT_CLICK:'low',MULTIPLE_SESSION_ATTEMPT:'high',BROWSER_CHANGED:'medium',
- SCREEN_SHARE_STOPPED:'high',WEBCAM_STOPPED:'high',NETWORK_DISCONNECT:'low',DEVTOOLS_SUSPECTED:'low',VISION_HEAD_TURN:'low',VISION_GAZE_AWAY:'low',VISION_FACE_MISSING:'low',VISION_MULTIPLE_FACES:'low'};
+ SCREEN_SHARE_STOPPED:'high',WEBCAM_STOPPED:'high',NETWORK_DISCONNECT:'low',DEVTOOLS_SUSPECTED:'low',VISION_HEAD_TURN:'low',VISION_GAZE_AWAY:'low',VISION_FACE_MISSING:'low',VISION_MULTIPLE_FACES:'low',VISION_ATTENTION_AWAY:'low'};
 const POINTS={low:1,medium:3,high:6};
 async function event({examId,sessionId,eventType,message='',metadata={}}){
  must(EVENT_SEVERITY[eventType],400,'Unknown proctoring event.');
@@ -27,4 +27,3 @@ async function event({examId,sessionId,eventType,message='',metadata={}}){
  return q.rows[0];
 }
 module.exports={event,EVENT_SEVERITY};
-

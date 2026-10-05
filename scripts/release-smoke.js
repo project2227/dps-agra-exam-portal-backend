@@ -50,10 +50,10 @@ async function releaseSmoke(){
   await db.query(`UPDATE exams SET settings=settings||'{"visionTracking":true}'::jsonb WHERE id=$1 AND teacher_id=$2`,[ids.exam,ids.teacher]);
   assert.equal((await request('/api/student/vision-consent',null,'POST',{consent:true},token)).status,200);completed++;
   const score=(await db.query('SELECT cheating_score FROM exam_sessions WHERE id=$1',[joined.data.session.id])).rows[0].cheating_score;
-  const visionFlag=once(observer,'exam:proctorFlag');assert.equal((await request('/api/proctor/event',null,'POST',{eventType:'VISION_HEAD_TURN',metadata:{reason:'Synthetic local estimate'}},token)).status,201);
-  assert.equal((await visionFlag).event.eventType,'VISION_HEAD_TURN');assert.equal((await db.query('SELECT cheating_score FROM exam_sessions WHERE id=$1',[joined.data.session.id])).rows[0].cheating_score,score);completed++;
+  const visionFlag=once(observer,'exam:proctorFlag');assert.equal((await request('/api/proctor/event',null,'POST',{eventType:'VISION_ATTENTION_AWAY',metadata:{reason:'Synthetic local estimate'}},token)).status,201);
+  assert.equal((await visionFlag).event.eventType,'VISION_ATTENTION_AWAY');assert.equal((await db.query('SELECT cheating_score FROM exam_sessions WHERE id=$1',[joined.data.session.id])).rows[0].cheating_score,score);completed++;
   assert.equal((await request('/api/student/vision-consent',null,'POST',{consent:false},token)).status,200);completed++;
-  assert.equal((await request('/api/proctor/event',null,'POST',{eventType:'VISION_HEAD_TURN'},token)).status,403);completed++;
+  assert.equal((await request('/api/proctor/event',null,'POST',{eventType:'VISION_ATTENTION_AWAY'},token)).status,403);completed++;
   assert.equal((await request('/api/student/exams/'+ids.exam+'/submit',null,'POST',{},token)).status,200);assert.equal((await db.query('SELECT answer_text,student_id FROM answers WHERE session_id=$1',[joined.data.session.id])).rows[0].student_id,ids.student);completed++;
   const submissions=await request('/api/teacher/exams/'+ids.exam+'/submissions',teacher);assert.equal(submissions.status,200);assert.ok(submissions.data.submissions.some(s=>s.id===joined.data.session.id));completed++;
   const guest=await request('/api/exams/'+ids.exam+'/join',null,'POST',{name:'Deployment Smoke Guest',rollNumber:roll+'g',className:'IX',section:'A',passcode});assert.equal(guest.status,201);assert.equal((await request('/api/student/exams/'+ids.exam+'/submit',null,'POST',{},guest.data.token)).status,200);assert.equal((await request('/api/accounts/logout',student,'POST',{})).status,200);assert.equal((await request('/api/accounts/student/profile',student)).status,401);completed++;

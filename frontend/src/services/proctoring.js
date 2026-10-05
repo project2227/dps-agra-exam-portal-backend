@@ -132,13 +132,13 @@ export function createProctorReporter({ examId, sessionId, socket }) {
         ts: new Date().toISOString(),
       }
       const remoteType = {
-        vision_head_turn:'VISION_HEAD_TURN', vision_gaze_away:'VISION_GAZE_AWAY', vision_face_missing:'VISION_FACE_MISSING', vision_multiple_faces:'VISION_MULTIPLE_FACES',
+        vision_head_turn:'VISION_HEAD_TURN', vision_gaze_away:'VISION_GAZE_AWAY', vision_face_missing:'VISION_FACE_MISSING', vision_multiple_faces:'VISION_MULTIPLE_FACES', vision_attention_away:'VISION_ATTENTION_AWAY',
         tab_hidden:'TAB_SWITCH', window_blur:'WINDOW_BLUR', window_focus:'WINDOW_FOCUS',
         fullscreen_exit:'FULLSCREEN_EXIT', copy:'COPY', cut:'COPY', paste:'PASTE', right_click:'RIGHT_CLICK',
         devtools_suspected:'DEVTOOLS_SUSPECTED', devtools_shortcut:'DEVTOOLS_SUSPECTED',
         screen_share_stopped:'SCREEN_SHARE_STOPPED', webcam_stopped:'WEBCAM_STOPPED',
       }[type]
-      if (socket?.connected && remoteType) socket.emit(EVENTS.PROCTOR_EVENT, { eventType: remoteType, metadata: { source:'browser' } })
+      if (socket?.connected && remoteType) socket.emit(EVENTS.PROCTOR_EVENT, { eventType: remoteType, metadata: { source:'browser', ...(typeof details?.reason==='string'?{reason:details.reason.slice(0,120)}:{}) } })
       else if (remoteType) {
         queue.push(evt)
         flush()

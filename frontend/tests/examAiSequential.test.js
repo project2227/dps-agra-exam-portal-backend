@@ -86,3 +86,10 @@ test('a stopped wait removes its timer promptly', async () => {
   const controller = new AbortController(), wait = waitForAi(60000, controller.signal)
   controller.abort(); await assert.rejects(wait, { name: 'AbortError' })
 })
+test('invalid practical responses retry the same single item before advancing', async () => {
+ const received = [], calls = []; let attempts = 0
+ const result = await generateOneByOne({ ...base, types: ['code'], count: 1, payload: { sourceText: '', language: 'javascript' }, onQuestion: q => received.push(q), wait: async () => {}, request: async p => {
+  calls.push(p); if (++attempts < 3) throw Object.assign(Error('Incomplete practical'), { status: 502 }); return { questions: [{ type: 'code', prompt: 'Write a JavaScript addition function' }] }
+ } })
+ assert.equal(result.completed, 1); assert.equal(calls.length, 3); assert.ok(calls.every(p => p.questionCount === 1 && p.sequence.position === 1 && p.language === 'javascript')); assert.equal(received.length, 1)
+})

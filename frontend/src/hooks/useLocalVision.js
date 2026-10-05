@@ -17,7 +17,7 @@ export default function useLocalVision({enabled,stream,onEvent}) {
       if(disposed)return;
       if(data.type==='ready'){ready=true;setStatus('calibrating');}
       if(data.type==='error'){ready=false;busy=false;setStatus('unavailable');}
-      if(data.type==='result'){busy=false;setStatus(data.status);setQuality(data.quality);for(const type of data.events)callback.current?.(type,{reason:'Sustained browser-local estimate; human review required'});}
+      if(data.type==='result'){busy=false;setStatus(data.status);setQuality(data.quality);for(const type of data.events)callback.current?.(type,{reason:type==='vision_attention_away'?'Head and iris direction deviated together for 8 seconds; local AI estimate, teacher review required':'Sustained browser-local estimate; human review required'});}
     };
     worker.onerror=()=>{ready=false;busy=false;setStatus('unavailable');};
     const assets=new URL('/ai/',window.location.origin);

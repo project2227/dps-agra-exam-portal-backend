@@ -34,7 +34,7 @@ export async function generateOneByOne({ types, count, mode, payload, existingQu
   for (const job of planAiBatches(types, count)) {
     if (signal?.aborted) break
     const label = `${mode === 'import' ? 'Importing' : 'Generating'} question ${job.index + 1} of ${count}${mode === 'generate' ? ' · ' + AI_TYPE_LABELS[job.type] : ''}`
-    let duplicates = 0, waits = 0
+    let duplicates = 0, waits = 0, invalidRetries = 0
     for (;;) {
       if (signal?.aborted) return { completed, stopped: true }
       onProgress(label)
@@ -52,6 +52,12 @@ export async function generateOneByOne({ types, count, mode, payload, existingQu
         questions.push(item); onQuestion(item, result); completed++; position++
         break
       } catch (error) {
+        if (error.status === 502 && ++invalidRetries <= 2) {
+          onProgress(`${label} · Retrying this item after an incomplete AI response…`)
+          try { await wait(1000, signal) }
+          catch (e) { if (e.name === 'AbortError') return { completed, stopped: true }; throw e }
+          continue
+        }
         if (error.status !== 429 || ++waits > 5) throw error
         onProgress(`${label} · Waiting for the AI to be available. Your questions are saved; you can stop at any time.`)
         try { await wait((error.retryAfter || 60) * 1000, signal) }

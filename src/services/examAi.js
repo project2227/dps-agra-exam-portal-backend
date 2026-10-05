@@ -6,16 +6,18 @@ const draftRequest=z.object({mode:z.enum(['generate','import']),className:z.stri
  // questions with no total quota; retaining this bound keeps old clients compatible.
  topic:z.string().trim().max(1200).default(''),questionCount:z.number().int().min(1).max(8).optional(),
  questionTypes:z.array(z.enum(['mcq','short','long','code'])).min(1).max(4),language:z.enum(languages).optional(),sourceText:z.string().max(12000).default(''),
+ purpose:z.enum(['exam','lesson','course-quiz']).default('exam'),
  sequence:z.object({position:z.number().int().positive().max(Number.MAX_SAFE_INTEGER),previousPrompts:z.array(z.string().max(500)).max(6).default([])}).strict().optional()}).strict().superRefine((v,c)=>{
  if(v.sequence&&(v.questionCount!==1||(v.mode==='generate'&&new Set(v.questionTypes).size!==1)))c.addIssue({code:'custom',path:['questionCount'],message:'Sequential requests create one question at a time.'});
  if(v.mode==='generate'&&(!v.questionCount||v.questionCount<new Set(v.questionTypes).size))c.addIssue({code:'custom',path:['questionCount'],message:'Request at least one question per selected type.'});
  if(v.mode==='generate'&&!v.topic&&!v.sourceText.trim())c.addIssue({code:'custom',path:['topic'],message:'Describe the exam or add source text.'});
  if(v.mode==='import'&&!v.sourceText.trim())c.addIssue({code:'custom',path:['sourceText'],message:'Extract or paste the paper text first.'});
  if(v.questionTypes.includes('code')&&!v.language)c.addIssue({code:'custom',path:['language'],message:'Choose a practical language.'});
+ if(v.purpose!=='exam'&&(v.mode!=='generate'||v.questionCount!==1||v.questionTypes.length!==1||v.questionTypes[0]!== (v.purpose==='lesson'?'long':'mcq')))c.addIssue({code:'custom',path:['purpose'],message:'Course design creates one lesson or quiz item at a time.'});
 });
 const generatedQuestion=z.object({type:z.enum(['mcq','short','long','code']),prompt:z.string().trim().min(1).max(5000),marks:z.number().finite().min(0).max(100),
  options:z.array(z.string().trim().min(1).max(600)).max(8),correctAnswer:z.number().int().nonnegative().nullable(),
- modelAnswer:z.string().max(4000),rubric:z.string().max(4000),language:z.enum(languages).nullable(),starterCode:z.string().max(20000),
+ modelAnswer:z.string().max(6000),rubric:z.string().max(4000),language:z.enum(languages).nullable(),starterCode:z.string().max(20000),
  sourcePages:z.array(z.number().int().positive()).max(40)}).strict().superRefine((q,c)=>{
  if(q.type==='mcq'&&(q.options.length<2||new Set(q.options).size!==q.options.length||(q.correctAnswer!==null&&q.correctAnswer>=q.options.length)))c.addIssue({code:'custom',message:'Invalid MCQ options or key.'});
  if(q.type!=='mcq'&&(q.options.length||q.correctAnswer!==null))c.addIssue({code:'custom',message:'Unexpected answer options.'});
@@ -49,6 +51,7 @@ async function callGateway(path,payload){
   const response=await fetch(origin+path,{method:payload?'POST':'GET',redirect:'error',headers:{Authorization:'Bearer '+env.DPS_AI_GATEWAY_KEY,...(body?{'Content-Type':'application/json'}:{})},
    ...(body?{body}:{}),signal:AbortSignal.timeout(payload?145000:8000)});
   if(response.status===429)throw new HttpError(429,'The school AI is busy. Wait a minute, then try again.');
+  if(response.status===502)throw new HttpError(502,'The AI returned an incomplete question or answer. Retrying this item can help; earlier items are kept.');
   if([401,403].includes(response.status))throw new HttpError(503,'The AI gateway key does not match. Ask the portal administrator to check the private Render setting.');
   if([400,413,415].includes(response.status))throw new HttpError(400,'The AI request was rejected. Shorten the source text and check the selected question types.');
   must(response.ok,503,'The local AI could not complete this request. Keep Ollama, the gateway and Cloudflare running, then try again.');
@@ -63,15 +66,18 @@ async function status(){
 }
 async function draft(input){
  const request=draftRequest.parse(input);request.questionTypes=[...new Set(request.questionTypes)];
- const {sequence,...gatewayRequest}=request;
+ const {sequence,purpose,...gatewayRequest}=request;
  // Import counts are a portal-side cap. The existing PC gateway interprets a
  // supplied count as exact, which would reject shorter question papers.
  if(request.mode==='import'&&!sequence)delete gatewayRequest.questionCount;
- if(sequence){
-  const instruction=request.mode==='import'
+ if(sequence||purpose!=='exam'){
+  let instruction=request.mode==='import'
    ? 'Import ONLY original question '+sequence.position+' from the supplied paper, with its original type and provided answer key. Do not invent missing questions or answers. '
-   : 'Generate exactly ONE '+request.questionTypes[0]+' question, number '+sequence.position+' in the exam. Vary the concept and example from earlier questions. ';
-  const prior=sequence.previousPrompts.length?' Avoid repeating earlier prompts: '+sequence.previousPrompts.map(p=>p.slice(0,110)).join(' | '):'';
+   : 'Generate exactly ONE '+request.questionTypes[0]+' question, number '+(sequence?.position||1)+' in the exam. Vary the concept and example from earlier questions. ';
+  if(request.questionTypes[0]==='code')instruction+='Use language '+request.language+' exactly, options [], correctAnswer null. Starter code and model answer are optional strings; keep them brief. ';
+  if(purpose==='lesson')instruction='Draft ONE teaching lesson '+(sequence?.position||1)+'. Use type long; prompt is a short lesson title, modelAnswer is the full lesson with objectives, explanation, worked example and practice task. Rubric and starterCode may be empty. ';
+  if(purpose==='course-quiz')instruction='Draft ONE short course MCQ '+(sequence?.position||1)+' with EXACTLY four distinct options (under 180 characters each), a non-null zero-based correctAnswer, and prompt under 350 characters. ';
+  const prior=sequence?.previousPrompts.length?' Avoid repeating earlier prompts: '+sequence.previousPrompts.map(p=>p.slice(0,110)).join(' | '):'';
   const topic=request.topic.slice(0,Math.min(650,1200-instruction.length));
   gatewayRequest.topic=(instruction+topic+prior).slice(0,1200);
  }else if(request.mode==='generate'&&request.questionTypes.length===1){
@@ -92,7 +98,12 @@ async function draft(input){
   must(result.questions.every(q=>request.questionTypes.includes(q.type))&&request.questionTypes.every(type=>result.questions.some(q=>q.type===type)),502,'The model missed a requested question type. Try again.');
  }
  if(sequence&&request.mode==='import')must(result.questions.every(q=>request.questionTypes.includes(q.type)),502,'This source question has a different type. Select its type and try again.');
- const sourcePages=new Set([...request.sourceText.matchAll(/\[Page (\d+)\]/g)].map(m=>Number(m[1])));
+ must(result.questions.every(q=>q.type!=='code'||q.language===request.language),502,'The AI used a different practical language. Retry this question.');
+ if(purpose==='lesson')must(result.questions[0].modelAnswer.trim().length>=20,502,'The AI left the lesson content blank. Retry this lesson.');
+ if(purpose==='course-quiz'){const q=result.questions[0];must(q.options.length===4&&q.correctAnswer!==null&&q.prompt.length<=350&&q.options.every(o=>o.length<=180),502,'The AI quiz needs four short options and a clear answer key. Retry this item.');}
+ if(purpose==='exam')for(const q of result.questions){if(q.modelAnswer.length>4000){q.modelAnswer=q.modelAnswer.slice(0,4000);result.warnings.push('A long reference answer was shortened to fit the exam editor. Check it before adding.');}}
+ result.warnings=result.warnings.slice(-30);
+ const sourcePages=new Set([...request.sourceText.matchAll(/\[Page\s+(\d+)\]/gi)].map(m=>Number(m[1])));
  must(result.questions.every(q=>q.sourcePages.every(p=>sourcePages.has(p))),502,'The model cited a page outside the supplied source. Try again.');
  return result;
 }

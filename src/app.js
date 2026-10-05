@@ -6,6 +6,7 @@ const app=express();app.set('trust proxy',1);
 app.disable('x-powered-by');app.use(helmet());
 app.use(cors({origin(origin,cb){if(!origin||origins.includes(origin))return cb(null,true);return cb(null,false);},credentials:true,methods:['GET','POST','PUT','PATCH','DELETE','OPTIONS']}));
 app.use('/api/teacher/exam-drafts',express.json({limit:'2mb'}));
+app.use('/api/learning/teacher/courses',express.json({limit:'2mb'}));
 app.use(express.json({limit:'96kb'}));
 app.use('/api',rateLimit({windowMs:60000,limit:4000,standardHeaders:'draft-7',legacyHeaders:false}));
 app.get('/api/health',async(req,res)=>{

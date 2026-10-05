@@ -271,7 +271,7 @@ export function createLiveApi(http) {
     },
     sendProctorEvent: async e => {
       const types = {
-        vision_head_turn:'VISION_HEAD_TURN', vision_gaze_away:'VISION_GAZE_AWAY', vision_face_missing:'VISION_FACE_MISSING', vision_multiple_faces:'VISION_MULTIPLE_FACES',
+        vision_head_turn:'VISION_HEAD_TURN', vision_gaze_away:'VISION_GAZE_AWAY', vision_face_missing:'VISION_FACE_MISSING', vision_multiple_faces:'VISION_MULTIPLE_FACES', vision_attention_away:'VISION_ATTENTION_AWAY',
         
         tab_hidden: 'TAB_SWITCH', window_blur: 'WINDOW_BLUR', window_focus: 'WINDOW_FOCUS',
         fullscreen_exit: 'FULLSCREEN_EXIT', copy: 'COPY', cut: 'COPY', paste: 'PASTE',

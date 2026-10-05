@@ -16,7 +16,7 @@ async function startStagingGateway(key){
    const offset=Number(p.topic?.match(/(?:question, number|original question) (\d+)/)?.[1])||1;
    const questions=Array.from({length:count},(_,i)=>{const type=types[i%types.length];return {
     type,prompt:type==='mcq'?'Synthetic question '+(offset+i)+': What is 2 + 2?':type==='code'?'Synthetic question '+(offset+i)+': Write a function that adds two numbers.':'Synthetic question '+(offset+i)+': Explain Python lists.',
-    marks:type==='mcq'?1:5,options:type==='mcq'?['4','5']:[],correctAnswer:type==='mcq'?0:null,modelAnswer:'',rubric:type==='mcq'?'':'Synthetic rubric for staging verification only.',
+    marks:type==='mcq'?1:5,options:type==='mcq'?(p.topic?.includes('EXACTLY four')?['4','5','6','7']:['4','5']):[],correctAnswer:type==='mcq'?0:null,modelAnswer:p.topic?.startsWith('Draft ONE teaching lesson')?'Synthetic lesson explanation, worked example, and practice activity. For staging protocol checks only.':'',rubric:type==='mcq'?'':'Synthetic rubric for staging verification only.',
     language:type==='code'?p.language||'python':null,starterCode:'',sourcePages:page?[page]:[]};});
    return res.end(JSON.stringify({title:'Synthetic staging assessment',questions,warnings:['This is a synthetic protocol fixture. No AI inference was performed.'],needsTeacherReview:true,status:'draft'}));
   }

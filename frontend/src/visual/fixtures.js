@@ -23,7 +23,7 @@ export function installFixtures(params){
  updateAccount(account)
  if(isTeacher){
   const examId=new URLSearchParams(route.split('?')[1]||'').get('edit')||''
-  for(const kind of ['builder','assistant'])localStorage.removeItem(teacherWorkspaceKey(kind,examId))
+  for(const kind of ['builder','assistant','course-designer'])localStorage.removeItem(teacherWorkspaceKey(kind,examId))
   if(state==='ai-preview'&&route.startsWith('/teacher/exams/create'))writeExamWorkspace(teacherWorkspaceKey('assistant',examId),{preview:{title:'Synthetic mixed assessment',questions:['mcq','short','long','code'].map(type=>aiQuestion(type)),warnings:['Synthetic visual preview: no AI inference.']}})
  }
  setStudentSession({sessionId:'visual-session',token:'visual-fixture-only-not-a-credential',student:{name:student.name,rollNumber:student.rollNumber,class:'IX',section:'A'},exam:live,monitoring:{webcam:false,screen:false,recording:false},joinedAt:iso(now)})
@@ -48,7 +48,7 @@ export function installFixtures(params){
   getExamPasscode:read({available:true,passcode:'PREVIEW8888'}),generateExamPasscode:read({passcode:'PREVIEW8888'}),
   saveExamDraft:async p=>({...draft,...p,questions:p.questions}),publishExam:read(upcoming),postponeExam:read(upcoming),
   suggestAnswerMarks:read({verdict:'partially_correct',suggestedMarks:4,explanation:'Synthetic suggestion for visual checks only.',rubricChecks:['Check the function definition.'],needsTeacherReview:true,finalGrade:false}),
-  generateExamDraft:async p=>({title:'Synthetic assessment',questions:Array.from({length:p.questionCount||1},(_,i)=>{const q=aiQuestion(p.questionTypes[i%p.questionTypes.length],i);if(q.type==='code')q.language=p.language||'python';if(p.sequence)q.prompt+=' Sample '+p.sequence.position+'.';return q}),warnings:['Synthetic preview: no AI inference.'],needsTeacherReview:true,status:'draft'})
+  generateExamDraft:async p=>({title:'Synthetic assessment',questions:Array.from({length:p.questionCount||1},(_,i)=>{const q=aiQuestion(p.questionTypes[i%p.questionTypes.length],i);if(q.type==='code')q.language=p.language||'python';if(p.sequence)q.prompt+=' Sample '+p.sequence.position+'.';if(p.purpose==='lesson')q.modelAnswer='Synthetic teaching explanation with an example and a practice task. Teacher review required.';if(p.purpose==='course-quiz')q.options=['List','Tuple','String','Integer'];return q}),warnings:['Synthetic preview: no AI inference.'],needsTeacherReview:true,status:'draft'})
  })
  const history=list([{submission_id:'visual-submission',exam_id:live.id,title:'Previous computer science quiz',date:iso(now-86400000),review_status:'reviewed',score:8,total_marks:10,results_released_at:iso(now)}])
  const reply=path=>{

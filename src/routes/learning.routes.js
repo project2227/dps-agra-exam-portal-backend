@@ -99,7 +99,7 @@ router.post('/courses/:id/quiz',practice,writeLimiter,asyncWrap(async(req,res)=>
  const c=await enrolled(req.practice.id,req.params.id);
  must(c.quiz.length>0&&Array.isArray(c.quiz),400,'This course has no assessment.');
  must((c.completed_lessons||[]).length===c.lessons.length,403,'Complete the lessons before attempting the quiz.');
- const d=z.object({answers:z.array(z.number().int().min(-1).max(5)).max(30)}).parse(req.body);
+ const d=z.object({answers:z.array(z.number().int().min(-1).max(5))}).parse(req.body);
  must(d.answers.length===c.quiz.length,400,'Answer every quiz item.');
  const correct=c.quiz.reduce((sum,q,i)=>sum+(d.answers[i]===q.answerIndex?1:0),0);
  const score=Math.round(correct/c.quiz.length*100);
@@ -110,11 +110,15 @@ router.post('/courses/:id/quiz',practice,writeLimiter,asyncWrap(async(req,res)=>
 const teacherOwned=async(req)=>{const q=await db.query('SELECT * FROM courses WHERE id=$1 AND teacher_id=$2',[req.params.id,req.teacher.id]);must(q.rowCount,404,'Course not found.');return q.rows[0];};
 const lesson=z.object({title:z.string().trim().min(2).max(140),body:z.string().trim().min(20).max(12000)});
 const quiz=z.object({prompt:z.string().trim().min(4).max(350),options:z.array(z.string().trim().min(1).max(180)).length(4),answerIndex:z.number().int().min(0).max(3)});
-const courseBody=z.object({title:z.string().trim().min(4).max(150),summary:z.string().max(800).default(''),language:z.enum(languages),className:z.enum(classes),lessons:z.array(lesson).min(1).max(20),quiz:z.array(quiz).min(1).max(20),resources:z.array(z.object({title:z.string().max(120),url:z.string().url().refine(x=>x.startsWith('https://'))})).max(8).default([])});
+const courseBody=z.object({title:z.string().trim().min(4).max(150),summary:z.string().max(800).default(''),language:z.enum(languages),className:z.enum(classes),lessons:z.array(lesson).min(1),quiz:z.array(quiz).min(1),resources:z.array(z.object({title:z.string().max(120),url:z.string().url().refine(x=>x.startsWith('https://'))})).max(8).default([])});
 const canTeach=(t,cls)=>t.role==='admin'||t.assigned_classes?.includes(cls);
 router.get('/teacher/courses',teacher,asyncWrap(async(req,res)=>{
  const q=await db.query('SELECT c.*,t.name AS teacher_name FROM courses c JOIN teachers t ON t.id=c.teacher_id WHERE c.teacher_id=$1 ORDER BY c.created_at DESC LIMIT 100',[req.teacher.id]);
  res.json({courses:q.rows.map(c=>({...safeCourse(c),joinCode:'Only visible when initially created'}))});
+}));
+router.get('/teacher/courses/:id',teacher,asyncWrap(async(req,res)=>{
+ const c=await teacherOwned(req);must(canTeach(req.teacher,c.class_name),403,'Not assigned to this class.');
+ res.json({course:{title:c.title,summary:c.summary,language:c.language,className:c.class_name,lessons:c.lessons,quiz:c.quiz,resources:c.resources},published:c.published});
 }));
 router.post('/teacher/courses',teacher,writeLimiter,asyncWrap(async(req,res)=>{
  const d=courseBody.extend({joinCode:z.string().trim().min(10).max(40)}).parse(req.body);

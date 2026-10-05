@@ -7,7 +7,7 @@ const {attachSockets}=require('../src/sockets/exam.socket');
 const wait=(s,event)=>new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Missing '+event)),8000);s.once(event,p=>{clearTimeout(timer);resolve(p)})});
 test('teacher AI drafts, postponement and advisory grading preserve authenticated exam and monitor flows',{timeout:90000},async t=>{
  assert.equal(env.NODE_ENV,'test','Use only the disposable integration database');
- const key='synthetic-gateway-key-for-integration-only',calls=[];let bad=false,offline=false,importedCount=0;
+ const key='synthetic-gateway-key-for-integration-only',calls=[];let bad=false,offline=false,importedCount=0,longAnswer=false;
  const generated={title:'Python assessment',questions:[{type:'mcq',prompt:'Which value is True?',marks:1,options:['True','False'],correctAnswer:0,modelAnswer:'',rubric:'',language:null,starterCode:'',sourcePages:[1]},
   {type:'code',prompt:'Write a function that returns the sum of two numbers.',marks:5,options:[],correctAnswer:null,modelAnswer:'',rubric:'Award 5 marks for a correct sum function.',language:'python',starterCode:'',sourcePages:[1]}],warnings:[],needsTeacherReview:true,status:'draft'};
  const gateway=http.createServer(async(req,res)=>{
@@ -15,17 +15,17 @@ test('teacher AI drafts, postponement and advisory grading preserve authenticate
   const payload=body?JSON.parse(body):null;calls.push({path:req.url,payload});res.setHeader('content-type','application/json');
   if(offline){res.writeHead(503);return res.end('{}');}
   if(req.url==='/health')return res.end(JSON.stringify({gatewayReady:true,modelInstalled:true,model:'synthetic-test-model',busy:false}));
-  if(req.url==='/v1/exams/draft'){const r=structuredClone(generated);if(payload.questionCount)r.questions=Array.from({length:payload.questionCount},(_,i)=>structuredClone(generated.questions[payload.questionTypes[i%payload.questionTypes.length]==='code'?1:0]));if(importedCount)r.questions=Array.from({length:importedCount},(_,i)=>structuredClone(generated.questions[i%2]));if(bad)r.questions[0].correctAnswer=99;return res.end(JSON.stringify(r));}
+  if(req.url==='/v1/exams/draft'){const r=structuredClone(generated);if(payload.questionCount)r.questions=Array.from({length:payload.questionCount},(_,i)=>{const type=payload.questionTypes[i%payload.questionTypes.length],q=structuredClone(generated.questions[type==='code'?1:0]);if(type==='code'){q.language=payload.language;if(longAnswer)q.modelAnswer='A'.repeat(5000);}if(type==='long')Object.assign(q,{type,prompt:'Python functions',options:[],correctAnswer:null,language:null,modelAnswer:'A function groups reusable instructions. Define it with def and call it using its name.'});if(payload.topic.includes('EXACTLY four distinct options'))q.options=['True','False','None','Zero'];return q;});if(importedCount)r.questions=Array.from({length:importedCount},(_,i)=>structuredClone(generated.questions[i%2]));if(bad)r.questions[0].correctAnswer=99;return res.end(JSON.stringify(r));}
   res.end(JSON.stringify({verdict:'correct',suggestedMarks:5,explanation:'Meets the approved rubric.',rubricChecks:['Returns a sum.'],needsTeacherReview:true,finalGrade:false}));
  });await new Promise(r=>gateway.listen(0,'127.0.0.1',r));
  env.DPS_AI_GATEWAY_URL='http://127.0.0.1:'+gateway.address().port;env.DPS_AI_GATEWAY_KEY=key;env.EXAM_PASSCODE_KEY='ab'.repeat(32);
  const {app}=require('../src/app');const server=http.createServer(app),io=new Server(server,{maxHttpBufferSize:192*1024});attachSockets(io);
  await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,clients=[];
  t.after(async()=>{clients.forEach(s=>s.disconnect());await new Promise(r=>io.close(r));await new Promise(r=>server.close(r));await new Promise(r=>gateway.close(r));await db.pool.end();});
- const hostId=crypto.randomUUID(),otherId=crypto.randomUUID(),auths=new Map();
- for(const [id,name] of [[hostId,'host'],[otherId,'other']])await db.query(`INSERT INTO teachers(id,name,email,password_hash,assigned_classes) VALUES($1,$2,$3,$4,'["IX"]')`,[id,'Synthetic '+name,id+'@example.invalid',await bcrypt.hash('Synthetic-Password-123!',4)]);
+ const hostId=crypto.randomUUID(),otherId=crypto.randomUUID(),designerId=crypto.randomUUID(),auths=new Map();
+ for(const [id,name] of [[hostId,'host'],[otherId,'other'],[designerId,'designer']])await db.query(`INSERT INTO teachers(id,name,email,password_hash,assigned_classes) VALUES($1,$2,$3,$4,'["IX"]')`,[id,'Synthetic '+name,id+'@example.invalid',await bcrypt.hash('Synthetic-Password-123!',4)]);
  async function auth(id){let token;const s=await createSession({headers:{}},{cookie:(n,v)=>{token=v},set:()=>{}},{teacherId:id});auths.set(token,s.csrfToken);return token}
- const host=await auth(hostId),other=await auth(otherId);
+ const host=await auth(hostId),other=await auth(otherId),designer=await auth(designerId);
  const request=async(path,token,method='GET',body)=>{
   const form=body instanceof FormData;
   const r=await fetch(base+path,{method,headers:{...(token?(auths.has(token)?{Cookie:COOKIE+'='+token,'X-CSRF-Token':auths.get(token)}:{Authorization:'Bearer '+token}):{}),...(body&&!form?{'content-type':'application/json'}:{})},...(body?{body:form?body:JSON.stringify(body)}:{})});return {status:r.status,data:await r.json()};
@@ -66,6 +66,18 @@ test('teacher AI drafts, postponement and advisory grading preserve authenticate
   const saved=await request('/api/teacher/exam-drafts',host,'POST',large);assert.equal(saved.status,201);assert.equal(saved.data.questions.length,101);
   const reopened=await request('/api/teacher/exams/'+saved.data.exam.id+'/builder',host);assert.equal(reopened.status,200);assert.equal(reopened.data.questions.length,101);
  });
+ await t.test('practical answer bounds match the PC gateway and course generation returns editable private content',async()=>{
+  const input={mode:'generate',className:'IX',subject:'Computers',topic:'Python functions',questionCount:1,questionTypes:['code'],language:'javascript',sourceText,sequence:{position:1,previousPrompts:[]}};
+  longAnswer=true;const practical=await request('/api/teacher/exam-ai/draft',designer,'POST',input);longAnswer=false;assert.equal(practical.status,200);assert.equal(practical.data.questions[0].language,'javascript');assert.equal(practical.data.questions[0].modelAnswer.length,4000);assert.ok(practical.data.warnings.some(w=>w.includes('shortened')));
+  const lesson=await request('/api/teacher/exam-ai/draft',designer,'POST',{...input,purpose:'lesson',questionTypes:['long']});assert.equal(lesson.status,200);assert.ok(lesson.data.questions[0].modelAnswer.length>=20);assert.equal(calls.at(-1).payload.purpose,undefined);
+  const quiz=await request('/api/teacher/exam-ai/draft',designer,'POST',{...input,purpose:'course-quiz',questionTypes:['mcq']});assert.equal(quiz.status,200);assert.equal(quiz.data.questions[0].options.length,4);
+  assert.equal((await request('/api/teacher/exam-ai/draft',designer,'POST',{...input,purpose:'lesson',questionTypes:['long'],className:'X'})).status,403);
+  const content={title:'Generated Python course',summary:'Functions',className:'IX',language:'python',lessons:[{title:lesson.data.questions[0].prompt,body:lesson.data.questions[0].modelAnswer}],quiz:[{prompt:quiz.data.questions[0].prompt,options:quiz.data.questions[0].options,answerIndex:0}],resources:[]};
+  const created=await request('/api/learning/teacher/courses',designer,'POST',{...content,joinCode:'SYNTHETIC-COURSE-1234'});assert.equal(created.status,201);const cid=created.data.course.id;
+  const open=await request('/api/learning/teacher/courses/'+cid,designer);assert.equal(open.status,200);assert.deepEqual(open.data.course.lessons,content.lessons);assert.equal('joinCode' in open.data.course,false);assert.equal('join_code_hash' in open.data.course,false);
+  assert.equal((await request('/api/learning/teacher/courses/'+cid,host)).status,404);assert.equal((await request('/api/learning/teacher/courses/'+cid)).status,401);
+  assert.equal((await request('/api/learning/teacher/courses/'+cid,designer,'PUT',{...content,summary:'Edited course draft'})).status,200);assert.equal((await request('/api/learning/teacher/courses/'+cid+'/publish',designer,'POST',{})).status,200);assert.equal((await request('/api/learning/teacher/courses/'+cid,designer,'PUT',content)).status,409);
+ });
  await t.test('unfinished drafts save, reopen and reject stale or non-owner edits',async()=>{
   const saved=await request('/api/teacher/exam-drafts',host,'POST',definition);assert.equal(saved.status,201);draft=saved.data.exam;
   const open=await request('/api/teacher/exams/'+draft.id+'/builder',host);assert.equal(open.status,200);assert.equal(open.data.questions[0].description,'');assert.deepEqual(open.data.questions[0].options,['','','','']);
@@ -103,6 +115,12 @@ test('teacher AI drafts, postponement and advisory grading preserve authenticate
   assert.equal((await request('/api/student/exams/'+draft.id+'/answers/save',joined.token,'POST',{questionId:questions[0].id,answerText:'True'})).status,200);
   assert.equal((await request('/api/student/exams/'+draft.id+'/answers/save',joined.token,'POST',{questionId:questions[1].id,code:'def add(a,b): return a+b',language:'python'})).status,200);
   const flag=wait(monitor,'exam:proctorFlag');assert.equal((await request('/api/proctor/event',joined.token,'POST',{eventType:'TAB_SWITCH'})).status,201);assert.equal((await flag).sessionId,joined.session.id);
+  assert.equal((await request('/api/proctor/event',joined.token,'POST',{eventType:'VISION_ATTENTION_AWAY'})).status,403);
+  await db.query(`UPDATE exams SET settings=settings||'{"visionTracking":true}'::jsonb WHERE id=$1`,[draft.id]);assert.equal((await request('/api/student/vision-consent',joined.token,'POST',{consent:true})).status,200);
+  const beforeScore=(await db.query('SELECT cheating_score FROM exam_sessions WHERE id=$1',[joined.session.id])).rows[0].cheating_score;
+  const reviewFlag=wait(monitor,'exam:proctorFlag');const attention=await request('/api/proctor/event',joined.token,'POST',{eventType:'VISION_ATTENTION_AWAY',metadata:{reason:'Synthetic combined head and eye estimate',landmarks:'Must never be stored'}});assert.equal(attention.status,201);assert.equal(attention.data.reviewRequired,true);assert.equal((await reviewFlag).event.eventType,'VISION_ATTENTION_AWAY');assert.equal((await db.query('SELECT cheating_score FROM exam_sessions WHERE id=$1',[joined.session.id])).rows[0].cheating_score,beforeScore);
+  const metadata=(await db.query('SELECT metadata FROM anti_cheat_events WHERE id=$1',[attention.data.eventId])).rows[0].metadata;assert.equal('landmarks' in metadata,false);
+  assert.equal((await request('/api/student/vision-consent',joined.token,'POST',{consent:false})).status,200);assert.equal((await request('/api/proctor/event',joined.token,'POST',{eventType:'VISION_ATTENTION_AWAY'})).status,403);
   assert.equal((await request('/api/teacher/exams/'+draft.id+'/monitor',host)).data.students[0].answered,2);
   const answer=(await db.query('SELECT id FROM answers WHERE session_id=$1 AND question_id=$2',[joined.session.id,questions[1].id])).rows[0];
   assert.equal((await request('/api/teacher/answers/'+answer.id+'/ai-suggestion',host,'POST',{})).status,409);

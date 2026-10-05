@@ -14,12 +14,13 @@ globalThis.requestAnimationFrame=dom.window.requestAnimationFrame.bind(dom.windo
 globalThis.IS_REACT_ACT_ENVIRONMENT=true;window.matchMedia=()=>({matches:false,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){}})
 window.scrollTo=()=>{};Element.prototype.scrollIntoView=()=>{}
 const cache=path.join(root,'.test-cache','exam-'+process.pid);await mkdir(cache,{recursive:true})
-await build({stdin:{contents:`export {default as Builder,newQuestion,validateQuestions} from './src/components/teacher/TeacherExamBuilder';export {default as Assistant} from './src/components/teacher/ExamAiAssistant';export {default as CreateExam} from './src/pages/CreateExam';export {default as ManageExams} from './src/pages/ManageHostedExams';export {default as api} from './src/services/api';export {aiQuestionToEditor} from './src/services/examAiDraft';export {toBackendQuestion,normalizeTeacherQuestion} from './src/services/liveApi';export {updateAccount} from './src/services/session';export {teacherWorkspaceKey,readExamWorkspace} from './src/services/teacherExamWorkspace';export {default as MotionProvider} from './src/components/common/Motion';export {ToastProvider} from './src/components/common/Toast';`,resolveDir:root,loader:'jsx'},outfile:path.join(cache,'ui.mjs'),bundle:true,format:'esm',platform:'node',packages:'external',jsx:'automatic',define:{'import.meta.env':'{"BASE_URL":"/","VITE_API_BASE_URL":"https://api.example.test","VITE_DEMO_MODE":"false"}'}})
+await build({stdin:{contents:`export {default as Builder,newQuestion,validateQuestions} from './src/components/teacher/TeacherExamBuilder';export {default as Assistant} from './src/components/teacher/ExamAiAssistant';export {default as CourseDesigner} from './src/components/teacher/CourseAiDesigner';export {default as TeacherCourses} from './src/pages/TeacherCourses';export {default as CreateExam} from './src/pages/CreateExam';export {default as ManageExams} from './src/pages/ManageHostedExams';export {default as api} from './src/services/api';export {aiQuestionToEditor} from './src/services/examAiDraft';export {toBackendQuestion,normalizeTeacherQuestion} from './src/services/liveApi';export {updateAccount} from './src/services/session';export {teacherWorkspaceKey,readExamWorkspace,writeExamWorkspace} from './src/services/teacherExamWorkspace';export {default as MotionProvider} from './src/components/common/Motion';export {ToastProvider} from './src/components/common/Toast';`,resolveDir:root,loader:'jsx'},outfile:path.join(cache,'ui.mjs'),bundle:true,format:'esm',platform:'node',packages:'external',jsx:'automatic',define:{'import.meta.env':'{"BASE_URL":"/","VITE_API_BASE_URL":"https://api.example.test","VITE_DEMO_MODE":"false"}'}})
 const React=await import('react'),{MemoryRouter}=await import('react-router-dom')
 const {render,screen,within,cleanup,waitFor,act}=await import('@testing-library/react'),{default:userEvent}=await import('@testing-library/user-event')
 const ui=await import(pathToFileURL(path.join(cache,'ui.mjs'))),h=React.createElement
+const originalFetch=globalThis.fetch
 const methods={...ui.api},wrap=child=>h(ui.MotionProvider,null,h(MemoryRouter,{future:{v7_startTransition:true,v7_relativeSplatPath:true}},h(ui.ToastProvider,null,child)))
-afterEach(()=>{cleanup();Object.assign(ui.api,methods);localStorage.clear();ui.updateAccount({teacher:null})})
+afterEach(()=>{cleanup();globalThis.fetch=originalFetch;Object.assign(ui.api,methods);localStorage.clear();ui.updateAccount({teacher:null})})
 after(async()=>{dom.window.close();await rm(cache,{recursive:true,force:true})})
 const q={type:'mcq',prompt:'What is 1 + 1?',marks:1,options:['2','3'],correctAnswer:0,modelAnswer:'',rubric:'',language:null,starterCode:'',sourcePages:[1]}
 const exam={id:'11111111-1111-4111-8111-111111111111',title:'Assessment',class:'IX',section:'A',subject:'Computers',type:'Mixed',status:'upcoming',startsAt:new Date(Date.now()+86400000).toISOString(),endsAt:new Date(Date.now()+86400000+45*60000).toISOString(),durationMin:45,updated_at:'2026-10-05T01:00:00.000Z',settings:{}}
@@ -137,4 +138,39 @@ test('postpone dialog submits a later schedule with its edit version',async()=>{
  render(wrap(h(ui.ManageExams)));const user=userEvent.setup();await user.click(await screen.findByRole('button',{name:'Postpone exam'}))
  const dialog=screen.getByRole('dialog',{name:'Postpone exam'});await user.click(within(dialog).getByRole('button',{name:'Postpone exam'}));await waitFor(()=>assert.ok(moved))
  assert.equal(moved.id,exam.id);assert.equal(moved.p.expectedUpdatedAt,exam.updated_at);assert.ok(Date.parse(moved.p.startTime)>Date.parse(exam.startsAt))
+})
+test('course design generates more than five lessons one at a time through the existing PC gateway',async()=>{
+ ui.api.getExamAiStatus=async()=>({ready:true,message:'Local AI is connected.'});const calls=[],lessons=[]
+ ui.api.generateExamDraft=async p=>{calls.push(p);return {title:'Python course',questions:[{...q,type:'long',prompt:'Lesson '+p.sequence.position,options:[],correctAnswer:null,modelAnswer:'Explain functions with a worked example and a practice task.'}],warnings:[]}}
+ render(wrap(h(ui.CourseDesigner,{examClass:'IX',language:'python',sourceText:'',lessons:[],quiz:[],onLesson:l=>lessons.push(l),onQuiz:()=>{}})));const user=userEvent.setup();await screen.findByText('Local AI is connected.')
+ await user.type(screen.getByLabelText('Course design brief'),'Python functions');await user.clear(screen.getByLabelText('Number of items'));await user.type(screen.getByLabelText('Number of items'),'6');await user.click(screen.getByRole('button',{name:'Design lessons'}))
+ await screen.findByText('Finished. 6 lessons added to your editable course.');assert.equal(lessons.length,6);assert.ok(calls.every(p=>p.purpose==='lesson'&&p.questionCount===1&&p.questionTypes[0]==='long'))
+ assert.match(lessons[0].body,/worked example/)
+})
+test('course designer lessons and quiz answers survive refresh and can be deleted individually',async()=>{
+ ui.updateAccount({teacher:{id:'synthetic-course-teacher'}})
+ globalThis.fetch=async()=>({ok:true,json:async()=>({courses:[]})})
+ ui.api.getExamAiStatus=async()=>({ready:true,message:'Local AI is connected.'})
+ ui.api.generateExamDraft=async p=>({title:'Python course',questions:[p.purpose==='lesson'?{...q,type:'long',prompt:'Python lesson '+p.sequence.position,options:[],correctAnswer:null,modelAnswer:'Functions group reusable instructions. Example: def add(a, b): return a + b. Try writing a subtraction function.'}:{...q,prompt:'Course quiz '+p.sequence.position,options:['Correct','Other A','Other B','Other C']}],warnings:[]})
+ render(wrap(h(ui.TeacherCourses)));const user=userEvent.setup();await screen.findByText('Local AI is connected.');await user.type(screen.getByLabelText('Course design brief'),'Python')
+ await user.click(screen.getByRole('button',{name:'Design lessons'}));await screen.findByText('Finished. 3 lessons added to your editable course.')
+ assert.match(screen.getByLabelText('Lesson 1 content').value,/reusable instructions/)
+ await user.selectOptions(screen.getByLabelText('Create'), 'quiz');await user.click(screen.getByRole('button',{name:'Generate course quiz'}));await screen.findByText('Finished. 3 quiz items added to your editable course.')
+ assert.equal(screen.getAllByLabelText('Verified correct answer')[0].value,'0')
+ const key=ui.teacherWorkspaceKey('course-designer');assert.equal(ui.readExamWorkspace(key).form.lessons.length,3);assert.equal(ui.readExamWorkspace(key).form.quiz.length,3);assert.equal('joinCode' in ui.readExamWorkspace(key).form,false)
+ cleanup();render(wrap(h(ui.TeacherCourses)));await screen.findByText('Local AI is connected.');assert.equal(screen.getByLabelText('Lesson 3 title').value,'Python lesson 3');assert.equal(screen.getByLabelText('Question 3 prompt').value,'Course quiz 3')
+ await user.click(screen.getByRole('button',{name:'Delete lesson 1'}));assert.equal(ui.readExamWorkspace(key).form.lessons.length,2);assert.equal(ui.readExamWorkspace(key).form.quiz.length,3)
+ await user.click(screen.getByRole('button',{name:'Delete course question 1'}));assert.equal(ui.readExamWorkspace(key).form.quiz.length,2)
+})
+test('a course stays private until its latest edits are saved and the teacher reviews them',async()=>{
+ ui.updateAccount({teacher:{id:'synthetic-course-publish'}});ui.api.getExamAiStatus=async()=>({ready:false,message:'AI is offline.'})
+ const content={title:'Python functions',summary:'An introductory course',className:'IX',language:'python',lessons:[{title:'Functions',body:'Functions group reusable instructions and can return a result.'}],quiz:[{prompt:'Which keyword defines a function?',options:['def','class','return','pass'],answerIndex:0}],resources:[]}
+ ui.writeExamWorkspace(ui.teacherWorkspaceKey('course-designer'),{form:content})
+ const calls=[];globalThis.fetch=async(url,options)=>{if(options.method!=='GET')calls.push({url,body:JSON.parse(options.body)});return {ok:true,json:async()=>url.endsWith('/publish')?{published:true}:options.method==='GET'?{courses:[]}:{course:{id:exam.id}}}}
+ render(wrap(h(ui.TeacherCourses)));const user=userEvent.setup();await screen.findByText('AI is offline.')
+ await user.click(screen.getByRole('button',{name:'Generate',exact:true}));await user.click(screen.getByRole('button',{name:'Save private draft'}));await screen.findByRole('button',{name:'Update private draft'})
+ const approval=screen.getByLabelText('I checked every lesson and course answer key, and saved my changes.');assert.equal(approval.disabled,false);await user.click(approval);assert.equal(screen.getByRole('button',{name:'Publish reviewed course'}).disabled,false)
+ await user.type(screen.getByLabelText('Lesson 1 content'),' Include an addition example.');assert.equal(screen.getByRole('button',{name:'Publish reviewed course'}).disabled,true);assert.equal(approval.disabled,true);assert.equal(approval.checked,false)
+ await user.click(screen.getByRole('button',{name:'Update private draft'}));await screen.findByText('Private draft updated. Your course remains editable.');await user.click(approval);await user.click(screen.getByRole('button',{name:'Publish reviewed course'}));await screen.findByText('Published. Give the enrollment code privately to your students.')
+ assert.deepEqual(calls.map(c=>c.url.endsWith('/publish')?'publish':c.body.joinCode?'create':'update'),['create','update','publish']);assert.equal(calls[2].body.reviewed,true)
 })

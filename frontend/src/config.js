@@ -66,6 +66,7 @@ export const STARTER_CODE = {
 // Proctoring events: label, severity and the message a student sees.
 export const PROCTOR_EVENTS = {
   vision_head_turn: { label: 'Sustained head turn (estimate; review)', severity: 'low' },
+  vision_attention_away: { label: 'Head and eyes away together (AI estimate; review)', severity: 'low' },
   vision_gaze_away: { label: 'Sustained gaze deviation (estimate; review)', severity: 'low' },
   vision_face_missing: { label: 'Face not visible (review lighting)', severity: 'low' },
   vision_multiple_faces: { label: 'Multiple faces estimated (review)', severity: 'low' },

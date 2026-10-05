@@ -9,6 +9,7 @@ async function examAiReleaseSmoke(){
   const r=await fetch(endpoint+path,{method,headers:{Origin:env.FRONTEND_URL.split(',')[0],...(cookie?{Cookie:cookie,'X-CSRF-Token':csrf}:{}),...(body?{'content-type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(path.includes('exam-ai/draft')?150000:30000)});
   const data=await r.json();if(r.headers.get('set-cookie'))cookie=r.headers.get('set-cookie').split(';')[0];if(data.csrfToken)csrf=data.csrfToken;return {status:r.status,data};
  }
+ async function aiPreview(body){for(let attempt=0;attempt<4;attempt++){const result=await request('/api/teacher/exam-ai/draft','POST',body);if(![429,502].includes(result.status)||attempt===3)return result;await new Promise(r=>setTimeout(r,result.status===429?60000:1000));}}
  try{
   await db.query(`INSERT INTO teachers(id,name,email,password_hash,assigned_classes) VALUES($1,'Deployment Smoke Teacher',$2,$3,'["IX"]')`,[ids.teacher,ids.teacher+'@example.invalid',await bcrypt.hash(password,12)]);
   assert.equal((await request('/api/auth/teacher/login','POST',{email:ids.teacher+'@example.invalid',password})).status,200);checks++;
@@ -31,10 +32,16 @@ async function examAiReleaseSmoke(){
   const oversized=await request('/api/teacher/exam-ai/draft','POST',{mode:'generate',className:'IX',subject:'Computers',topic:'Python lists',questionCount:2,questionTypes:['mcq'],sequence:{position:1,previousPrompts:[]}});
   assert.equal(oversized.status,400);checks++;
   if(gatewayReady){
-   const preview=await request('/api/teacher/exam-ai/draft','POST',{mode:'generate',className:'IX',subject:'Computers',topic:'A simple MCQ about Python lists.',questionCount:1,questionTypes:['mcq'],sequence:{position:1,previousPrompts:[]},sourceText:'[Page 1]\nPython lists are mutable. Tuples are immutable.'});
+   const preview=await aiPreview({mode:'generate',className:'IX',subject:'Computers',topic:'A simple MCQ about Python lists.',questionCount:1,questionTypes:['mcq'],sequence:{position:1,previousPrompts:[]},sourceText:'[Page 1]\nPython lists are mutable. Tuples are immutable.'});
    assert.equal(preview.status,200);assert.equal(preview.data.questions.length,1);assert.equal(preview.data.needsTeacherReview,true);checks++;
-   const practical=await request('/api/teacher/exam-ai/draft','POST',{mode:'generate',className:'IX',subject:'Computers',topic:'One short Python practical: write a function that returns the length of a list.',questionCount:1,questionTypes:['code'],sequence:{position:2,previousPrompts:[preview.data.questions[0].prompt.slice(0,500)]},language:'python',sourceText:'[Page 1]\nThe Python len function returns the number of items in a list.'});
+   const practical=await aiPreview({mode:'generate',className:'IX',subject:'Computers',topic:'One short Python practical: write a function that returns the length of a list.',questionCount:1,questionTypes:['code'],sequence:{position:2,previousPrompts:[preview.data.questions[0].prompt.slice(0,500)]},language:'python',sourceText:'[Page 1]\nThe Python len function returns the number of items in a list.'});
    assert.equal(practical.status,200);assert.equal(practical.data.questions.length,1);assert.equal(practical.data.questions[0].type,'code');assert.equal(practical.data.questions[0].language,'python');checks++;
+   const javascript=await aiPreview({mode:'generate',className:'IX',subject:'Computers',topic:'A very short JavaScript practical: write a function that adds two numbers.',questionCount:1,questionTypes:['code'],sequence:{position:3,previousPrompts:[]},language:'javascript',sourceText:'[Page 1]\nA JavaScript function can return a + b.'});
+   assert.equal(javascript.status,200);assert.equal(javascript.data.questions.length,1);assert.equal(javascript.data.questions[0].language,'javascript');checks++;
+   const lesson=await aiPreview({mode:'generate',purpose:'lesson',className:'IX',subject:'python',topic:'A brief introductory lesson on Python functions, with one addition example.',questionCount:1,questionTypes:['long'],sequence:{position:1,previousPrompts:[]},sourceText:'[Page 1]\nPython def defines a reusable function. Parameters receive values. Return sends a result to the caller.'});
+   assert.equal(lesson.status,200);assert.ok(lesson.data.questions[0].modelAnswer.trim().length>=20);checks++;
+   const quiz=await aiPreview({mode:'generate',purpose:'course-quiz',className:'IX',subject:'python',topic:'One short course quiz item about the keyword used to define a Python function.',questionCount:1,questionTypes:['mcq'],sequence:{position:1,previousPrompts:[]},sourceText:'[Page 1]\nPython def defines a function. Class defines a class. Return sends a result. Pass is a placeholder.'});
+   assert.equal(quiz.status,200);assert.equal(quiz.data.questions[0].options.length,4);assert.notEqual(quiz.data.questions[0].correctAnswer,null);checks++;
   }
   return {passed:true,checks,gatewayReady,gatewayConfigured:connection.data.configured===true,model:connection.data.model||'',gatewayMessage:connection.data.message||''};
  }catch(e){e.releaseChecks=checks;throw e;}finally{
