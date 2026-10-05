@@ -12,7 +12,7 @@ Use the provided `dps-exam-ai-gateway.zip` package. Install Node.js 22 or newer 
 4. Run `cloudflared tunnel --url http://127.0.0.1:8787`. Keep this terminal and the PC running.
 5. Run `powershell -ExecutionPolicy Bypass -File .\Copy-Render-Key.ps1`. Paste its clipboard value into the **API service's private Render environment** as `DPS_AI_GATEWAY_KEY`. Never paste it into chat, a screenshot, frontend settings or a committed file.
 6. Set `DPS_AI_GATEWAY_URL` to the HTTPS tunnel origin, without `/health`. Quick Tunnel URLs change on restart. Updating Render settings can trigger a deployment; do it outside an exam window.
-7. Open Teacher → Create exam → Check AI connection. A successful connection shows the model name and enables question generation.
+7. Open Teacher → Create exam → Check AI connection. A successful connection confirms that the local AI is connected and enables question generation.
 
 The key file is encrypted with Windows DPAPI for the current Windows user. The server-to-server key is never sent to the browser. The school PC, Ollama, gateway and tunnel must all remain running. Quick Tunnels are temporary; a stable named tunnel or an outbound job worker is the longer-term option.
 
