@@ -2,7 +2,8 @@
 // Build-time gate: runs before the production container is replaced, without
 // migrating or modifying the current database. Failure keeps the old build live.
 async function gate(){
- if(process.env.NODE_ENV!=='production'||process.env.DPS_DISPOSABLE_STAGE==='true')return console.log('[deployment gate] Non-production build; schedule gate skipped.');
+ const renderWeb=process.env.RENDER==='true'&&process.env.RENDER_SERVICE_TYPE==='web';
+ if((process.env.NODE_ENV!=='production'&&!renderWeb)||process.env.DPS_DISPOSABLE_STAGE==='true')return console.log('[deployment gate] Non-production build; schedule gate skipped.');
  const {deploymentWindow}=require('../src/services/deploymentWindow'),{pool}=require('../src/config/db');
  const deadline=Date.now()+45*60000;
  try{for(;;){
