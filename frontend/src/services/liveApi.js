@@ -5,7 +5,7 @@ import { getStudentSession, getTeacherAuth } from './session'
 const unwrap = (request) => request.then((response) => response.data)
 const teacher = (http) => ({
   get: (path, options) => unwrap(http.get(path, { ...options, headers: { ...options?.headers,  } })),
-  post: (path, payload) => unwrap(http.post(path, payload, { headers: {  } })),
+  post: (path, payload, options) => unwrap(http.post(path, payload, { ...options, headers: { ...options?.headers } })),
   put: (path, payload) => unwrap(http.put(path, payload, { headers: {  } })),
   delete: (path,payload) => unwrap(http.delete(path, { data:payload, headers: {  } })),
 })
@@ -29,6 +29,7 @@ export function normalizeExam(e = {}) {
     endsAt: end,
     durationMin: e.durationMinutes || e.duration_minutes || e.durationMin,
     section: e.section || 'All',
+    instructions: raw.instructions || '',
     status,
     settings: {
       ...raw,
@@ -63,13 +64,29 @@ export function normalizeQuestion(q = {}) {
   }
 }
 
+// Only call for authenticated teacher responses. Student normalization above
+// continues to omit answer keys, marking notes and private test cases.
+export function normalizeTeacherQuestion(q = {}) {
+  const publicPart = normalizeQuestion(q)
+  const options = (q.options || []).map((text, i) => ({ id: String(i), text: String(text) }))
+  const raw = q.correct_answer
+  const notes = q.type !== 'mcq' && raw && typeof raw === 'object' ? raw : {}
+  return {
+    ...publicPart, options,
+    correct: q.type === 'mcq' && raw != null ? options.find(x => x.text === raw)?.id ?? '' : '',
+    hiddenTests: (q.hidden_tests || []).map((t, i) => ({ id: String(i), input: t.stdin || '', expected: t.expectedOutput || '' })),
+    modelAnswer: notes.modelAnswer || (q.type !== 'mcq' && typeof raw === 'string' ? raw : ''),
+    rubric: notes.rubric || '', aiMarking: notes.aiMarking === true, rubricApproved: notes.rubricApproved === true,
+  }
+}
+
 const ALLOWED_RUN_LANGUAGES = new Set(['python', 'java', 'cpp', 'c', 'javascript'])
 export function toBackendQuestion(q, order = 0) {
   if (q.type === 'code' && !ALLOWED_RUN_LANGUAGES.has(q.languages?.[0])) {
     throw new Error(`The exam backend cannot grade ${q.languages?.[0] || 'this'} as a code question yet. Choose Python, Java, C or C++.`)
   }
   const lang = q.type === 'code' ? q.languages[0] : null
-  const trimTests = arr => (arr || []).filter(x => x.expected?.trim()).map(x => ({ stdin: String(x.input || ''), expectedOutput: String(x.expected) }))
+  const trimTests = arr => (arr || []).filter(x => x.expected?.trim() || x.input?.trim()).map(x => ({ stdin: String(x.input || ''), expectedOutput: String(x.expected || '') }))
   return {
     type: q.type === 'upload' ? 'file' : q.type,
     title: String((q.type === 'code' ? (q.title || q.prompt) : q.prompt) || '').slice(0, 240),
@@ -81,11 +98,12 @@ export function toBackendQuestion(q, order = 0) {
     starterCode: lang ? String(q.starterCode?.[lang] || '') : '',
     visibleTestCases: q.type === 'code' ? trimTests(q.visibleTests) : [],
     hiddenTestCases: q.type === 'code' ? trimTests(q.hiddenTests) : [],
+    markingNotes: { modelAnswer: String(q.modelAnswer || ''), rubric: String(q.rubric || ''), aiMarking: Boolean(q.aiMarking), rubricApproved: Boolean(q.rubricApproved) },
     order,
   }
 }
 
-function toBackendExam(p) {
+export function toBackendExam(p) {
   const s = p.settings || {}
   return {
     title: p.title,
@@ -102,11 +120,12 @@ function toBackendExam(p) {
       requireScreenShare: Boolean(s.requireScreen),
       enableTabSwitchDetection: Boolean(s.tabDetection),
       enableCopyPasteDetection: Boolean(s.copyPasteRestriction),
-      enableFullscreenMode: true,
+      enableFullscreenMode: s.fullscreen ?? true,
       enableCodeRunner: Boolean(s.codeExecution),
-      allowLateJoin: true,
-      monitorAnswerText: false,
+      allowLateJoin: s.allowLateJoin ?? true,
+      monitorAnswerText: s.monitorAnswerText ?? false,
       allowGuestJoin: s.allowGuestJoin ?? true,
+      instructions: p.instructions || '',
     },
   }
 }
@@ -282,6 +301,21 @@ export function createLiveApi(http) {
       }
     },
     getTeacherExams,
+    getExamBuilder: async id => {
+      const r = await t.get('/api/teacher/exams/' + encodeURIComponent(id) + '/builder')
+      return { exam: normalizeExam(r.exam), questions: r.questions.map(normalizeTeacherQuestion) }
+    },
+    saveExamDraft: async (p, id) => {
+      const body = { exam: toBackendExam(p), questions: p.questions.map(toBackendQuestion), ...(id ? { expectedUpdatedAt: p.expectedUpdatedAt } : {}) }
+      const r = id ? await t.put('/api/teacher/exam-drafts/' + encodeURIComponent(id), body) : await t.post('/api/teacher/exam-drafts', body)
+      return { ...normalizeExam(r.exam), questions: r.questions.map(normalizeTeacherQuestion) }
+    },
+    publishExam: async id => normalizeExam((await t.post('/api/teacher/exams/' + encodeURIComponent(id) + '/publish', {})).exam),
+    postponeExam: async (id, p) => normalizeExam((await t.post('/api/teacher/exams/' + encodeURIComponent(id) + '/postpone', p)).exam),
+    getExamAiStatus: () => t.get('/api/teacher/exam-ai/status', { timeout: 15000 }),
+    extractExamSource: p => t.post('/api/teacher/exam-ai/source', p, { timeout: 35000 }),
+    generateExamDraft: p => t.post('/api/teacher/exam-ai/draft', p, { timeout: 150000 }),
+    suggestAnswerMarks: id => t.post('/api/teacher/answers/' + encodeURIComponent(id) + '/ai-suggestion', {}, { timeout: 150000 }),
     removeExam: (id,title) => t.delete(`/api/teacher/exams/${encodeURIComponent(id)}`,{confirmation:title}),
     restoreExam: id => t.post(`/api/teacher/exams/${encodeURIComponent(id)}/restore`,{}),
     createExam: async p => {
@@ -304,7 +338,7 @@ export function createLiveApi(http) {
     },
     getMonitor: monitor,
     getExamPasscode: async id => t.get('/api/teacher/exams/'+encodeURIComponent(id)+'/passcode'),
-    generateExamPasscode: async id => t.post('/api/teacher/exams/'+encodeURIComponent(id)+'/generate-passcode',{}),
+    generateExamPasscode: async (id, passcode) => t.post('/api/teacher/exams/'+encodeURIComponent(id)+'/generate-passcode',passcode === undefined ? {} : {passcode}),
     getClasses,
     initializeClasses: async () => {
       const created = []
@@ -333,7 +367,9 @@ export function createLiveApi(http) {
           student: { name: session.student_name, rollNumber: session.roll_number, class: session.class_name, section: session.section },
           submittedAt: session.submitted_at, score: Number(session.awarded_marks || 0), totalMarks: detail.answers.reduce((a,x)=>a+Number(x.max_marks),0),
           status: session.status, flagsCount: session.flags_count, flags: [], remarks: detail.answers[0]?.teacher_remarks || '',
-          answers: detail.answers.map(a => ({ answerId: a.id, questionId:a.question_id, prompt:a.title, type:a.type==='file'?'upload':a.type, marks:Number(a.max_marks), awarded:a.marks_awarded==null?null:Number(a.marks_awarded), answer:a.answer_text || (a.fileUrl ? 'File attached' : ''), code:a.code, language:a.language, correct:a.type==='mcq' ? Number(a.marks_awarded)>0 : undefined })),
+          answers: detail.answers.map(a => ({ answerId: a.id, questionId:a.question_id, prompt:a.description||a.title, type:a.type==='file'?'upload':a.type, marks:Number(a.max_marks), awarded:a.marks_awarded==null?null:Number(a.marks_awarded), answer:a.answer_text || (a.fileUrl ? 'File attached' : ''), code:a.code, language:a.language,
+            correct:a.type==='mcq'&&a.hasAnswerKey&&a.marks_awarded!=null ? Number(a.marks_awarded)>0 : undefined,
+            markingNotes:a.markingNotes||{}, aiEligible: a.markingNotes?.aiMarking===true&&a.markingNotes?.rubricApproved===true })),
         })
       }
       return out
@@ -375,4 +411,3 @@ export function createLiveApi(http) {
     deleteExamDate: id => t.delete(`/api/teacher/exam-dates/${id}`),
   }
 }
-

@@ -26,10 +26,10 @@ const schema = z.object({
   S3_SECRET_ACCESS_KEY:z.string().default(''), S3_FORCE_PATH_STYLE:z.enum(['true','false']).default('false'),
   TURN_KEY_ID:z.string().default(''), TURN_KEY_API_TOKEN:z.string().default(''),
   EXAM_PASSCODE_KEY:z.string().regex(/^(?:[a-f0-9]{64})?$/i).default(''),
+  DPS_AI_GATEWAY_URL:z.string().default(''), DPS_AI_GATEWAY_KEY:z.string().default(''),
   JUDGE0_API_URL:z.string().default(''), JUDGE0_API_KEY:z.string().default(''),
   JUDGE0_API_HOST:z.string().default(''), JUDGE0_AUTH_TOKEN:z.string().default('')
 });
 const env = schema.parse(process.env);
 if (env.NODE_ENV === 'production' && /replace-with/i.test(env.JWT_SECRET+env.STUDENT_SESSION_SECRET)) throw new Error('Replace example authentication secrets.');
 module.exports = {env, origins:[...new Set([...env.FRONTEND_URL.split(','),env.API_PUBLIC_URL].map(s=>s.trim().replace(/\/$/,'')).filter(Boolean))]};
-

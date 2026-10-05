@@ -6,21 +6,20 @@ import { cx, uid } from '../../utils/format'
 const TYPES = {
   mcq: { label: 'MCQ', icon: ListChecks },
   text: { label: 'Text answer', icon: TextCursorInput },
-  code: { label: 'Coding', icon: Code2 },
+  code: { label: 'Practical', icon: Code2 },
   upload: { label: 'File upload', icon: FileUp },
 }
 
 export function newQuestion(kind, examClass = 'XII') {
-  const base = { id: uid('q'), prompt: '', marks: 1 }
+  const base = { id: uid('q'), prompt: '', marks: 1, modelAnswer: '', rubric: '', aiMarking: false, rubricApproved: false }
   if (kind === 'mcq') return { ...base, type: 'mcq', options: ['a', 'b', 'c', 'd'].map((id) => ({ id, text: '' })), correct: 'a' }
   if (kind === 'text') return { ...base, type: 'short', marks: 2, maxLength: 300, modelAnswer: '' }
   if (kind === 'upload') return { ...base, type: 'upload', marks: 2, accept: '.pdf,.png,.jpg,.jpeg,.zip', maxSizeMB: 10, optional: false }
-  const lang = (CLASS_LANGUAGES[examClass] || ['python'])[0]
+  const lang = (CLASS_LANGUAGES[examClass] || ['python']).find(l => ['python','java','cpp','c','javascript'].includes(l)) || 'python'
   return {
     ...base, type: 'code', marks: 5, title: '', languages: [lang],
     starterCode: { [lang]: lang === 'web' ? STARTER_CODE.web : lang === 'blocks' ? [] : '' },
-    visibleTests: [{ id: uid('t'), input: '', expected: '' }],
-    hiddenTests: [{ id: uid('t'), input: '', expected: '' }],
+    visibleTests: [], hiddenTests: [],
   }
 }
 
@@ -29,14 +28,16 @@ export function validateQuestions(questions) {
   const errors = {}
   questions.forEach((q) => {
     if (!q.prompt.trim()) errors[q.id] = 'Write the question text.'
-    else if (!(Number(q.marks) >= 0)) errors[q.id] = 'Marks must be a number.'
+    else if (!(Number(q.marks) >= 0) || !Number.isFinite(Number(q.marks)) || Number(q.marks) > 10000) errors[q.id] = 'Use marks between 0 and 10,000.'
     else if (q.type === 'mcq') {
-      if (q.options.some((o) => !o.text.trim())) errors[q.id] = 'Fill in every option or remove empty ones.'
-      else if (!q.options.find((o) => o.id === q.correct)) errors[q.id] = 'Mark the correct option.'
+      if (q.options.length < 2 || q.options.some((o) => !o.text.trim())) errors[q.id] = 'Fill in at least two options or remove empty ones.'
+      else if (new Set(q.options.map(o => o.text.trim())).size !== q.options.length) errors[q.id] = 'Use distinct options.'
+      else if (q.correct && !q.options.find((o) => o.id === q.correct)) errors[q.id] = 'Choose an existing correct option, or mark manually.'
     } else if (q.type === 'code') {
-      const autoChecked = !['web', 'blocks'].includes(q.languages[0])
-      if (autoChecked && ![...q.visibleTests, ...q.hiddenTests].some((t) => t.expected.trim())) errors[q.id] = 'Add at least one test case with an expected output.'
+      if (![...q.visibleTests, ...q.hiddenTests].every(t => !t.input.trim() || t.expected.trim())) errors[q.id] = 'Finish the optional test outputs or remove the unfinished tests.'
     }
+    if (q.aiMarking && (!q.rubric?.trim() || !q.rubricApproved)) errors[q.id] = 'Write and approve the rubric before enabling AI marking suggestions.'
+    if (q.aiMarking && (Number(q.marks) > 100 || q.prompt.length > 5000)) errors[q.id] = 'AI suggestions support up to 100 marks and 5,000 question characters. Use manual marking for this question.'
   })
   return errors
 }
@@ -72,11 +73,11 @@ function TestList({ title, hint, tests, onChange, hidden }) {
 
 function QuestionEditor({ q, index, total, examClass, error, onChange, onMove, onDuplicate, onRemove }) {
   const [open, setOpen] = useState(true)
-  const set = (patch) => onChange({ ...q, ...patch })
+  const set = (patch) => onChange({ ...q, ...patch, ...(['prompt','marks','languages','modelAnswer','rubric'].some(k => k in patch) ? { rubricApproved: false } : {}) })
   const kind = q.type === 'short' || q.type === 'long' ? 'text' : q.type
   const Icon = TYPES[kind].icon
   const classLangs = CLASS_LANGUAGES[examClass] || Object.keys(LANGUAGES)
-  const langOptions = [...classLangs, ...Object.keys(LANGUAGES).filter((l) => !classLangs.includes(l))]
+  const langOptions = [...classLangs, ...Object.keys(LANGUAGES).filter((l) => !classLangs.includes(l))].filter(l => ['python','java','cpp','c','javascript'].includes(l))
   const lang = q.languages?.[0]
 
   const setLanguage = (l) => set({
@@ -167,12 +168,13 @@ function QuestionEditor({ q, index, total, examClass, error, onChange, onMove, o
 
           {q.type === 'mcq' && (
             <fieldset>
-              <legend className="label">Options (select the correct one)</legend>
+              <legend className="label">Options and answer key</legend>
+              <label className="mb-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={!q.correct} onChange={e => set({ correct: e.target.checked ? '' : q.options[0]?.id || '' })} /> Mark manually (no answer key)</label>
               <div className="space-y-2">
                 {q.options.map((o, i) => (
                   <div key={o.id} className="flex items-center gap-2">
-                    <label className={cx('flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border text-sm font-semibold', q.correct === o.id ? 'border-dps-neon bg-dps-green text-white' : 'border-white/15 text-slate-300')}>
-                      <input type="radio" name={`${q.id}-correct`} className="sr-only" checked={q.correct === o.id} onChange={() => set({ correct: o.id })} />
+                    <label className={cx('flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border text-sm font-semibold focus-within:ring-2 focus-within:ring-dps-neon', q.correct === o.id ? 'border-dps-neon bg-dps-green text-white' : 'border-white/15 text-slate-300')}>
+                      <input aria-label={`Answer key: option ${String.fromCharCode(65 + i)}`} type="radio" name={`${q.id}-correct`} className="sr-only" checked={q.correct === o.id} onChange={() => set({ correct: o.id })} />
                       {q.correct === o.id ? <CheckCircle2 size={16} aria-label="Correct answer" /> : String.fromCharCode(65 + i)}
                     </label>
                     <label className="flex-1">
@@ -180,7 +182,7 @@ function QuestionEditor({ q, index, total, examClass, error, onChange, onMove, o
                       <input className="input" value={o.text} placeholder={`Option ${String.fromCharCode(65 + i)}`} onChange={(e) => set({ options: q.options.map((x) => (x.id === o.id ? { ...x, text: e.target.value } : x)) })} />
                     </label>
                     <button type="button" className="btn btn-ghost btn-sm" disabled={q.options.length <= 2} aria-label={`Remove option ${String.fromCharCode(65 + i)}`}
-                      onClick={() => set({ options: q.options.filter((x) => x.id !== o.id), correct: q.correct === o.id ? q.options[0].id : q.correct })}>
+                      onClick={() => set({ options: q.options.filter((x) => x.id !== o.id), correct: q.correct === o.id ? '' : q.correct })}>
                       <Trash2 size={13} />
                     </button>
                   </div>
@@ -192,12 +194,16 @@ function QuestionEditor({ q, index, total, examClass, error, onChange, onMove, o
             </fieldset>
           )}
 
-          {kind === 'text' && (
-            <div>
-              <label className="label" htmlFor={`${q.id}-model`}>Model answer / marking notes (teachers only)</label>
-              <textarea id={`${q.id}-model`} className="input min-h-[64px]" value={q.modelAnswer || ''} onChange={(e) => set({ modelAnswer: e.target.value })} placeholder="Shown next to student answers on the Submissions page" />
+          {['short','long','code'].includes(q.type) && <details className="rounded-xl border border-white/10 p-3">
+            <summary className="cursor-pointer text-sm font-medium">Marking notes and AI suggestions (optional, teachers only)</summary>
+            <div className="mt-4 space-y-3">
+              <label className="block" htmlFor={`${q.id}-model`}><span className="label">Reference answer (optional)</span><textarea id={`${q.id}-model`} maxLength={4000} className="input min-h-[64px]" value={q.modelAnswer || ''} onChange={e => set({ modelAnswer: e.target.value, rubricApproved: false })} /></label>
+              <label className="block" htmlFor={`${q.id}-rubric`}><span className="label">Marking rubric</span><textarea id={`${q.id}-rubric`} maxLength={4000} className="input min-h-[80px]" value={q.rubric || ''} onChange={e => set({ rubric: e.target.value, rubricApproved: false })} placeholder="For example: correct function definition (1), handles the input (2), correct output (2)." /></label>
+              <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={!!q.aiMarking} onChange={e => set({ aiMarking: e.target.checked })} /> Offer AI marking suggestions for this question</label>
+              {q.aiMarking && <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" disabled={!q.rubric?.trim()} checked={!!q.rubricApproved} onChange={e => set({ rubricApproved: e.target.checked })} /> I checked and approve this rubric. I will review the AI suggestion before saving marks.</label>}
+              <p className="hint">You can publish practical and written questions without answers. Mark manually, or approve a rubric for AI suggestions. AI does not save final marks.</p>
             </div>
-          )}
+          </details>}
 
           {q.type === 'upload' && (
             <label className="flex items-center gap-2 text-sm text-slate-300">
@@ -234,10 +240,14 @@ function QuestionEditor({ q, index, total, examClass, error, onChange, onMove, o
                   {LANGUAGES[lang].label} answers are marked manually on the Submissions page, so no test cases are needed.
                 </p>
               ) : (
-                <div className="grid gap-4 lg:grid-cols-2">
+                <details className="rounded-xl border border-white/10 p-3">
+                  <summary className="cursor-pointer text-sm font-medium">Sample and hidden tests (optional)</summary>
+                  <p className="hint mt-2">No expected answer is required. Add tests only when you want deterministic code checking.</p>
+                  <div className="mt-3 grid gap-4 lg:grid-cols-2">
                   <TestList title="Visible sample tests" hint="Students can see these and run them before submitting." tests={q.visibleTests} onChange={(visibleTests) => set({ visibleTests })} />
                   <TestList hidden title="Hidden tests" hint="Used for auto-checking. Students only see pass/fail counts." tests={q.hiddenTests} onChange={(hiddenTests) => set({ hiddenTests })} />
-                </div>
+                  </div>
+                </details>
               )}
             </>
           )}

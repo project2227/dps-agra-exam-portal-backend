@@ -2,6 +2,7 @@
 const express=require('express');const {z}=require('zod');const db=require('../config/db');
 const {teacher,ownExam}=require('../middleware/auth');const {asyncWrap,must,safeCsv}=require('../utils/http');
 const {signedRead}=require('../services/storage');const {audit}=require('../services/audit');
+const {markingNotes}=require('../services/examDefinition');
 const router=express.Router();router.use(teacher);
 router.get('/exams/:examId/submissions',asyncWrap(async(req,res)=>{
  const exam=await ownExam(req.params.examId,req.teacher.id);
@@ -16,10 +17,12 @@ router.get('/submissions/:sessionId',asyncWrap(async(req,res)=>{
  s.joined_at,s.submitted_at,s.flags_count,s.cheating_score FROM exam_sessions s
  JOIN exams e ON e.id=s.exam_id WHERE s.id=$1 AND e.teacher_id=$2`,[req.params.sessionId,req.teacher.id]);
  must(sq.rowCount,404,'Submission not found.');
- const answers=await db.query(`SELECT a.id,a.question_id,q.title,q.type,q.marks AS max_marks,a.answer_text,a.code,a.language,
+ const answers=await db.query(`SELECT a.id,a.question_id,q.title,q.description,q.type,q.correct_answer,q.marks AS max_marks,a.answer_text,a.code,a.language,
  a.file_key,a.auto_saved_at,a.submitted_at,a.marks_awarded,a.teacher_remarks FROM answers a
  JOIN questions q ON q.id=a.question_id WHERE a.session_id=$1 ORDER BY q.sort_order`,[req.params.sessionId]);
- const list=await Promise.all(answers.rows.map(async ({file_key,...a})=>({...a,fileUrl:file_key?await signedRead(file_key):null})));
+ const list=await Promise.all(answers.rows.map(async ({file_key,correct_answer,...a})=>({...a,
+  markingNotes:markingNotes({type:a.type,correct_answer}),hasAnswerKey:a.type==='mcq'&&correct_answer!=null,
+  fileUrl:file_key?await signedRead(file_key):null})));
  res.json({session:sq.rows[0],answers:list});
 }));
 router.put('/answers/:answerId/marks',asyncWrap(async(req,res)=>{

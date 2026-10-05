@@ -7,3 +7,4 @@ coverage/
 .DS_Store
 
 frontend/.test-cache/
+frontend/public/ai/

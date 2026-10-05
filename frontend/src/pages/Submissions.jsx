@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, ClipboardCheck, Code2, Download, EyeOff, FileDown, Loader2, Printer, Search, ShieldAlert, XCircle } from 'lucide-react'
+import { CheckCircle2, ClipboardCheck, Code2, Download, EyeOff, FileDown, Loader2, Printer, Search, ShieldAlert, Sparkles, XCircle } from 'lucide-react'
 import PageHeader from '../components/common/PageHeader'
 import GlassCard from '../components/common/GlassCard'
 import StatusBadge from '../components/common/StatusBadge'
@@ -13,12 +13,19 @@ import { cx, downloadCSV, formatDateTime, formatTime } from '../utils/format'
 
 function AnswerReview({ a, index, awarded, onAward }) {
   const manual = a.type !== 'mcq'
+  const [suggestion, setSuggestion] = useState(null), [aiBusy, setAiBusy] = useState(false), [aiError, setAiError] = useState('')
+  const suggest = async () => {
+    setAiBusy(true); setAiError(''); setSuggestion(null)
+    try { setSuggestion(await api.suggestAnswerMarks(a.answerId)) }
+    catch (e) { setAiError(e.message) }
+    finally { setAiBusy(false) }
+  }
   return (
     <article className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
       <header className="mb-2 flex flex-wrap items-start gap-2">
         <span className="font-display font-semibold text-white">Q{index + 1}</span>
         <p className="min-w-0 flex-1 text-sm text-slate-300">{a.prompt}</p>
-        {a.type === 'mcq' && (a.correct ? <StatusBadge status="passed" label="Correct" /> : <StatusBadge status="failed" label="Incorrect" />)}
+        {a.type === 'mcq' && (a.correct === undefined ? <span className="chip">Teacher review</span> : a.correct ? <StatusBadge status="passed" label="Correct" /> : <StatusBadge status="failed" label="Incorrect" />)}
       </header>
 
       {a.type === 'code' ? (
@@ -44,7 +51,24 @@ function AnswerReview({ a, index, awarded, onAward }) {
         <p className="whitespace-pre-line rounded-lg bg-navy-950/60 p-3 text-sm text-slate-100">{a.answer || <span className="text-slate-500">Not answered</span>}</p>
       )}
 
-      <div className="mt-3 flex items-center justify-end gap-2 text-sm">
+      {(a.markingNotes?.modelAnswer || a.markingNotes?.rubric) && <details className="mt-3 rounded-lg border border-white/10 p-3 text-sm">
+        <summary className="cursor-pointer">Teacher marking notes</summary>
+        {a.markingNotes.modelAnswer && <p className="mt-2 whitespace-pre-wrap">Reference answer: {a.markingNotes.modelAnswer}</p>}
+        {a.markingNotes.rubric && <p className="mt-2 whitespace-pre-wrap">Rubric: {a.markingNotes.rubric}</p>}
+      </details>}
+      {a.aiEligible && <div className="mt-3 space-y-2">
+        <button type="button" className="btn btn-ghost btn-sm" disabled={aiBusy} onClick={suggest}><Sparkles size={14} aria-hidden="true" />{aiBusy ? 'Checking the answer…' : 'Suggest marks with AI'}</button>
+        {aiBusy && <p role="status" className="text-xs text-slate-400">The local AI may take up to two minutes. It will not save marks.</p>}
+        {aiError && <p role="alert" className="error-text">{aiError}</p>}
+        {suggestion && <div className="rounded-xl border border-white/10 p-3">
+          <p className="text-sm font-semibold">AI suggestion: {{correct:'Correct',partially_correct:'Partially correct',incorrect:'Incorrect',needs_review:'Needs teacher review'}[suggestion.verdict]}{suggestion.suggestedMarks !== null ? ` · ${suggestion.suggestedMarks} / ${a.marks}` : ''}</p>
+          <p className="mt-2 whitespace-pre-wrap text-sm text-slate-400">{suggestion.explanation}</p>
+          {suggestion.rubricChecks.length > 0 && <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-slate-400">{suggestion.rubricChecks.map((v,i)=><li key={i}>{v}</li>)}</ul>}
+          <p className="mt-2 text-xs text-slate-400">Review the answer and rubric before accepting. Final marks are saved only when you choose Save review.</p>
+          {suggestion.suggestedMarks !== null && <button className="btn btn-ghost btn-sm mt-2" type="button" onClick={()=>onAward(suggestion.suggestedMarks)}>Use this suggestion</button>}
+        </div>}
+      </div>}
+      <div className="mt-3 flex flex-wrap items-center justify-end gap-2 text-sm">
         <label htmlFor={`award-${a.questionId}`} className="text-slate-400">{manual ? 'Marks awarded' : 'Auto marks'}</label>
         <input id={`award-${a.questionId}`} type="number" min="0" max={a.marks} step="0.5" className="input w-20 py-1.5 text-center" value={awarded ?? ''} onChange={(e) => onAward(e.target.value === '' ? null : Math.min(a.marks, Math.max(0, Number(e.target.value))))} placeholder="-" />
         <span className="text-slate-500">/ {a.marks}</span>

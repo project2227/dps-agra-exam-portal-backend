@@ -113,5 +113,20 @@ async function remove(key){
  }
  await storage().send(new DeleteObjectCommand({Bucket:env.S3_BUCKET,Key:key}));
 }
-module.exports={upload,signedRead,readSignedFile,remove,detectFile,
+// Internal read for a previously authorized handout. Never fetch a browser-provided URL.
+async function readStoredFile(key){
+ must(typeof key==='string'&&key.startsWith('handouts/'),400,'Invalid handout reference.');
+ if(env.UPLOAD_PROVIDER==='postgres'){
+  const q=await db.query('SELECT file_bytes,mime_type,original_name,size_bytes FROM stored_files WHERE storage_key=$1',[key]);
+  must(q.rowCount,404,'The handout file is no longer available.');const f=q.rows[0];
+  must(Number(f.size_bytes)<=5*1024*1024,413,'AI import accepts files up to 5 MB.');
+  return {buffer:f.file_bytes,type:f.mime_type,name:f.original_name};
+ }
+ const response=await storage().send(new GetObjectCommand({Bucket:env.S3_BUCKET,Key:key}));
+ must(Number(response.ContentLength||0)<=5*1024*1024,413,'AI import accepts files up to 5 MB.');
+ const chunks=[];let size=0;
+ for await(const chunk of response.Body){size+=chunk.length;must(size<=5*1024*1024,413,'AI import accepts files up to 5 MB.');chunks.push(chunk);}
+ return {buffer:Buffer.concat(chunks),type:response.ContentType,name:key.split('/').pop()};
+}
+module.exports={upload,signedRead,readSignedFile,readStoredFile,remove,detectFile,
  MAX_DB_FILE_BYTES,MAX_DB_TOTAL_BYTES,MAX_DB_FILES};

@@ -50,6 +50,11 @@ router.post('/exams/:examId/join',joinNetworkLimit,joinIdentifierLimit,accountOp
  const fingerprintHash=v.browserMetadata.fingerprint?crypto.createHmac('sha256',env.FINGERPRINT_PEPPER)
   .update(v.browserMetadata.fingerprint).digest('hex'):null;
  const result=await db.transaction(async c=>{
+  // Serializes check-in with draft edits and postponement. A teacher cannot
+  // rewrite questions while this admission is in progress.
+  const fresh=(await c.query('SELECT * FROM exams WHERE id=$1 FOR UPDATE',[e.id])).rows[0];
+  must(fresh&&canJoinExam(fresh),403,'This exam is no longer available. Reload the exam list.');
+  must(new Date(fresh.updated_at).getTime()===new Date(e.updated_at).getTime(),409,'The teacher changed this exam. Reload the exam list and check in again.');
   const kicked=await c.query(`SELECT id FROM exam_sessions WHERE exam_id=$1 AND lower(roll_number)=lower($2)
    AND lower(class_name)=lower($3) AND lower(section)=lower($4) AND kicked_at IS NOT NULL FOR UPDATE`,
    [e.id,v.rollNumber,v.className,v.section]);
@@ -184,7 +189,7 @@ router.post('/student/exams/:examId/submit',student,asyncWrap(async(req,res)=>{
   }
   await c.query(`UPDATE answers a SET marks_awarded=CASE
    WHEN q.type='mcq' AND q.correct_answer IS NOT NULL AND to_jsonb(trim(a.answer_text))=q.correct_answer THEN q.marks
-   WHEN q.type='mcq' THEN 0 ELSE a.marks_awarded END,
+   WHEN q.type='mcq' AND q.correct_answer IS NOT NULL THEN 0 ELSE a.marks_awarded END,
    submitted_at=now() FROM questions q WHERE a.question_id=q.id AND a.session_id=$1`,[req.student.id]);
   await c.query(`UPDATE exam_sessions SET status='submitted',submitted_at=now(),active_socket_id=NULL,updated_at=now() WHERE id=$1`,[req.student.id]);
   await c.query(`UPDATE incident_recordings SET ended_at=now(),finish_reason='exam-submitted' WHERE session_id=$1 AND ended_at IS NULL`,[req.student.id]);

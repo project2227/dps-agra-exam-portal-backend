@@ -6,15 +6,8 @@ const {audit}=require('../services/audit');
 const {getIo,publish}=require('../services/events');
 const {env}=require('../config/env');
 const {encryptPasscode,decryptPasscode}=require('../services/passcodeVault');const {assertAssignedClass}=require('../services/permissions');
+const {examShape,editableExam,validateForPublish}=require('../services/examDefinition');
 const router=express.Router();router.use(teacher);
-const settingsSchema=z.object({visionTracking:z.boolean().default(false),requireWebcam:z.boolean().default(false),requireScreenShare:z.boolean().default(false),
- enableTabSwitchDetection:z.boolean().default(true),enableCopyPasteDetection:z.boolean().default(true),
- enableFullscreenMode:z.boolean().default(false),enableCodeRunner:z.boolean().default(false),
- allowLateJoin:z.boolean().default(true),monitorAnswerText:z.boolean().default(false),allowGuestJoin:z.boolean().default(true)}).strict();
-const examShape=z.object({title:z.string().trim().min(3).max(180),subject:z.string().max(90).default('Computers'),
- className:z.string().trim().min(1).max(40),section:z.string().max(12).default('All'),
- examType:z.enum(['quiz','practical','mixed']),startTime:z.coerce.date(),endTime:z.coerce.date(),
- durationMinutes:z.number().int().min(1).max(360),settings:settingsSchema.default({})}).refine(x=>x.endTime>x.startTime,{message:'End time must be after start time.'});
 const scrub=x=>{const {passcode_hash,passcode_ciphertext,...safe}=x;return safe;};
 router.post('/exams',asyncWrap(async(req,res)=>{
  const v=examShape.parse(req.body);
@@ -36,14 +29,17 @@ router.get('/exams/:examId',asyncWrap(async(req,res)=>res.json({exam:scrub(await
 router.post('/exams/:examId/guest-join',asyncWrap(async(req,res)=>{const e=await ownExam(req.params.examId,req.teacher.id);const d=z.object({allow:z.boolean()}).parse(req.body);await db.query(`UPDATE exams SET settings=jsonb_set(settings,'{allowGuestJoin}',$2::jsonb),updated_at=now() WHERE id=$1`,[e.id,JSON.stringify(d.allow)]);res.json({allowGuestJoin:d.allow});}));
 router.post('/exams/:examId/release-results',asyncWrap(async(req,res)=>{const e=await ownExam(req.params.examId,req.teacher.id);const d=z.object({release:z.boolean()}).parse(req.body);must(!d.release||e.status==='closed'||Date.now()>new Date(e.end_time).getTime(),409,'Wait until the exam is over before releasing results.');await db.query('UPDATE exams SET results_released_at=CASE WHEN $2 THEN now() ELSE NULL END WHERE id=$1',[e.id,d.release]);await audit({teacherId:req.teacher.id,examId:e.id,action:d.release?'exam:results-released':'exam:results-withheld'});res.json({released:d.release});}));
 router.put('/exams/:examId',asyncWrap(async(req,res)=>{
- const v=examShape.parse(req.body);await assertAssignedClass(req.teacher,v.className,v.section);const current=await ownExam(req.params.examId,req.teacher.id);
- must(current.status==='draft'||current.status==='scheduled',409,'Active or closed exams cannot be edited.');
- const q=await db.query(`UPDATE exams SET title=$1,subject=$2,class_name=$3,section=$4,exam_type=$5,
+ const v=examShape.parse(req.body);await assertAssignedClass(req.teacher,v.className,v.section);
+ const updated=await db.transaction(async c=>{
+ const current=await editableExam(c,req.params.examId,req.teacher.id);
+ if(current.status==='scheduled')must(v.startTime>Date.now(),400,'A scheduled exam must keep a future start time.');
+ const q=await c.query(`UPDATE exams SET title=$1,subject=$2,class_name=$3,section=$4,exam_type=$5,
  start_time=$6,end_time=$7,duration_minutes=$8,settings=$9,updated_at=now()
  WHERE id=$10 AND teacher_id=$11 AND status IN ('draft','scheduled') RETURNING *`,
  [v.title,v.subject,v.className,v.section,v.examType,v.startTime,v.endTime,v.durationMinutes,
  JSON.stringify(v.settings),current.id,req.teacher.id]);
- must(q.rowCount,409,'Exam status changed; reload.');res.json({exam:scrub(q.rows[0])});
+ must(q.rowCount,409,'Exam status changed; reload.');return q.rows[0];});
+ await audit({teacherId:req.teacher.id,examId:updated.id,action:'exam:edited'});res.json({exam:scrub(updated)});
 }));
 // Remove a published exam from the active teacher/student lists, retaining
 // submitted work in the database for review and recovery.
@@ -102,22 +98,23 @@ router.post('/exams/:examId/generate-passcode',asyncWrap(async(req,res)=>{
  must(isValidExamPasscode(passcode),400,'A passcode must contain 8 to 64 letters, numbers or permitted symbols, excluding separators.');
  const passcodeHash=await bcrypt.hash(normalizeExamPasscode(passcode),12);
  const cipher=encryptPasscode(passcode,env.EXAM_PASSCODE_KEY);
- await db.query('UPDATE exams SET passcode_hash=$1,passcode_ciphertext=$2,updated_at=now() WHERE id=$3',[passcodeHash,cipher,exam.id]);
+ await db.transaction(async c=>{await editableExam(c,exam.id,req.teacher.id);
+  await c.query('UPDATE exams SET passcode_hash=$1,passcode_ciphertext=$2,updated_at=now() WHERE id=$3',[passcodeHash,cipher,exam.id]);});
  await audit({teacherId:req.teacher.id,examId:exam.id,action:'exam:passcode_rotated'});
  res.set('Cache-Control','private, no-store');
  res.json({passcode,notice:'Saved encrypted on the server. You can view it again as the authenticated exam owner.'});
 }));
 router.post('/exams/:examId/publish',asyncWrap(async(req,res)=>{
- const exam=await ownExam(req.params.examId,req.teacher.id);
- must(exam.status==='draft'||exam.status==='scheduled',409,'Exam cannot be published in its current state.');
+ const result=await db.transaction(async c=>{
+ const exam=await editableExam(c,req.params.examId,req.teacher.id);
  must(exam.passcode_hash,400,'Generate an exam passcode first.');
- const total=await db.query('SELECT count(*)::int AS count FROM questions WHERE exam_id=$1',[exam.id]);
- must(total.rows[0].count>0,400,'Add at least one question first.');
- must(new Date(exam.end_time).getTime()>Date.now(),400,'Exam end time is in the past.');
+ const questions=await c.query('SELECT * FROM questions WHERE exam_id=$1 ORDER BY sort_order,id',[exam.id]);
+ validateForPublish(exam,questions.rows);
  const status=new Date(exam.start_time).getTime()>Date.now()?'scheduled':'active';
- const q=await db.query(`UPDATE exams SET status=$1,updated_at=now() WHERE id=$2 AND status IN('draft','scheduled') RETURNING *`,[status,exam.id]);
- await audit({teacherId:req.teacher.id,examId:exam.id,action:'exam:published'});
- res.json({exam:scrub(q.rows[0])});
+ return (await c.query(`UPDATE exams SET status=$1,updated_at=now() WHERE id=$2 AND status IN('draft','scheduled') RETURNING *`,[status,exam.id])).rows[0];
+ });
+ await audit({teacherId:req.teacher.id,examId:result.id,action:'exam:published'});
+ res.json({exam:scrub(result)});
 }));
 router.post('/exams/:examId/close',asyncWrap(async(req,res)=>{
  const exam=await ownExam(req.params.examId,req.teacher.id);
@@ -163,4 +160,3 @@ router.delete('/questions/:questionId',asyncWrap(async(req,res)=>{
  [req.params.questionId,req.teacher.id]);must(q.rowCount,404,'Editable question not found.');res.json({deleted:true});
 }));
 module.exports=router;
-

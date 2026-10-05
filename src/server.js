@@ -17,7 +17,12 @@ async function start(){
  console.log('[accounts] email reset delivery '+(env.SMTP_URL&&env.MAIL_FROM?'configured':'not configured; teacher password resets available'));
  // The public edge can still be switching containers immediately after listen().
  let releaseSmokeTimer;
- if(process.env.ACCOUNT_RELEASE_SMOKE==='true'){releaseSmokeTimer=setTimeout(()=>require('../scripts/release-smoke').releaseSmoke().then(result=>console.log('[release smoke] PASS public HTTPS, cookie student login, account and guest join, autosave, teacher Socket.IO monitor, submission, logout; checks='+result.checks)).catch(error=>console.error('[release smoke] FAIL checks='+String(error.releaseChecks??'cleanup')+' type='+String(error.code||error.name||'unknown')+' expected='+String(typeof error.expected==='number'?error.expected:'')+' actual='+String(typeof error.actual==='number'?error.actual:''))),45000);releaseSmokeTimer.unref();}
+ if(process.env.ACCOUNT_RELEASE_SMOKE==='true'){releaseSmokeTimer=setTimeout(()=>require('../scripts/release-smoke').releaseSmoke().then(async result=>{
+  console.log('[release smoke] PASS public HTTPS, cookie student login, account and guest join, autosave, teacher Socket.IO monitor, submission, logout; checks='+result.checks);
+  const features=await require('../scripts/exam-ai-release-smoke').examAiReleaseSmoke();
+  console.log('[exam feature smoke] PASS draft save/reopen/edit, optional practical answer key, publish, postpone, source extraction; checks='+features.checks);
+  console.log('[exam AI connection] '+(features.gatewayReady?'READY':'NOT READY')+' configured='+features.gatewayConfigured+' model='+features.model+' message='+features.gatewayMessage);
+ }).catch(error=>console.error('[release smoke] FAIL checks='+String(error.releaseChecks??'cleanup')+' type='+String(error.code||error.name||'unknown')+' expected='+String(typeof error.expected==='number'?error.expected:'')+' actual='+String(typeof error.actual==='number'?error.actual:''))),45000);releaseSmokeTimer.unref();}
  const shutdown=async()=>{clearInterval(retention);clearTimeout(releaseSmokeTimer);io.close();server.close();await pool.end();process.exit(0);};
  process.once('SIGTERM',shutdown);process.once('SIGINT',shutdown);
  return {app,server,io};
